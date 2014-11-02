@@ -74,6 +74,7 @@ const char * Settings::GENERAL_SETTINGS = "GENERAL_SETTINGS";
 const char * Settings::CAMERA_X = "CAMERA_X";
 const char * Settings::CAMERA_Y = "CAMERA_Y";
 const char * Settings::CAMERA_Z = "CAMERA_Z";
+const char * Settings::CAMERA_MODE = "CAMERA_MODE";
 const char * Settings::RIGHT_LASER_X = "RIGHT_LASER_X";
 const char * Settings::RIGHT_LASER_Y = "RIGHT_LASER_Y";
 const char * Settings::RIGHT_LASER_Z = "RIGHT_LASER_Z";
@@ -232,7 +233,8 @@ CREATE TABLE GENERAL_SETTINGS (\n\
 	CAMERA_X REAL,                        -- X-compoment of camera location in mm. ie: The camera is always at X = 0.\n\
 	CAMERA_Y REAL,                        -- Y-component of camera location in mm. ie: The distance from camera center to the XZ plane\n\
 	CAMERA_Z REAL,                        -- Z-component of camera location in mm. ie: The distance from camera center to origin\n\
-	RIGHT_LASER_X REAL,                         -- X coordinate of the laser in mm.  This is how far the laser is from the camera. \n\
+	CAMERA_MODE INTEGER,                  -- The camera implementation to scan with.  Set to 0 for video mode, 1 for still mode\n\
+    RIGHT_LASER_X REAL,                         -- X coordinate of the laser in mm.  This is how far the laser is from the camera. \n\
 	RIGHT_LASER_Y REAL,                         -- Y coordinate of the laser\n\
 	RIGHT_LASER_Z REAL,                         -- Z coordinate of the laser.  The laser is parallel with the camera focal point\n\
 	RIGHT_LASER_PIN INTEGER,                    -- The wiringPi pin number for controlling the laser\n\
@@ -240,7 +242,7 @@ CREATE TABLE GENERAL_SETTINGS (\n\
 	LEFT_LASER_Y REAL,                         -- Y coordinate of the laser\n\
 	LEFT_LASER_Z REAL,                         -- Z coordinate of the laser.  The laser is parallel with the camera focal point\n\
 	LEFT_LASER_PIN INTEGER,                    -- The wiringPi pin number for controlling the laser\n\
-	LASER_MAGNITUDE_THRESHOLD INTEGER,    -- How bright the difference between a laser on and laser off pixel must be in order to be detected as part of the laser\n\
+	LASER_MAGNITUDE_THRESHOLD REAL,       -- How bright the difference between a laser on and laser off pixel must be in order to be detected as part of the laser\n\
 	LASER_DELAY INTEGER,                  -- The time to delay after turning the laser on or off\n\
 	LASER_ON_VALUE INTEGER,               -- Set to 1 if setting the laser pin HIGH turns if on and 0 if LOW turns it on\n\
 	LASER_SELECTION INTEGER,              -- 0 for left laser, 1 for right laser, 2 for both lasers.\n\
@@ -259,16 +261,16 @@ CREATE TABLE A4988_SETTINGS (\n\
 );\n\
 \n\
 INSERT INTO GENERAL_SETTINGS (\n\
-	CAMERA_X, CAMERA_Y, CAMERA_Z,\n\
+	CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_MODE,\n\
 	RIGHT_LASER_X, RIGHT_LASER_Y, RIGHT_LASER_Z,\n\
 	LEFT_LASER_X, LEFT_LASER_Y, LEFT_LASER_Z,\n\
 	LASER_MAGNITUDE_THRESHOLD, LASER_DELAY, RIGHT_LASER_PIN, LEFT_LASER_PIN, LASER_ON_VALUE,\n\
 	LASER_SELECTION, STABILITY_DELAY, MAX_LASER_WIDTH, MIN_LASER_WIDTH, STEPS_PER_REVOLUTION\n\
 	) VALUES (\n\
-	0, 44.45, 304.8,\n\
+	0, 44.45, 304.8, 3,\n\
 	127, 44.45, 304.8,\n\
 	-127, 44.45, 304.8,\n\
-	20, 90000, 0, 4, 1,\n\
+	3, 90000, 0, 4, 1,\n\
 	2, 0, 60, 5, 6400\n\
 );\n\
 INSERT INTO A4988_SETTINGS (ENABLE_PIN, STEP_PIN, DIRECTION_PIN, RESPONSE_DELAY, STEP_DELAY) VALUES\n\

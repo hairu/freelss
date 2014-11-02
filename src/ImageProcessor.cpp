@@ -102,7 +102,7 @@ ImageProcessor::ImageProcessor()
 	m_laserRanges = new ImageProcessor::LaserRange[Camera::getInstance()->getImageWidth() + 1];
 
 	Settings * settings = Settings::get();
-	m_laserMagnitudeThreshold = settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD);
+	m_laserMagnitudeThreshold = settings->readReal(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD);
 	m_maxLaserWidth = settings->readInt(Settings::GENERAL_SETTINGS, Settings::MAX_LASER_WIDTH);
 	m_minLaserWidth = settings->readInt(Settings::GENERAL_SETTINGS, Settings::MIN_LASER_WIDTH);
 }
@@ -127,7 +127,7 @@ int ImageProcessor::process(const Image& before, const Image& after, Image * deb
 
 // We want to detect a red, white, to red transition in the image
 int ImageProcessor::subProcess(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations,
-		                       int maxNumLocations, int laserThreshold, int& firstRowLaserCol, int & numSuspectedBadLaserLocations,
+		                       int maxNumLocations, real laserThreshold, int& firstRowLaserCol, int & numSuspectedBadLaserLocations,
 		                       const char * debuggingCsvFile)
 {	
 	const real MAX_MAGNITUDE_SQ = 255 * 255 * 3; // The maximum pixel magnitude sq we can see
@@ -177,12 +177,17 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 		for (unsigned iCol = 0; iCol < rowStep; iCol += components)
 		{
 			// Perform image subtraction
+#if 0
+			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
+			const int magSq = r * r;
+			unsigned char mag = 255.0f * (magSq * 0.000015379f);
+#else
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int g = (int)br[iCol + 1] - (int)ar[iCol + 1];
 			const int b = (int)br[iCol + 2] - (int)ar[iCol + 2];
 			const int magSq = r * r + g * g + b * b;
-			unsigned char mag = (unsigned char) (255.0f * (magSq * INV_MAX_MAGNITUDE_SQ));
-
+			real mag = 255.0f * (magSq * INV_MAX_MAGNITUDE_SQ);
+#endif
 			if (writeDebugImage)
 			{
 				if (mag > laserThreshold)
@@ -190,6 +195,12 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 					dr[iCol + 0] = mag;
 					dr[iCol + 1] = mag;
 					dr[iCol + 2] = mag;
+				}
+				else if (magSq > 0)
+				{
+					dr[iCol + 0] = mag;
+					dr[iCol + 1] = mag;
+					dr[iCol + 2] = 0;
 				}
 				else
 				{

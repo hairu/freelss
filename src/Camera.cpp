@@ -24,15 +24,16 @@
 #include "RaspicamCamera.h"
 #include "MmalStillCamera.h"
 #include "MmalVideoCamera.h"
+#include "Settings.h"
 
 namespace scanner
 {
 
 CriticalSection Camera::m_cs = CriticalSection();
 Camera * Camera::m_instance = NULL;
-//Camera::CameraType Camera::m_cameraType = Camera::CT_RASPICAM;
-//Camera::CameraType Camera::m_cameraType = Camera::CT_RASPISTILL;
-Camera::CameraType Camera::m_cameraType = Camera::CT_MMALSTILL;
+Camera::CameraType Camera::m_cameraType = Camera::CT_RASPICAM;
+int Camera::m_reqImageWidth = 0;
+int Camera::m_reqImageHeight = 0;
 
 Camera::Camera()
 {
@@ -57,11 +58,13 @@ Camera * Camera::getInstance()
 			}
 			else if (m_cameraType == Camera::CT_RASPICAM)
 			{
-				m_instance = new RaspicamCamera();
+				std::cout << "Creating video mode camera resolution=" << m_reqImageWidth << "x" << m_reqImageHeight << std::endl;
+				m_instance = new RaspicamCamera(m_reqImageWidth, m_reqImageHeight);
 			}
 			else if (m_cameraType == Camera::CT_MMALSTILL)
 			{
-				m_instance = new MmalStillCamera();
+				std::cout << "Creating still mode camera resolution=" << m_reqImageWidth << "x" << m_reqImageHeight << std::endl;
+				m_instance = new MmalStillCamera(m_reqImageWidth, m_reqImageHeight);
 			}
 			else if (m_cameraType == Camera::CT_MMALVIDEO)
 			{
@@ -99,17 +102,63 @@ void Camera::release()
 	m_cs.leave();
 }
 
-void Camera::reinitialize(CameraType type)
+void Camera::reinitialize()
 {
+	// Read the camera type from settings
+	Camera::CameraMode cameraMode = (Camera::CameraMode) Settings::get()->readInt(Settings::GENERAL_SETTINGS, Settings::CAMERA_MODE);
+	Camera::CameraType type;
+	int reqImageWidth;
+	int reqImageHeight;
+
+	switch (cameraMode)
+	{
+	case CM_STILL_5MP:
+		type = CT_MMALSTILL;
+		reqImageWidth = 2592;
+		reqImageHeight = 1944;
+		break;
+
+	case CM_VIDEO_5MP:
+		type = CT_RASPICAM;
+		reqImageWidth = 2560;
+		reqImageHeight = 1920;
+		break;
+
+	case CM_VIDEO_HD:
+		type = CT_RASPICAM;
+		reqImageWidth = 1600;
+		reqImageHeight = 1200;
+		break;
+
+	case CM_VIDEO_1P2MP:
+		type = CT_RASPICAM;
+		reqImageWidth = 1280;
+		reqImageHeight = 960;
+		break;
+
+	case CM_VIDEO_VGA:
+		reqImageWidth = 640;
+		reqImageHeight = 480;
+		type = CT_RASPICAM;
+		break;
+
+	default:
+		throw Exception("Unsupported camera mode");
+	}
+
 	m_cs.enter();
 	try
 	{
 		// Set the new type
-		if (m_cameraType != type)
+		if (m_cameraType != type ||
+			m_reqImageWidth != reqImageWidth ||
+			m_reqImageHeight != reqImageHeight)
 		{
 			delete m_instance;
 			m_instance = NULL;
 			m_cameraType = type;
+			m_reqImageWidth = reqImageWidth;
+			m_reqImageHeight = reqImageHeight;
 		}
 	}
 	catch (...)

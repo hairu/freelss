@@ -31,7 +31,10 @@ class Camera
 public:
 
 	/** The type of camera instance to create */
-	enum CameraType { CT_RASPISTILL, CT_RASPICAM, CT_MMALSTILL, CT_MMALVIDEO };
+	enum CameraType { CT_RASPICAM, CT_MMALSTILL, CT_MMALVIDEO, CT_RASPISTILL};
+
+	/** The camera mode */
+	enum CameraMode { CM_STILL_5MP, CM_VIDEO_5MP, CM_VIDEO_HD, CM_VIDEO_1P2MP, CM_VIDEO_VGA};
 
 	/** Returns the singleton instance */
 	static Camera * getInstance();
@@ -40,7 +43,7 @@ public:
 	static void release();
 
 	/** Reinitialize the singleton with a different camera implementation */
-	static void reinitialize(CameraType type);
+	static void reinitialize();
 
 	/** Destructor */
 	virtual ~Camera();
@@ -87,6 +90,12 @@ private:
 	static CameraType m_cameraType;
 
 	static CriticalSection m_cs;
+
+	/** The requested image width */
+	static int m_reqImageWidth;
+
+	/** The requested image height */
+	static int m_reqImageHeight;
 };
 
 }

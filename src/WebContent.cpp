@@ -22,6 +22,7 @@
 #include "WebContent.h"
 #include "Settings.h"
 #include "Laser.h"
+#include "Camera.h"
 
 namespace scanner
 {
@@ -136,12 +137,12 @@ function startup2(){\
 }\
 function updateImgImage(){\
 	var img = document.getElementById('image');\
-	img.src = 'camImage_' + imageCount + '.jpg';\
+	img.src = 'camImage_' + Math.random() + '.jpg';\
 	imageCount = imageCount + 1;\
 }\
 function updateDivImage(){\
 	var div = document.getElementById('outerImageDiv');\
-	div.style.backgroundImage = \"url('camImage_\" + imageCount + \".jpg')\";\
+	div.style.backgroundImage = \"url('camImage_\" + Math.random() + \".jpg')\";\
 	imageCount = imageCount + 1;\
 	setTimeout(updateDivImage, 4000);\
 }\
@@ -207,7 +208,7 @@ std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 <p>Click the button to start the scan </p>\
 <form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
 <div><div class=\"settingsText\">Degrees</div><input name=\"degrees\" class=\"settingsInput\" value=\"360\"> degrees</div>\
-    <div><div class=\"settingsText\">Detail</div><input name=\"detail\" class=\"settingsInput\" value=\"100\"> %</div>\
+    <div><div class=\"settingsText\">Detail</div><input name=\"detail\" class=\"settingsInput\" value=\"800\"> samples per revolution</div>\
 	<input type=\"hidden\" name=\"cmd\" value=\"startScan\">\
 	<input class=\"submit\" type=\"submit\" value=\"Start Scan\">\
 </form>";
@@ -327,7 +328,9 @@ std::string WebContent::cal1()
 </div>\
 <div id=\"cal1ImageDiv\">\
 	<div style=\"position: absolute\">\
-		<img onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" width=\"1296\" src=\"camImage_.jpg\">\
+		<img onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" width=\"1296\" src=\"camImage_\""
+	<< time(NULL)
+	<< ".jpg\">\
 	</div>\
 	<div id=\"vLine\"> </div>\
 	<div id=\"hLine\"> </div>\
@@ -396,8 +399,11 @@ if (!message.empty())
 
 
 	sstr << "<form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
+	sstr << "<p><input class=\"submit\" type=\"submit\" value=\"Save\"></p>";
 
+	//
 	// Laser selection UI
+	//
 	int laserSel = settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_SELECTION);
 	std::string leftSel  = laserSel == (int)Laser::LEFT_LASER  ? " SELECTED" : "";
 	std::string rightSel = laserSel == (int)Laser::RIGHT_LASER ? " SELECTED" : "";
@@ -411,6 +417,26 @@ if (!message.empty())
 	sstr << "</select></div>";
 	sstr << "<div class=\"settingsDescr\">The laser(s) that will be used when scanning.</div>\n";
 
+	//
+	// Camera Mode UI
+	//
+	int cameraMode = settings->readInt(Settings::GENERAL_SETTINGS, Settings::CAMERA_MODE);
+	std::string still5Sel  = cameraMode == (int)Camera::CM_STILL_5MP  ? " SELECTED" : "";
+	std::string video5Sel = cameraMode == (int)Camera::CM_VIDEO_5MP ? " SELECTED" : "";
+	std::string videoHDSel = cameraMode == (int)Camera::CM_VIDEO_HD ? " SELECTED" : "";
+	std::string video1P2Sel = cameraMode == (int)Camera::CM_VIDEO_1P2MP ? " SELECTED" : "";
+	std::string videoVGASel = cameraMode == (int)Camera::CM_VIDEO_VGA ? " SELECTED" : "";
+
+	sstr << "<div><div class=\"settingsText\">Camera Mode</div>";
+	sstr << "<select name=\"" << Settings::CAMERA_MODE<< "\">";
+	sstr << "<option value=\"" << (int)Camera::CM_STILL_5MP << "\"" << still5Sel << ">5 Megapixel (still mode, 2592x1944)</option>\r\n";
+	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_5MP << "\"" << video5Sel << ">5 Megapixel (video mode, 2592x1944)</option>\r\n";
+	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_HD << "\"" << videoHDSel << ">1.9 Megapixel (video mode, 1600x1200)</option>\r\n";
+	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_1P2MP << "\"" << video1P2Sel << ">1.2 Megapixel (video mode, 1280x960)</option>\r\n";
+	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_VGA << "\"" << videoVGASel << ">0.3 Megapixel (video mode, 640x480)</option>\r\n";
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">The camera mode to use. Video mode is faster but Still mode results in higher quality scans.</div>\n";
+
 	sstr << setting(Settings::CAMERA_X, "Camera X", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_X) / 25.4f), CAMERA_X_DESCR, "in.", true);
 	sstr << setting(Settings::CAMERA_Y, "Camera Y", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_Y) / 25.4f), CAMERA_Y_DESCR,  "in.");
 	sstr << setting(Settings::CAMERA_Z, "Camera Z", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_Z) / 25.4f), CAMERA_Z_DESCR,  "in.");
@@ -420,7 +446,7 @@ if (!message.empty())
 	sstr << setting(Settings::LEFT_LASER_X, "Left Laser X", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_X) / 25.4f), LEFT_LASER_X_DESCR,  "in.");
 	sstr << setting(Settings::LEFT_LASER_Y, "Left Laser Y", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_Y) / 25.4f), LEFT_LASER_Y_DESCR,  "in.", true);
 	sstr << setting(Settings::LEFT_LASER_Z, "Left Laser Z", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_Z) / 25.4f), LEFT_LASER_Z_DESCR,  "in.", true);
-	sstr << setting(Settings::LASER_MAGNITUDE_THRESHOLD, "Laser Threshold", settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD), LASER_MAGNITUDE_THRESHOLD_DESCR);
+	sstr << setting(Settings::LASER_MAGNITUDE_THRESHOLD, "Laser Threshold", (real)settings->readReal(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD), LASER_MAGNITUDE_THRESHOLD_DESCR);
 	sstr << setting(Settings::LASER_DELAY, "Laser Delay", settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_DELAY), LASER_DELAY_DESCR, "&mu;s");
 	sstr << setting(Settings::RIGHT_LASER_PIN, "Right Laser Pin", settings->readInt(Settings::GENERAL_SETTINGS, Settings::RIGHT_LASER_PIN), RIGHT_LASER_PIN_DESCR);
 	sstr << setting(Settings::LEFT_LASER_PIN, "Left Laser Pin", settings->readInt(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_PIN), LEFT_LASER_PIN_DESCR);

@@ -59,7 +59,7 @@ private:
 	real detectLaserRangeCenter(const ImageProcessor::LaserRange& range, unsigned char * ar, unsigned char * br);
 
 	int subProcess(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations,
-			       int maxNumLocations, int laserThreshold, int& firstRowLaserCol, int & numSuspectedBadLaserLocations, const char * debuggingCsvFile);
+			       int maxNumLocations, real laserThreshold, int& firstRowLaserCol, int & numSuspectedBadLaserLocations, const char * debuggingCsvFile);
 
 	/** Converts the RGB color to HSV */
 	static void toHsv(unsigned char r, unsigned char g, unsigned char b, Hsv * hsv);
@@ -71,7 +71,7 @@ private:
 	/** The LaserRanges for each column */
 	LaserRange * m_laserRanges;
 
-	int m_laserMagnitudeThreshold;
+	real m_laserMagnitudeThreshold;
 	int m_maxLaserWidth;
 	int m_minLaserWidth;
 };

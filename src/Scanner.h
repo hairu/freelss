@@ -64,7 +64,8 @@ public:
 	 */
 	std::vector<ScanResult> getPastScanResults();
 
-	void setDetail(real detail);
+	void setDetail(int detail);
+
 	void setRange(real range);
 
 	/** Indicates if a scan is running or not */
@@ -155,7 +156,7 @@ private:
 	bool m_running;
 
 	/** The detail level */
-	real m_detail;
+	int m_detail;
 
 	/** The degrees to scan */
 	real m_range;

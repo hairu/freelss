@@ -170,6 +170,12 @@ static void SaveSettings(RequestInfo * reqInfo)
 		settings->writeReal(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_Z, 25.4 * atof(cameraZ.c_str()));
 	}
 
+	std::string cameraType = reqInfo->arguments[Settings::CAMERA_MODE];
+	if (!cameraType.empty())
+	{
+		settings->writeInt(Settings::GENERAL_SETTINGS, Settings::CAMERA_MODE, atoi(cameraType.c_str()));
+	}
+
 	std::string rightLaserX = reqInfo->arguments[Settings::RIGHT_LASER_X];
 	if (!rightLaserX.empty())
 	{
@@ -185,7 +191,7 @@ static void SaveSettings(RequestInfo * reqInfo)
 	std::string laserThreshold = reqInfo->arguments[Settings::LASER_MAGNITUDE_THRESHOLD];
 	if (!laserThreshold.empty())
 	{
-		settings->writeInt(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD, atoi(laserThreshold.c_str()));
+		settings->writeReal(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD, atof(laserThreshold.c_str()));
 	}
 
 	std::string laserDelay = reqInfo->arguments[Settings::LASER_DELAY];
@@ -702,7 +708,7 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 					throw Exception("Missing required input parameters");
 				}
 
-				scanner->setDetail(atof(detail.c_str()) / 100.0);
+				scanner->setDetail(atoi(detail.c_str()));
 				scanner->setRange(atof(degrees.c_str()));
 				scanner->setTask(Scanner::GENERATE_SCAN);
 				scanner->execute();
@@ -906,9 +912,7 @@ void HttpServer::reinitialize()
 	Laser::release();
 	Laser::getInstance();
 
-	// Don't reinitialize the camera
-	//Camera::release();
-	//Camera::getInstance();
+	Camera::reinitialize();
 
 	delete m_scanner;
 	m_scanner = new Scanner();

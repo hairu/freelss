@@ -57,6 +57,7 @@ public:
 	static const char * CAMERA_X;
 	static const char * CAMERA_Y;
 	static const char * CAMERA_Z;
+	static const char * CAMERA_MODE;
 	static const char * RIGHT_LASER_X;
 	static const char * RIGHT_LASER_Y;
 	static const char * RIGHT_LASER_Z;
@@ -73,6 +74,7 @@ public:
 	static const char * MAX_LASER_WIDTH;
 	static const char * MIN_LASER_WIDTH;
 	static const char * STEPS_PER_REVOLUTION;
+
 
 	// A4988 Table
 	static const char * A4988_SETTINGS;

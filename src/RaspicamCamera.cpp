@@ -26,9 +26,9 @@
 namespace scanner
 {
 
-RaspicamCamera::RaspicamCamera() :
-	m_imageWidth(1280), // was 1280
-	m_imageHeight(960), // was 960
+RaspicamCamera::RaspicamCamera(int imageWidth, int imageHeight) :
+	m_imageWidth(imageWidth), // was 1280
+	m_imageHeight(imageHeight), // was 960
 	m_cs(),
 	m_raspicam(NULL),
 	m_numWritten(0)
@@ -36,6 +36,7 @@ RaspicamCamera::RaspicamCamera() :
 	m_raspicam = new raspicam::RaspiCam();
 	m_raspicam->setWidth(m_imageWidth);
 	m_raspicam->setHeight(m_imageHeight);
+	m_raspicam->setCaptureSize(m_imageWidth, m_imageHeight);
 	m_raspicam->setVerticalFlip(true);
 	m_raspicam->setHorizontalFlip(true);
 	//m_raspicam->setSaturation(-100);
@@ -46,10 +47,7 @@ RaspicamCamera::RaspicamCamera() :
 		throw Exception("Error opening camera");
 	}
 
-	// Sleep to allow the camera to stabilize
-	std::cout << "Waiting for camera to stabilize..." << std::endl;
-	Thread::usleep(5000000);
-	std::cout << "Camera stabilized" << std::endl;
+	std::cout << "Camera intialized" << std::endl;
 }
 
 RaspicamCamera::~RaspicamCamera()

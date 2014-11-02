@@ -35,7 +35,7 @@ namespace scanner
 class RaspicamCamera : public Camera
 {
 public:
-	RaspicamCamera();
+	RaspicamCamera(int imageWidth = 1280, int imageHeight = 960);
 
 	~RaspicamCamera();
 

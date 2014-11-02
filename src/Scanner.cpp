@@ -49,7 +49,7 @@ Scanner::Scanner() :
 	m_turnTable(NULL),
 	m_laserLocations(NULL),
 	m_running(false),
-	m_detail(1.0),
+	m_detail(800),
 	m_range(360),
 	m_filename(""),
 	m_progress(0.0),
@@ -128,17 +128,10 @@ real Scanner::getRemainingTime()
 	return remainingTime;
 }
 
-void Scanner::setDetail(real detail)
+void Scanner::setDetail(int detail)
 {
-	if (detail > 1.0)
-	{
-		m_detail = 1.0;
-	}
-	else if (detail < 0.01)
-	{
-		m_detail = 0.01;
-	}
-	else
+	int stepsPerRevolution = Settings::get()->readInt(Settings::GENERAL_SETTINGS, Settings::STEPS_PER_REVOLUTION);
+	if (detail <= stepsPerRevolution && detail > 0)
 	{
 		m_detail = detail;
 	}
@@ -302,7 +295,7 @@ void Scanner::run()
 
 		float rangeRadians =  (m_range / 360) * (2 * PI);
 
-		int maxSamplesPerRevolution = m_detail * MAX_SAMPLES_PER_FULL_REVOLUTION;
+		int maxSamplesPerRevolution = m_detail;
 		if (maxSamplesPerRevolution < 1)
 		{
 			maxSamplesPerRevolution = 1;
@@ -321,6 +314,8 @@ void Scanner::run()
 		// The radians to move for a single scan
 		float scanRadians = stepsPerScan * m_radiansPerStep;
 
+		int numSteps = ceil(rangeRadians / scanRadians);
+
 		// Start the output thread
 		m_scanResultsWriter.setBaseFilePath(m_filename);
 		std::cout << "Starting output thread..." << std::endl;
@@ -333,10 +328,10 @@ void Scanner::run()
 
 		std::cout << "Angle between laser planes: " << RADIANS_TO_DEGREES(m_radiansBetweenLaserPlanes)
 				  << " degrees, radiansPerStep=" << m_radiansPerStep
-				  << ", numScansBetweenLaserPlanes=" << m_numScansBetweenLaserPlanes << std::endl;
+				  << ", numScansBetweenLaserPlanes=" << m_numScansBetweenLaserPlanes
+				  << ", numSamples=" << numSteps << std::endl;
 
-		int iStep = 0;
-		while (rotation < rangeRadians)
+		for (int iStep = 0; iStep < numSteps; iStep++)
 		{
 			timingStats.numScans++;
 
@@ -349,10 +344,9 @@ void Scanner::run()
 			singleScan(leftLaserResults, rightLaserResults, iStep, rotation, scanRadians, leftLocMapper, rightLocMapper, &timingStats);
 
 			rotation += scanRadians;
-			iStep++;
 
 			// Update the progress
-			double progress = rotation / rangeRadians;
+			double progress = (iStep + 1.0) / numSteps;
 			double timeElapsed = GetTimeInSeconds() - m_startTimeSec;
 			double percentComplete = 100.0 * progress;
 			double percentPerSecond = percentComplete / timeElapsed;

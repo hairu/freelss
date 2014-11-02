@@ -40,11 +40,6 @@
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 
-#define CAMERA_IMAGE_WIDTH 2592
-#define CAMERA_IMAGE_HEIGHT 1944
-
-//#define CAMERA_IMAGE_WIDTH  1280
-//#define CAMERA_IMAGE_HEIGHT 960
 
 namespace scanner
 {
@@ -167,7 +162,9 @@ static void EncoderBufferCallback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
    }
 }
 
-MmalStillCamera::MmalStillCamera() :
+MmalStillCamera::MmalStillCamera(int imageWidth, int imageHeight) :
+	m_imageWidth(imageWidth),
+	m_imageHeight(imageHeight),
 	m_callbackData(NULL),
 	m_cs(),
 	m_camera(NULL),
@@ -187,8 +184,8 @@ MmalStillCamera::MmalStillCamera() :
 	createPreview();
 	std::cout << "Created preview" << std::endl;
 
-	std::cout << "Target Image Width: " << VCOS_ALIGN_UP(CAMERA_IMAGE_WIDTH, 32) << std::endl;
-	std::cout << "Target Image Height: " << VCOS_ALIGN_UP(CAMERA_IMAGE_HEIGHT, 16) << std::endl;
+	std::cout << "Target Image Width: " << VCOS_ALIGN_UP(m_imageWidth, 32) << std::endl;
+	std::cout << "Target Image Height: " << VCOS_ALIGN_UP(m_imageHeight, 16) << std::endl;
 
 	MMAL_STATUS_T status;
 
@@ -312,8 +309,8 @@ void MmalStillCamera::createCameraComponent()
 		MMAL_PARAMETER_CAMERA_CONFIG_T cameraConfig;
 		cameraConfig.hdr.id = MMAL_PARAMETER_CAMERA_CONFIG;
 		cameraConfig.hdr.size = sizeof(cameraConfig);
-		cameraConfig.max_stills_w = CAMERA_IMAGE_WIDTH;
-		cameraConfig.max_stills_h = CAMERA_IMAGE_HEIGHT;
+		cameraConfig.max_stills_w = m_imageWidth;
+		cameraConfig.max_stills_h = m_imageHeight;
 		cameraConfig.stills_yuv422 = 0;
 		cameraConfig.one_shot_stills = 1;
 		cameraConfig.max_preview_video_w = VCOS_ALIGN_UP(FULL_FOV_PREVIEW_4x3_X, 32);
@@ -369,12 +366,12 @@ void MmalStillCamera::createCameraComponent()
 		format->encoding = MMAL_ENCODING_BGR24;
 		format->encoding_variant = MMAL_ENCODING_BGR24;
 
-		format->es->video.width = VCOS_ALIGN_UP(CAMERA_IMAGE_WIDTH, 32);
-		format->es->video.height = VCOS_ALIGN_UP(CAMERA_IMAGE_HEIGHT, 16);
+		format->es->video.width = VCOS_ALIGN_UP(m_imageWidth, 32);
+		format->es->video.height = VCOS_ALIGN_UP(m_imageHeight, 16);
 		format->es->video.crop.x = 0;
 		format->es->video.crop.y = 0;
-		format->es->video.crop.width = CAMERA_IMAGE_WIDTH;
-		format->es->video.crop.height = CAMERA_IMAGE_HEIGHT;
+		format->es->video.crop.width = m_imageWidth;
+		format->es->video.crop.height = m_imageHeight;
 		format->es->video.frame_rate.num = STILLS_FRAME_RATE_NUM;
 		format->es->video.frame_rate.den = STILLS_FRAME_RATE_DEN;
 
@@ -493,12 +490,12 @@ bool MmalStillCamera::acquireJpeg(byte* buffer, unsigned * size)
 
 int MmalStillCamera::getImageHeight() const
 {
-	return CAMERA_IMAGE_HEIGHT;
+	return m_imageHeight;
 }
 
 int MmalStillCamera::getImageWidth() const
 {
-	return CAMERA_IMAGE_WIDTH;
+	return m_imageWidth;
 }
 
 int MmalStillCamera::getImageComponents() const

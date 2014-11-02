@@ -37,7 +37,7 @@ struct Mmal_CallbackData;
 class MmalStillCamera : public Camera
 {
 public:
-	MmalStillCamera();
+	MmalStillCamera(int imageWidth = 2592, int imageHeight = 1944);
 	~MmalStillCamera();
 
 	void acquireImage(Image * image);
@@ -68,6 +68,8 @@ private:
 
 private:
 
+	int m_imageWidth;
+	int m_imageHeight;
 	Mmal_CallbackData * m_callbackData;
 
 	CriticalSection m_cs;
