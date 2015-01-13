@@ -22,7 +22,7 @@
 #include "ImageProcessor.h"
 #include "Settings.h"
 #include "Camera.h"
-#include <mpfit.h>
+#include "mpfit.h"
 
 // Only one of these filters should be defined
 #define CENTERMASS_FILTER 1
