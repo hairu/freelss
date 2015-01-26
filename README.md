@@ -20,6 +20,7 @@ $ sudo apt-get install libpng-dev libjpeg-dev cmake vlc git-core gcc build-essen
 
 Download and install wiringPi
 ```
+$ cd
 $ git clone git://git.drogon.net/wiringPi
 $ cd wiringPi
 $ ./build
@@ -27,6 +28,7 @@ $ ./build
 
 Download and install Raspicam
 ```
+$ cd
 $ wget http://downloads.sourceforge.net/project/raspicam/raspicam-0.1.1.zip
 $ unzip raspicam-0.1.1.zip
 $ cd raspicam-0.1.1
@@ -35,15 +37,17 @@ $ cd build
 $ cmake ..
 $ make
 $ sudo make install
+$ sudo ldconfig
 ```
 Download and build FreeLSS
 ```
+$ cd
 $ git clone https://github.com/hairu/freelss
 $ cd freelss/src
 $ make
 ```
 ###Running FreeLSS
-FreeLSS must be ran as root (or another user with access to the hardware pins).  The interface for FreeLSS is web based and by default runs on port 80.  When running, access it by navigating to http://localhost/ from the Raspberry Pi itself. Or access it from another machine on the network by the Raspberry Pi's IP or hostname.  For Example: http://raspberrypi/
+FreeLSS must be ran as root (or another user with access to the hardware pins).  The interface for FreeLSS is web based and by default runs on port 80 (if you are running as another user you will need to change this too).  When running, access freelss by navigating to http://localhost/ from the Raspberry Pi itself. Or access it from another machine on the network by the Raspberry Pi's IP or hostname.  For Example: http://raspberrypi/
 
 The following command starts FreeLSS.
 ```
