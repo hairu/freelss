@@ -68,7 +68,7 @@ static int print_callback(void *data, int argc, char **argv, char **azColName)
    return 0;
 }
 
-const char * Settings::SCAN_OUTPUT_DIR = "/scans";
+const char * Settings::SCAN_OUTPUT_DIR = "/tmp/scans";
 const char * Settings::DEBUG_OUTPUT_DIR = "/debug";
 const char * Settings::GENERAL_SETTINGS = "GENERAL_SETTINGS";
 const char * Settings::CAMERA_X = "CAMERA_X";
@@ -198,11 +198,20 @@ Settings * Settings::get()
 
 void Settings::initialize(const char * filename)
 {
+    struct stat info;
 	std::cout << "Reading settings from: " << filename << std::endl;
 	if (Settings::m_instance == NULL)
 	{
 		Settings::m_instance = new Settings(filename);
 	}
+    // Make sure scan directory exists
+    if ( stat( SCAN_OUTPUT_DIR, &info ) != 0 )
+    {
+    if (mkdir(SCAN_OUTPUT_DIR, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)
+        {
+        throw Exception("Cannot create scan file directory: " + std::string(Settings::SCAN_OUTPUT_DIR));
+        }
+    }
 }
 
 void Settings::release()

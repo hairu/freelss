@@ -21,6 +21,7 @@
 #include "Main.h"
 #include "Laser.h"
 #include "RelayLaser.h"
+#include "ArduinoLaser.h"
 
 namespace scanner
 {
@@ -41,7 +42,11 @@ Laser * Laser::getInstance()
 {
 	if (m_instance == NULL)
 	{
-		m_instance = new RelayLaser();
+        #ifdef USE_LINUX_HARDWARE
+    		m_instance = new ArduinoLaser();
+        #else
+            m_instance = new RelayLaser();
+        #endif
 	}
 
 	return m_instance;
