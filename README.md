@@ -51,7 +51,7 @@ $ cd freelss/src
 ```
 Now edit Makefile with your favourite editor and set the TARGET variable to either "pi" or "linux" depending on which camera and turntable hardware you wish to use.
 
-Finally, build FreLSS itself
+Finally, build FreeLSS itself
 ```
 $ make
 ```
