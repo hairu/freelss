@@ -56,9 +56,9 @@ Finally, build FreeLSS itself
 $ make
 ```
 ###Running FreeLSS
-FreeLSS must be ran as root (or another user with access to the hardware pins).  The interface for FreeLSS is web based and by default runs on port 80 (if you are running as another user you will need to change this too).  When running, access freelss by navigating to http://localhost/ from the Raspberry Pi itself. Or access it from another machine on the network by the Raspberry Pi's IP or hostname.  For Example: http://raspberrypi/
+FreeLSS must be ran as root (or another user with access to the hardware pins).  The interface for FreeLSS is web based and by default runs on port 8080 (you can change this to 80 in Main.cpp if running as root).  When running, access FreeLSS by navigating to http://localhost:8080/ from the Raspberry Pi itself. Or access it from another machine on the network by the Raspberry Pi's IP or hostname.  For Example: http://raspberrypi:8080/
 
-The following command starts FreeLSS.
+The following command starts FreeLSS as root.
 ```
 $ sudo ./freelss
 ```
