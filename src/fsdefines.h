@@ -14,6 +14,8 @@
 #define MC_FABSCAN_PING        210
 #define MC_FABSCAN_PONG        211
 #define MC_SELECT_STEPPER      212
+#define TURN_ALT_LASER_ON      213
+#define TURN_ALT_LASER_OFF     214
 #define MC_LASER_STEPPER       11
 #define MC_TURNTABLE_STEPPER   10
 
