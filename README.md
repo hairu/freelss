@@ -2,11 +2,13 @@
 
 FreeLSS is a laser scanning program for the Raspberry Pi. It allows a Raspberry Pi to function as the core to a complete turn table laser scanning system.
 
+Additionally, the standard Linux buld allows the use of an ordinary webcam and the Arduino-based turntable/laser driver from the FabScan100 Fab Lab project.
+
 
 
 ###COMPILE
 
-These instructions assume you are running the latest version of Raspbian.  Other distros will likely require changes.
+These instructions assume you are running the latest version of Raspbian or Debian/Ubuntu for base Linux maches.  Other distros will likely require changes.
 
 First, update the firmware to the latest version and reboot.
 ```
