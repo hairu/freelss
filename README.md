@@ -13,7 +13,7 @@ First, update the firmware to the latest version and reboot.
 $ sudo rpi-update
 ```
 
-Install the dependencies that are managed by the package manager.
+Install the dependencies that are managed by the package manager:
 ```
 $ sudo apt-get install libpng-dev libjpeg-dev cmake vlc git-core gcc build-essential unzip sqlite3 libsqlite3-dev libmicrohttpd-dev
 ```
@@ -22,7 +22,7 @@ If using a standard Linux webcam also install packages for that:
 $ sudo apt-get install fswebcam
 ```
 
-Download and install wiringPi
+Download and install wiringPi if using a Pi:
 ```
 $ cd
 $ git clone git://git.drogon.net/wiringPi
@@ -30,7 +30,7 @@ $ cd wiringPi
 $ ./build
 ```
 
-Download and install Raspicam
+Download and install Raspicam if using a Pi:
 ```
 $ cd
 $ wget http://downloads.sourceforge.net/project/raspicam/raspicam-0.1.1.zip
@@ -43,7 +43,7 @@ $ make
 $ sudo make install
 $ sudo ldconfig
 ```
-Download FreeLSS
+Download FreeLSS:
 ```
 $ cd
 $ git clone https://github.com/hairu/freelss
@@ -51,7 +51,7 @@ $ cd freelss/src
 ```
 Now edit Makefile with your favourite editor and set the TARGET variable to either "pi" or "linux" depending on which camera and turntable hardware you wish to use.
 
-Finally, build FreeLSS itself
+Finally, build FreeLSS itself:
 ```
 $ make
 ```
