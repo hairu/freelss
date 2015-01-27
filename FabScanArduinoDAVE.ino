@@ -162,10 +162,10 @@ void loop()
               digitalWrite(LASER_PIN, HIGH);   // turn the LASER on
               break;
             case TURN_ALT_LASER_OFF:
-              digitalWrite(LASER_PIN, LOW);    // turn the LASER off
+              digitalWrite(LASER_ALT_PIN, LOW);    // turn the LASER off
               break;
             case TURN_ALT_LASER_ON:
-              digitalWrite(LASER_PIN, HIGH);   // turn the LASER on
+              digitalWrite(LASER_ALT_PIN, HIGH);   // turn the LASER on
               break;
             case ROTATE_LASER: //unused
               byteType = LASER_ROTATION;
