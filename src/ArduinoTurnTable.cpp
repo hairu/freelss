@@ -51,7 +51,7 @@ void ArduinoTurnTable::initialize()
     ArduinoSerial::sendchar(MC_SELECT_STEPPER);     // Select the turntable
     ArduinoSerial::sendchar(MC_TURNTABLE_STEPPER);
     ArduinoSerial::sendchar(MC_TURN_STEPPER_ON);
-    ArduinoSerial::sendchar(MC_SET_DIRECTION_CW);
+    ArduinoSerial::sendchar(MC_SET_DIRECTION_CCW);
 
     // Turn the scanner light on full
     ArduinoSerial::sendchar(MC_TURN_LIGHT_ON);      // Light on full.
@@ -108,7 +108,7 @@ void ArduinoTurnTable::setMotorEnabled(bool enabled)
         }
 	Thread::usleep(m_stabilityDelay);
 
-    ArduinoSerial::sendchar(MC_SET_DIRECTION_CW);
+    ArduinoSerial::sendchar(MC_SET_DIRECTION_CCW);
 	Thread::usleep(m_stabilityDelay);
 }
 
