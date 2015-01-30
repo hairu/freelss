@@ -69,7 +69,7 @@ static int print_callback(void *data, int argc, char **argv, char **azColName)
 }
 
 const char * Settings::SCAN_OUTPUT_DIR = "/tmp/scans";
-const char * Settings::DEBUG_OUTPUT_DIR = "/debug";
+const char * Settings::DEBUG_OUTPUT_DIR = "/tmp/debug";
 const char * Settings::GENERAL_SETTINGS = "GENERAL_SETTINGS";
 const char * Settings::CAMERA_X = "CAMERA_X";
 const char * Settings::CAMERA_Y = "CAMERA_Y";
