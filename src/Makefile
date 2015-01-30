@@ -1,21 +1,37 @@
 CC=g++
-CFLAGS=-O3 -Wall -Winvalid-pch -fexceptions -I/usr/local/include -I/opt/vc/include \
+# Set target to "pi" or "linux" depending on target system's camera hardware
+TARGET=linux
+ifeq ($(TARGET),pi)
+	LFLAGS=-lraspicam -lmmal -lmmal_core -lmmal_util -lvcos -lpthread -lpng -ljpeg -lsqlite3 -lwiringPi -lmicrohttpd -lbcm_host -L/usr/local/lib -L/opt/vc/lib
+else
+	LFLAGS=-lpthread -lpng -ljpeg -lsqlite3 -lmicrohttpd -L/usr/local/lib -L/opt/vc/lib
+	HW_DEF=-DUSE_LINUX_HARDWARE
+endif
+
+CFLAGS=-O3 -Wall -Winvalid-pch -fexceptions $(HW_DEF) -I/usr/local/include -I/opt/vc/include \
 	-I/opt/vc/include/interface/vcos/pthreads \
 	-I/opt/vc/include/interface/vmcs_host/linux \
 	-I/opt/vc/include/interface\
 	-I/opt/vc/include/interface/mmal/util
 
-LFLAGS=-lraspicam -lmmal -lmmal_core -lmmal_util -lvcos -lpthread -lpng -ljpeg -lsqlite3 -lwiringPi -lmicrohttpd -lbcm_host -L/usr/local/lib -L/opt/vc/lib
-OBJECTS=WebContent.o Settings.o Main.o \
+CORE_OBJECTS=WebContent.o Settings.o Main.o \
 	HttpServer.o CriticalSection.o Scanner.o Image.o ImageProcessor.o \
-	Thread.o A4988TurnTable.o RelayLaser.o LocationMapper.o \
+	Thread.o LocationMapper.o \
 	PlyWriter.o Calibrator.o RaspistillCamera.o \
-	NeutralFileWriter.o NeutralFileReader.o RaspicamCamera.o \
-	Camera.o ScanResultsWriter.o MmalStillCamera.o \
-	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
-	Laser.o
+	NeutralFileWriter.o NeutralFileReader.o ArduinoLaser.o \
+	ArduinoTurnTable.o Camera.o ScanResultsWriter.o \
+	PixelLocationWriter.o StlWriter.o TurnTable.o \
+	Laser.o ArduinoSerial.o
 
-all: freelss 
+PI_OBJECTS=MmalStillCamera.o MmalVideoCamera.o RaspicamCamera.o A4988TurnTable.o RelayLaser.o
+
+ifeq ($(TARGET),pi) 
+OBJECTS=$(CORE_OBJECTS) $(PI_OBJECTS)
+else
+OBJECTS=$(CORE_OBJECTS)
+endif
+
+all: freelss
 
 freelss: Main.h.gch $(OBJECTS)
 	$(CC) $(OBJECTS) -o freelss $(LFLAGS)
@@ -23,8 +39,26 @@ freelss: Main.h.gch $(OBJECTS)
 Main.h.gch: Main.h
 	$(CC) -c $(CFLAGS) Main.h -o Main.h.gch
 
-Main.o: Main.cpp Main.h Thread.h
+Main.o: Main.cpp Main.h Thread.h ArduinoSerial.h
 	$(CC) -c $(CFLAGS) Main.cpp
+
+# Pi only objects
+ifeq ($(TARGET),pi)
+MmalStillCamera.o: MmalStillCamera.cpp MmalStillCamera.h Main.h
+	$(CC) -c $(CFLAGS) MmalStillCamera.cpp
+	
+MmalVideoCamera.o: MmalVideoCamera.cpp MmalVideoCamera.h Main.h
+	$(CC) -c $(CFLAGS) MmalVideoCamera.cpp
+
+RaspicamCamera.o: RaspicamCamera.cpp RaspicamCamera.h Main.h
+	$(CC) -c $(CFLAGS) RaspicamCamera.cpp
+
+A4988TurnTable.o: A4988TurnTable.cpp A4988TurnTable.h TurnTable.h Main.h
+	$(CC) -c $(CFLAGS) A4988TurnTable.cpp
+
+RelayLaser.o: RelayLaser.cpp RelayLaser.h Laser.h Main.h
+	$(CC) -c $(CFLAGS) RelayLaser.cpp
+endif
 
 CriticalSection.o: CriticalSection.cpp CriticalSection.h Main.h
 	$(CC) -c $(CFLAGS) CriticalSection.cpp
@@ -44,23 +78,17 @@ Image.o: Image.cpp Image.h
 ImageProcessor.o: ImageProcessor.cpp ImageProcessor.h Main.h
 	$(CC) -c $(CFLAGS) ImageProcessor.cpp
 
-MmalStillCamera.o: MmalStillCamera.cpp MmalStillCamera.h Main.h
-	$(CC) -c $(CFLAGS) MmalStillCamera.cpp
-	
-MmalVideoCamera.o: MmalVideoCamera.cpp MmalVideoCamera.h Main.h
-	$(CC) -c $(CFLAGS) MmalVideoCamera.cpp
-
 RaspistillCamera.o: RaspistillCamera.cpp RaspistillCamera.h Main.h
 	$(CC) -c $(CFLAGS) RaspistillCamera.cpp
 
-RaspicamCamera.o: RaspicamCamera.cpp RaspicamCamera.h Main.h
-	$(CC) -c $(CFLAGS) RaspicamCamera.cpp
+ArduinoTurnTable.o: ArduinoTurnTable.cpp ArduinoTurnTable.h ArduinoSerial.h fsdefines.h TurnTable.h Main.h
+	$(CC) -c $(CFLAGS) ArduinoTurnTable.cpp
 
-A4988TurnTable.o: A4988TurnTable.cpp A4988TurnTable.h TurnTable.h Main.h
-	$(CC) -c $(CFLAGS) A4988TurnTable.cpp
+ArduinoLaser.o: ArduinoLaser.cpp ArduinoLaser.h Laser.h Main.h fsdefines.h ArduinoSerial.h
+	$(CC) -c $(CFLAGS) ArduinoLaser.cpp
 
-RelayLaser.o: RelayLaser.cpp RelayLaser.h Laser.h Main.h
-	$(CC) -c $(CFLAGS) RelayLaser.cpp
+ArduinoSerial.o: ArduinoSerial.cpp ArduinoSerial.h Main.h
+	$(CC) -c $(CFLAGS) ArduinoSerial.cpp
 
 Thread.o: Thread.cpp Thread.h Main.h
 	$(CC) -c $(CFLAGS) Thread.cpp

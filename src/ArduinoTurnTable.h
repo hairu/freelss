@@ -18,64 +18,42 @@
  ****************************************************************************
 */
 
-#include "Main.h"
-#include "Laser.h"
-#include "RelayLaser.h"
-#include "ArduinoLaser.h"
+#pragma once
+
+#include "TurnTable.h"
 
 namespace scanner
 {
 
-Laser * Laser::m_instance = NULL;
-
-Laser::Laser()
+/**
+ * An implementation of the TurnTable class that works
+ * with the A4988 motor driver.
+ */
+class ArduinoTurnTable : public TurnTable
 {
-	// Do nothing
+public:
+	ArduinoTurnTable();
+	~ArduinoTurnTable();
+
+	/** Rotates this amount in radians */
+	int rotate(real theta);
+
+	/** Enable/Disable the stepper motor */
+	void setMotorEnabled(bool enabled);
+
+	/** Initialize the turn table */
+	static void initialize();
+
+private:
+
+	/** The time to sleep between steps in microseconds */
+	int m_stepDelay;
+
+	/** The number of steps per revolution */
+	int m_stepsPerRevolution;
+
+	/** The time to sleep between steps in microseconds */
+	int m_stabilityDelay;
+};
+
 }
-
-Laser::~Laser()
-{
-	// Do nothing
-}
-
-Laser * Laser::getInstance()
-{
-	if (m_instance == NULL)
-	{
-        #ifdef USE_LINUX_HARDWARE
-    		m_instance = new ArduinoLaser();
-        #else
-            m_instance = new RelayLaser();
-        #endif
-	}
-
-	return m_instance;
-}
-
-void Laser::release()
-{
-	delete m_instance;
-	m_instance = NULL;
-}
-
-std::string Laser::toString(Laser::LaserSide side)
-{
-	std::string str = "";
-
-	if (side == RIGHT_LASER)
-	{
-		str = "RIGHT_LASER";
-	}
-	else if (side == LEFT_LASER)
-	{
-		str = "LEFT_LASER";
-	}
-	else if (side == ALL_LASERS)
-	{
-		str = "ALL_LASERS";
-	}
-
-	return str;
-}
-
-} // ns scanner

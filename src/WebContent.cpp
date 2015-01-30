@@ -426,6 +426,7 @@ if (!message.empty())
 	std::string videoHDSel = cameraMode == (int)Camera::CM_VIDEO_HD ? " SELECTED" : "";
 	std::string video1P2Sel = cameraMode == (int)Camera::CM_VIDEO_1P2MP ? " SELECTED" : "";
 	std::string videoVGASel = cameraMode == (int)Camera::CM_VIDEO_VGA ? " SELECTED" : "";
+	std::string videoQcamSel = cameraMode == (int)Camera::CM_VIDEO_QCAM ? " SELECTED" : "";
 
 	sstr << "<div><div class=\"settingsText\">Camera Mode</div>";
 	sstr << "<select name=\"" << Settings::CAMERA_MODE<< "\">";
@@ -434,6 +435,7 @@ if (!message.empty())
 	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_HD << "\"" << videoHDSel << ">1.9 Megapixel (video mode, 1600x1200)</option>\r\n";
 	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_1P2MP << "\"" << video1P2Sel << ">1.2 Megapixel (video mode, 1280x960)</option>\r\n";
 	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_VGA << "\"" << videoVGASel << ">0.3 Megapixel (video mode, 640x480)</option>\r\n";
+	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_QCAM << "\"" << videoQcamSel << ">0.6 Megapixel (video mode, 960x720)</option>\r\n";
 	sstr << "</select></div>";
 	sstr << "<div class=\"settingsDescr\">The camera mode to use. Video mode is faster but Still mode results in higher quality scans.</div>\n";
 

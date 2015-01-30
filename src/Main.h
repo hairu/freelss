@@ -25,12 +25,18 @@ This is also the standard OpenGL coordinate system.
 The origin is the center of the turn table.
 */
 
+// Define if we want to use raw Linux rather than RasperryPi goodness
+// #define USE_LINUX_HARDWARE
+// Normally done in Makefile
+
 // LIBPNG
 #define PNG_DEBUG 3
 #include <png.h>
 
+#ifndef USE_LINUX_HARDWARE
 // MMAL/BCM
 // This mmal is from the RaspiCam package and was copied to /usr/local/include
+
 #include "bcm_host.h"
 #include "interface/vcos/vcos.h"
 #include <mmal/mmal.h>
@@ -42,6 +48,7 @@ The origin is the center of the turn table.
 
 // RASPICAM
 #include <raspicam/raspicam.h>
+#endif // ndef USE_LINUX_HARDWARE
 
 // MICROHTTPD
 #include <microhttpd.h>
@@ -222,8 +229,15 @@ double GetTimeInSeconds();
 struct sqlite3;
 struct sqlite3_stmt;
 
-
+#ifdef USE_LINUX_HARDWARE
+// Dummy stuff to replace Pi hardware.
+#define digitalWrite(a,b)
+#define pinMode(a,b)
+#define OUTPUT 1
+#define HIGH 1
+#define LOW 0
+#else
 // Include wiringPi
 #include <wiringPi.h>
-
+#endif
 

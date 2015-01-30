@@ -31,7 +31,7 @@ namespace scanner
 
 CriticalSection Camera::m_cs = CriticalSection();
 Camera * Camera::m_instance = NULL;
-Camera::CameraType Camera::m_cameraType = Camera::CT_RASPICAM;
+Camera::CameraType Camera::m_cameraType = Camera::CT_RASPISTILL;
 int Camera::m_reqImageWidth = 0;
 int Camera::m_reqImageHeight = 0;
 
@@ -54,8 +54,9 @@ Camera * Camera::getInstance()
 		{
 			if (m_cameraType == Camera::CT_RASPISTILL)
 			{
-				m_instance = new RaspistillCamera();
+				m_instance = new RaspistillCamera(m_reqImageWidth, m_reqImageHeight);
 			}
+            #ifndef USE_LINUX_HARDWARE
 			else if (m_cameraType == Camera::CT_RASPICAM)
 			{
 				std::cout << "Creating video mode camera resolution=" << m_reqImageWidth << "x" << m_reqImageHeight << std::endl;
@@ -70,6 +71,7 @@ Camera * Camera::getInstance()
 			{
 				m_instance = new MmalVideoCamera();
 			}
+            #endif
 			else
 			{
 				throw Exception("Unsupported camera type");
@@ -109,6 +111,13 @@ void Camera::reinitialize()
 	Camera::CameraType type;
 	int reqImageWidth;
 	int reqImageHeight;
+    Camera::CameraType stillType;
+
+    #ifdef USE_LINUX_HARDWARE
+    stillType=CT_RASPISTILL;
+    #else
+    stillType=CT_RASPICAM;
+    #endif
 
 	switch (cameraMode)
 	{
@@ -119,19 +128,19 @@ void Camera::reinitialize()
 		break;
 
 	case CM_VIDEO_5MP:
-		type = CT_RASPICAM;
+		type = stillType;
 		reqImageWidth = 2560;
 		reqImageHeight = 1920;
 		break;
 
 	case CM_VIDEO_HD:
-		type = CT_RASPICAM;
+		type = stillType;
 		reqImageWidth = 1600;
 		reqImageHeight = 1200;
 		break;
 
 	case CM_VIDEO_1P2MP:
-		type = CT_RASPICAM;
+		type = stillType;
 		reqImageWidth = 1280;
 		reqImageHeight = 960;
 		break;
@@ -139,7 +148,13 @@ void Camera::reinitialize()
 	case CM_VIDEO_VGA:
 		reqImageWidth = 640;
 		reqImageHeight = 480;
-		type = CT_RASPICAM;
+		type = stillType;
+		break;
+
+	case CM_VIDEO_QCAM:
+		reqImageWidth = 960;
+		reqImageHeight = 720;
+		type = stillType;
 		break;
 
 	default:

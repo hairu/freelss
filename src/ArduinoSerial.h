@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Vik Olliver vik@diamondage.co.nz                     *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -18,64 +18,23 @@
  ****************************************************************************
 */
 
-#include "Main.h"
-#include "Laser.h"
-#include "RelayLaser.h"
-#include "ArduinoLaser.h"
+#pragma once
+
+// A simple, send-only serial driver to control an Arduino turntable
 
 namespace scanner
 {
-
-Laser * Laser::m_instance = NULL;
-
-Laser::Laser()
+class ArduinoSerial
 {
-	// Do nothing
+public:
+	ArduinoSerial();
+	~ArduinoSerial();
+
+	/* Initialize the serial port */
+	static int initialize(const char* port);
+	static int sendchar(char c);
+private:
+	static int m_fd;
+};
+
 }
-
-Laser::~Laser()
-{
-	// Do nothing
-}
-
-Laser * Laser::getInstance()
-{
-	if (m_instance == NULL)
-	{
-        #ifdef USE_LINUX_HARDWARE
-    		m_instance = new ArduinoLaser();
-        #else
-            m_instance = new RelayLaser();
-        #endif
-	}
-
-	return m_instance;
-}
-
-void Laser::release()
-{
-	delete m_instance;
-	m_instance = NULL;
-}
-
-std::string Laser::toString(Laser::LaserSide side)
-{
-	std::string str = "";
-
-	if (side == RIGHT_LASER)
-	{
-		str = "RIGHT_LASER";
-	}
-	else if (side == LEFT_LASER)
-	{
-		str = "LEFT_LASER";
-	}
-	else if (side == ALL_LASERS)
-	{
-		str = "ALL_LASERS";
-	}
-
-	return str;
-}
-
-} // ns scanner

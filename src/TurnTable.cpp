@@ -21,6 +21,7 @@
 #include "Main.h"
 #include "TurnTable.h"
 #include "A4988TurnTable.h"
+#include "ArduinoTurnTable.h"
 
 namespace scanner
 {
@@ -41,7 +42,11 @@ TurnTable * TurnTable::getInstance()
 {
 	if (TurnTable::m_instance == NULL)
 	{
+        #ifdef USE_LINUX_HARDWARE
+		TurnTable::m_instance = new ArduinoTurnTable();
+        #else
 		TurnTable::m_instance = new A4988TurnTable();
+        #endif
 	}
 
 	return TurnTable::m_instance;

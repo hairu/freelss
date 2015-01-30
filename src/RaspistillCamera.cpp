@@ -40,11 +40,13 @@ METHODDEF(void) LibJpegErrorHandler (j_common_ptr cinfo)
   longjmp(myerr->setjmp_buffer, 1);
 }
 
-RaspistillCamera::RaspistillCamera() :
+RaspistillCamera::RaspistillCamera(int imageWidth, int imageHeight) :
 	m_numReadFromDisk(0),
-	m_imageCount(0)
+	m_imageCount(0),
+	m_imageWidth(imageWidth), // was 1944
+	m_imageHeight(imageHeight) // was 2592
 {
-	// Do nothing
+    // Do nothing
 }
 
 void RaspistillCamera::acquireImage(Image * image)
@@ -69,7 +71,7 @@ void RaspistillCamera::readFromPi(Image * image)
 	// Write the JPEG to disk
 	//
 	std::stringstream sstr;
-	sstr << "/akuma/raspistill_" << m_imageCount << ".jpg";
+	sstr << "/tmp/raspistill_" << m_imageCount << ".jpg";
 	std::string filename = sstr.str();
 
 	writeToDisk(filename.c_str());
@@ -86,10 +88,15 @@ void RaspistillCamera::readFromPi(Image * image)
 void RaspistillCamera::writeToDisk(const char * filename)
 {
 	std::stringstream sstr;
+    #ifdef USE_LINUX_HARDWARE
+    sstr << "sleep 1.5;fswebcam -d /dev/video0 -r " << m_imageWidth << "x" << m_imageHeight << " --no-timestamp --no-banner ";
+    #else
 	sstr << "raspistill -t 100 -ex night -awb off -br 40 -n -o ";
+    #endif
 	sstr << filename;
 
 	std::string command = sstr.str();
+    std::cout << command << std::endl;
 	if (system(command.c_str()) == -1)
 	{
 		throw Exception(std::string("Error executing command: [") + command + "]");
@@ -101,7 +108,7 @@ bool RaspistillCamera::acquireJpeg(byte* buffer, unsigned * size)
 	bool fileRead = false;
 
 	m_cs.enter();
-
+    std::cout << "Acquire still image" << std::endl;
 	try
 	{
 		std::string filename = "/tmp/scanner_image.jpg";
@@ -174,6 +181,7 @@ void RaspistillCamera::readFromDisk(Image * image, const char * filename)
 		throw Exception(std::string("Error opening JPEG file: ") + filename);
 	}
 
+    std::cout << "Opening file " << filename << std::endl;
 	std::cout.flush();
 
 	try
@@ -242,12 +250,12 @@ void RaspistillCamera::readFromDisk(Image * image, const char * filename)
 
 int RaspistillCamera::getImageHeight() const
 {
-	return 1944;
+	return m_imageHeight;
 }
 
 int RaspistillCamera::getImageWidth() const
 {
-	return 2592;
+	return m_imageWidth;
 }
 
 int RaspistillCamera::getImageComponents() const

@@ -638,6 +638,10 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 				{
 					mimeType = "text/csv";
 				}
+				else if (ext == "ply")
+				{
+					mimeType = "model/ply";
+				}
 				else
 				{
 					mimeType = "application/octet-stream";

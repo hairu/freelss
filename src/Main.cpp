@@ -23,6 +23,9 @@
 #include "Scanner.h"
 #include "A4988TurnTable.h"
 #include "RelayLaser.h"
+#include "ArduinoTurnTable.h"
+#include "ArduinoSerial.h"
+#include "ArduinoLaser.h"
 #include "Settings.h"
 #include "HttpServer.h"
 
@@ -39,15 +42,18 @@ int main(int argc, char **argv)
 {
 	int retVal = 0;
 	
-	// Initialize the Raspberry Pi hardware
-	bcm_host_init();
-
-	std::cout << "Initialized BCM HOST" << std::endl;
+	#ifndef USE_LINUX_HARDWARE
+        // Initialize the Raspberry Pi hardware
+        bcm_host_init();
+        std::cout << "Initialized BCM HOST" << std::endl;
+    #endif
 
 	try
 	{
+	    #ifndef USE_LINUX_HARDWARE
 		// Setup wiring pi
 		wiringPiSetup();
+        #endif
 		
 		// Get the users home directory
 		char * home = getenv("HOME");
@@ -59,10 +65,16 @@ int main(int argc, char **argv)
 		std::string settingsDb = home + std::string("/.scannerdb");
 
 		scanner::Settings::initialize(settingsDb.c_str());
+	    #ifdef USE_LINUX_HARDWARE
+        scanner::ArduinoSerial::initialize("/dev/ttyACM0");  // TODO Use the right serial port
+		scanner::ArduinoTurnTable::initialize();
+		scanner::ArduinoLaser::initialize();
+        #else
 		scanner::A4988TurnTable::initialize();
 		scanner::RelayLaser::initialize();
+        #endif
 
-		int port = 80;
+		int port = 8080;
 		scanner::HttpServer::get()->start(port);
 
 		std::cout << "Running on port " << port << "..." << std::endl;

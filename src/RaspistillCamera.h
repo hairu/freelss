@@ -29,7 +29,7 @@ namespace scanner
 class RaspistillCamera : public Camera
 {
 public:
-	RaspistillCamera();
+	RaspistillCamera(int imageWidth, int imageHeight);
     
 	void acquireImage(Image * image);
 
@@ -70,6 +70,8 @@ private:
 
 	int m_numReadFromDisk;
 	int m_imageCount;
+    int m_imageWidth;
+    int m_imageHeight;
 	CriticalSection m_cs;
 };
 

@@ -18,64 +18,31 @@
  ****************************************************************************
 */
 
-#include "Main.h"
+#pragma once
+
 #include "Laser.h"
-#include "RelayLaser.h"
-#include "ArduinoLaser.h"
+#include "ArduinoSerial.h"
 
 namespace scanner
 {
-
-Laser * Laser::m_instance = NULL;
-
-Laser::Laser()
+class ArduinoLaser : public Laser
 {
-	// Do nothing
+public:
+	ArduinoLaser();
+	~ArduinoLaser();
+
+	/** Initialize the laser */
+	static void initialize();
+
+	void turnOn(Laser::LaserSide laser);
+	void turnOff(Laser::LaserSide laser);
+	bool isOn(Laser::LaserSide laser);
+private:
+	int m_laserDelay;
+	int m_laserOnValue;
+	int m_laserOffValue;
+	bool m_rightLaserOn;
+	bool m_leftLaserOn;
+};
+
 }
-
-Laser::~Laser()
-{
-	// Do nothing
-}
-
-Laser * Laser::getInstance()
-{
-	if (m_instance == NULL)
-	{
-        #ifdef USE_LINUX_HARDWARE
-    		m_instance = new ArduinoLaser();
-        #else
-            m_instance = new RelayLaser();
-        #endif
-	}
-
-	return m_instance;
-}
-
-void Laser::release()
-{
-	delete m_instance;
-	m_instance = NULL;
-}
-
-std::string Laser::toString(Laser::LaserSide side)
-{
-	std::string str = "";
-
-	if (side == RIGHT_LASER)
-	{
-		str = "RIGHT_LASER";
-	}
-	else if (side == LEFT_LASER)
-	{
-		str = "LEFT_LASER";
-	}
-	else if (side == ALL_LASERS)
-	{
-		str = "ALL_LASERS";
-	}
-
-	return str;
-}
-
-} // ns scanner
