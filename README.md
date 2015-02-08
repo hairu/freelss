@@ -11,6 +11,7 @@ These instructions assume you are running the latest version of Raspbian.  Other
 First, update the firmware to the latest version and reboot.
 ```
 $ sudo rpi-update
+$ sudo apt-get update
 ```
 
 Install the dependencies that are managed by the package manager.
@@ -35,6 +36,7 @@ $ cd build
 $ cmake ..
 $ make
 $ sudo make install
+$ sudo ldconfig
 ```
 Download and build FreeLSS
 ```
