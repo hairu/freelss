@@ -29,7 +29,7 @@ Preset::Preset() :
 	name("Preset"),
 	laserSide(Laser::RIGHT_LASER),
 	cameraMode(Camera::CM_VIDEO_1P2MP),
-	laserThreshold(3),
+	laserThreshold(10),
 	minLaserWidth(3),
 	maxLaserWidth(40),
 	maxObjectSize(215.9),  // 8.5"

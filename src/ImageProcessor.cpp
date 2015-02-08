@@ -180,7 +180,7 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 		for (unsigned iCol = 0; iCol < rowStep; iCol += components)
 		{
 			// Perform image subtraction
-#if 1
+#if 0
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int magSq = r * r;
 			real mag = 255.0f * (magSq * 0.000015379f);
