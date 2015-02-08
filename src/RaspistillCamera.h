@@ -23,7 +23,7 @@
 #include "CriticalSection.h"
 #include "Camera.h"
 
-namespace scanner
+namespace freelss
 {
 
 class RaspistillCamera : public Camera

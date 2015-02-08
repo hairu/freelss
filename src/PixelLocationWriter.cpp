@@ -22,7 +22,7 @@
 #include "PixelLocationWriter.h"
 #include "Image.h"
 
-namespace scanner
+namespace freelss
 {
 
 void PixelLocationWriter::writePixels(const PixelLocation * pixels,

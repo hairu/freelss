@@ -22,8 +22,9 @@
 #include "NeutralFileReader.h"
 #include "StlWriter.h"
 #include "Camera.h"
+#include "Laser.h"
 
-namespace scanner
+namespace freelss
 {
 
 static real32 DistanceSquared(const ColoredPoint& a, const ColoredPoint&b)
@@ -43,7 +44,8 @@ static bool SortRecordByRow(const NeutralFileRecord& a, const NeutralFileRecord&
 
 StlWriter::StlWriter() :
 	m_maxEdgeDistMmSq(12.4 * 12.2),  // TODO: Make this a setting or autodetect it based off the distance to table and the detail level
-	m_attribute(0)
+	m_attribute(0),
+	m_imageWidth(0)
 {
 	m_normal[0] = 0;
 	m_normal[1] = 0;
@@ -157,8 +159,8 @@ bool StlWriter::readNextStep(std::vector<NeutralFileRecord>& out, const std::vec
 		return false;
 	}
 
-	int pseudoStep = results[resultIndex].pseudoStep;
-	while (pseudoStep == results[resultIndex].pseudoStep && resultIndex < results.size())
+	int pseudoStep = results[resultIndex].pseudoFrame;
+	while (pseudoStep == results[resultIndex].pseudoFrame && resultIndex < results.size())
 	{
 		out.push_back(results[resultIndex]);
 		resultIndex++;
@@ -184,7 +186,8 @@ void StlWriter::write(const std::string& baseFilename, const std::vector<Neutral
 	}
 
 	uint32 maxNumRows = Camera::getInstance()->getImageHeight(); // TODO: Make this use the image height that generated the result and not the current Camera
-	uint32 numRowBins = 400; // TODO: Autodetect this or have it in Settings
+	m_imageWidth = Camera::getInstance()->getImageWidth();
+	uint32 numRowBins = 400; // TODO: Autodetect this or have it in Database
 
 	// Write the STL header
 	writeHeader(fout);
@@ -291,6 +294,28 @@ void StlWriter::writeHeader(std::ofstream& fout)
 	fout.write((const char *)&numTriangles, sizeof(uint32));
 }
 
+bool StlWriter::isInwardFacingFace(const NeutralFileRecord& p1, const NeutralFileRecord& p2, const NeutralFileRecord& p3)
+{
+	int laserSide = p1.laserSide;
+	bool inwardFacing = false;
+	float halfImageWidth = m_imageWidth * 0.5f; // If it's past the centerline then it will result in an inward facing triangle
+
+	if (laserSide == (int)Laser::LEFT_LASER)
+	{
+		inwardFacing = p1.pixel.x > halfImageWidth || p2.pixel.x > halfImageWidth || p3.pixel.x > halfImageWidth;
+	}
+	else if (laserSide == (int)Laser::RIGHT_LASER)
+	{
+		inwardFacing = p1.pixel.x < halfImageWidth || p2.pixel.x < halfImageWidth || p3.pixel.x < halfImageWidth;
+	}
+	else
+	{
+		throw Exception("Unsupported LaserSide in StlWriter::isInwardFacingFace");
+	}
+
+	return inwardFacing;
+}
+
 /*
 foreach column
 	set row to 0
@@ -332,7 +357,9 @@ void StlWriter::writeTrianglesForColumn(const std::vector<NeutralFileRecord>& cu
 				// if (distSq1 < distSq2 && distSq1 <= m_maxEdgeDistMmSq)
 				if (distSq1 < distSq2)
 				{
-					writeTriangle(l1.point, c1.point, c2.point, fout);
+					// Determine if we need to flip the normal or not
+					bool flipNormal = isInwardFacingFace(l1, c1, c2);
+					writeTriangle(l1.point, c1.point, c2.point, flipNormal, fout);
 					numTriangles++;
 				}
 				else
@@ -340,7 +367,8 @@ void StlWriter::writeTrianglesForColumn(const std::vector<NeutralFileRecord>& cu
 					// Connect to this triangle
 					if (isValidTriangle(l2.point, l1.point, c1.point))
 					{
-						writeTriangle(l2.point, l1.point, c1.point, fout);
+						bool flipNormal = isInwardFacingFace(l2, l1, c1);
+						writeTriangle(l2.point, l1.point, c1.point, flipNormal, fout);
 						numTriangles++;
 					}
 					else
@@ -382,17 +410,37 @@ bool StlWriter::isValidTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2
 	return true;
 }
 
-void StlWriter::writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, std::ofstream& fout)
+void StlWriter::writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, bool flipNormal, std::ofstream& fout)
 {
-	real32 pt1x = pt1.x;
-	real32 pt1y = pt1.y;
-	real32 pt1z = pt1.z;
-	real32 pt2x = pt2.x;
-	real32 pt2y = pt2.y;
-	real32 pt2z = pt2.z;
-	real32 pt3x = pt3.x;
-	real32 pt3y = pt3.y;
-	real32 pt3z = pt3.z;
+	real32 pt1x, pt1y, pt1z;
+	real32 pt2x, pt2y, pt2z;
+	real32 pt3x, pt3y, pt3z;
+
+
+	if (!flipNormal)
+	{
+		pt1x = pt1.x;
+		pt1y = pt1.y;
+		pt1z = pt1.z;
+		pt2x = pt2.x;
+		pt2y = pt2.y;
+		pt2z = pt2.z;
+		pt3x = pt3.x;
+		pt3y = pt3.y;
+		pt3z = pt3.z;
+	}
+	else
+	{
+		pt1x = pt3.x;
+		pt1y = pt3.y;
+		pt1z = pt3.z;
+		pt2x = pt2.x;
+		pt2y = pt2.y;
+		pt2z = pt2.z;
+		pt3x = pt1.x;
+		pt3y = pt1.y;
+		pt3z = pt1.z;
+	}
 
 
 	fout.write((const char *)&m_normal, sizeof(real32) * 3);

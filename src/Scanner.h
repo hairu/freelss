@@ -26,7 +26,7 @@
 #include "ScanResultsWriter.h"
 #include "Laser.h"
 
-namespace scanner
+namespace freelss
 {
 
 class TurnTable;
@@ -64,8 +64,6 @@ public:
 	 */
 	std::vector<ScanResult> getPastScanResults();
 
-	void setDetail(int detail);
-
 	void setRange(real range);
 
 	/** Indicates if a scan is running or not */
@@ -97,12 +95,12 @@ private:
 		double laserTime;
 		int numScanRetries;
 		int numImageProcessingRetries;
-		int numScans;
+		int numFrames;
 	};
 
 	void singleScan(std::vector<NeutralFileRecord> & leftLaserResults,
 			        std::vector<NeutralFileRecord> & rightLaserResults,
-					int step,
+					int frame,
 			        float rotation,
 			        float stepRotation,
 			        LocationMapper& leftLocMapper,
@@ -115,11 +113,11 @@ private:
 
 	void finishWritingToOutput();
 
-	void processScan(std::vector<NeutralFileRecord> & results, int step, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
+	void processScan(std::vector<NeutralFileRecord> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
 
 	void writeRangePoints(ColoredPoint * points, int numLocationsMapped,Laser::LaserSide laserSide);
 
-	void mergeLaserResults(std::vector<NeutralFileRecord> & results, std::vector<NeutralFileRecord> & leftLaserResults, std::vector<NeutralFileRecord> & rightLaserResults);
+
 
 private:
 	/** Unowned objects */
@@ -138,9 +136,6 @@ private:
 	 */
 	void acquireImage(Image * image);
 
-	/** The maximum number of laser scans per 360 revolution */
-	static const int MAX_SAMPLES_PER_FULL_REVOLUTION;
-
 	/** Array of laser locations */
 	PixelLocation * m_laserLocations;
 
@@ -154,9 +149,6 @@ private:
 
 	/** Indicates if a scan is running or not */
 	bool m_running;
-
-	/** The detail level */
-	int m_detail;
 
 	/** The degrees to scan */
 	real m_range;
@@ -203,6 +195,9 @@ private:
 	/** The angle between the left and right laser planes */
 	real m_radiansBetweenLaserPlanes;
 
+	/** The number of radians between each frame */
+	real m_radiansPerFrame;
+
 	/** Location of the right laser */
 	Vector3 m_rightLaserLoc;
 
@@ -218,11 +213,8 @@ private:
 	/** The range CSV output */
 	std::ofstream m_rangeFout;
 
-	/** The number of radians advanced from a single step */
-	float m_radiansPerStep;
-
 	/** The number of frames between the laser planes */
-	float m_numScansBetweenLaserPlanes;
+	float m_numFramesBetweenLaserPlanes;
 
 	/** The laser to scan with */
 	Laser::LaserSide m_laserSelection;

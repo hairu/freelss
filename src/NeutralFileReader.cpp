@@ -22,7 +22,7 @@
 #include "NeutralFileReader.h"
 
 
-namespace scanner
+namespace freelss
 {
 
 const char * NeutralFileReader::SELECT_SQL = "SELECT RED, GREEN, BLUE, X, Y, Z, COLUMN, ROW, ROTATION, STEP FROM RESULTS ORDER BY STEP ASC";
@@ -113,7 +113,7 @@ bool NeutralFileReader::readNextStep(std::vector<NeutralFileRecord>& records)
 	if (m_recordReady)
 	{
 		records.push_back(m_record);
-		lastStep = m_record.step;
+		lastStep = m_record.frame;
 		m_recordReady = false;
 	}
 
@@ -133,19 +133,19 @@ bool NeutralFileReader::readNextStep(std::vector<NeutralFileRecord>& records)
 			record.pixel.x = sqlite3_column_double(m_stmt, 6);
 			record.pixel.y = sqlite3_column_double(m_stmt, 7);
 			record.rotation = sqlite3_column_double(m_stmt, 8);
-			record.step = sqlite3_column_int(m_stmt, 9);
+			record.frame = sqlite3_column_int(m_stmt, 9);
 
 			// Check if we are moving to the next scan frame
-			if (!firstRow && record.step != lastStep)
+			if (!firstRow && record.frame != lastStep)
 			{
 				m_record = record;
 				m_recordReady = true;
-				lastStep = record.step;
+				lastStep = record.frame;
 				break;
 			}
 
 			firstRow = false;
-			lastStep = record.step;
+			lastStep = record.frame;
 			records.push_back(record);
 		}
 		else

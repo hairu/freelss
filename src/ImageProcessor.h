@@ -22,7 +22,7 @@
 #include "Thread.h"
 #include "Image.h"
 
-namespace scanner
+namespace freelss
 {
 
 class ImageProcessor

@@ -22,7 +22,7 @@
 
 #include "TurnTable.h"
 
-namespace scanner
+namespace freelss
 {
 
 /**

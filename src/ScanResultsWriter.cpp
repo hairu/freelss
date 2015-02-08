@@ -22,7 +22,7 @@
 #include "NeutralFileWriter.h"
 #include "PlyWriter.h"
 
-namespace scanner
+namespace freelss
 {
 
 ScanResultsWriter::ScanResultsWriter() :
@@ -64,8 +64,8 @@ void ScanResultsWriter::run()
 {
 	std::string nfFilename, plyFilename;
 
-	NeutralFileWriter m_nfWriter;
-	PlyWriter m_plyWriter;
+	//NeutralFileWriter nfWriter;
+	PlyWriter plyWriter;
 
 	m_cs.enter();
 	nfFilename = m_nfFilename;
@@ -74,13 +74,13 @@ void ScanResultsWriter::run()
 
 	try
 	{
-		m_nfWriter.open(nfFilename);
-		m_plyWriter.begin(plyFilename.c_str());
+		//nfWriter.open(nfFilename);
+		plyWriter.begin(plyFilename.c_str());
 
 		bool acquiredRecord = false;
 		NeutralFileRecord record;
 
-		m_nfWriter.beginBatch();
+		//nfWriter.beginBatch();
 		int numWritten = 0;
 
 		while (!Thread::m_stopRequested)
@@ -103,8 +103,8 @@ void ScanResultsWriter::run()
 			// If there is data, do work
 			if (acquiredRecord)
 			{
-				m_nfWriter.write(record);
-				m_plyWriter.writePoints(&record.point, 1);
+				//nfWriter.write(record);
+				plyWriter.writePoints(&record.point, 1);
 				numWritten++;
 			}
 			else
@@ -115,8 +115,8 @@ void ScanResultsWriter::run()
 			// Write to the neutral file in batches
 			if ((numWritten % 2000) == 0)
 			{
-				m_nfWriter.commit();
-				m_nfWriter.beginBatch();
+				//nfWriter.commit();
+				//nfWriter.beginBatch();
 			}
 		}
 	}
@@ -130,11 +130,11 @@ void ScanResultsWriter::run()
 	}
 
 	// Flush any remaining records
-	m_nfWriter.commit();
+	//nfWriter.commit();
 
 	// Close the output files
-	m_nfWriter.close();
-	m_plyWriter.end();
+	//nfWriter.close();
+	plyWriter.end();
 
 }
 

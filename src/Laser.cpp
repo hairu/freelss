@@ -22,7 +22,7 @@
 #include "Laser.h"
 #include "RelayLaser.h"
 
-namespace scanner
+namespace freelss
 {
 
 Laser * Laser::m_instance = NULL;

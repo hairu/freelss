@@ -22,7 +22,7 @@
 #include "Thread.h"
 #include "CriticalSection.h"
 
-namespace scanner
+namespace freelss
 {
 
 /**

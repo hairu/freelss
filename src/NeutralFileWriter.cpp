@@ -20,7 +20,7 @@
 #include "Main.h"
 #include "NeutralFileWriter.h"
 
-namespace scanner
+namespace freelss
 {
 
 const char * NeutralFileWriter::CREATE_DATABASE_SQL = "\
@@ -120,7 +120,7 @@ void NeutralFileWriter::write(const NeutralFileRecord& record)
 	sqlite3_bind_double(m_stmt, 7, record.pixel.x);
 	sqlite3_bind_double(m_stmt, 8, record.pixel.y);
 	sqlite3_bind_double(m_stmt, 9, record.rotation);
-	sqlite3_bind_int(m_stmt, 10, record.step);
+	sqlite3_bind_int(m_stmt, 10, record.frame);
 
 	sqlite3_step(m_stmt);
 	sqlite3_clear_bindings(m_stmt);

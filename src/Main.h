@@ -85,14 +85,6 @@ The origin is the center of the turn table.
 #define RADIANS_TO_DEGREES(r) ((r / (2 * PI)) * 360)
 #define DEGREES_TO_RADIANS(d) ((d / 360.0) * (2 * PI))
 #define ROUND(d)((int)(d + 0.5))
-/*
-#define CAMERA_IMAGE_HEIGHT 1944
-#define CAMERA_IMAGE_WIDTH 2592
-#define CAMERA_IMAGE_COMPONENTS 3         // RGB
-#define CAMERA_SENSOR_WIDTH 3.629
-#define CAMERA_SENSOR_HEIGHT 2.722        // http://elinux.org/Rpi_Camera_Module reports it as 3.67 x 2.74 mm
-#define CAMERA_FOCAL_LENGTH 3.6
-*/
 
 #define ABS(a)	   (((a) < 0) ? -(a) : (a))
 
@@ -112,7 +104,7 @@ The origin is the center of the turn table.
 #define MAX3(a, b, c) (MAX(MIN(a, b), c))
 #endif
 
-namespace scanner
+namespace freelss
 {
 
 typedef std::string Exception;
@@ -122,6 +114,27 @@ typedef unsigned short uint16;
 typedef float real32;
 typedef double real64;
 typedef float real;
+
+/** The directory where scans are written to */
+extern const std::string SCAN_OUTPUT_DIR;
+
+/** The directory where debug images are written to */
+extern const std::string DEBUG_OUTPUT_DIR;
+
+/** The filename where the properties are stored */
+extern const std::string PROPERTIES_FILE;
+
+/**
+ * Defines a name/value pair.
+ */
+struct Property
+{
+	Property() : name(""), value("") { }
+	Property(const std::string& name, const std::string& value) : name(name), value(value) { }
+
+	std::string name;
+	std::string value;
+};
 
 /** 
  * 2D Pixel Location.  
@@ -196,9 +209,9 @@ struct NeutralFileRecord
 	PixelLocation pixel;
 	ColoredPoint point;
 	real rotation;
-	int step;
+	int frame;
 	int laserSide;
-	int pseudoStep;
+	int pseudoFrame;
 };
 
 struct ScanResultFile
@@ -216,6 +229,15 @@ struct ScanResult
 
 /** Returns the current point in time in ms */
 double GetTimeInSeconds();
+
+std::string ToString(real value);
+std::string ToString(int value);
+real ToReal(const std::string& str);
+int ToInt(const std::string& str);
+bool EndsWith(const std::string& str, const std::string& ending);
+void HtmlEncode(std::string& data);
+void LoadProperties();
+void SaveProperties();
 }
 
 // Forward declaration

@@ -21,7 +21,7 @@
 #pragma once
 #include "Image.h"
 
-namespace scanner
+namespace freelss
 {
 
 class LocationMapper
@@ -69,6 +69,7 @@ private:
 	real m_focalLength;
 	real m_sensorWidth;
 	real m_sensorHeight;
+	real m_maxObjectSize;
 };
 
 }

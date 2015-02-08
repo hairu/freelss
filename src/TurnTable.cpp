@@ -22,7 +22,7 @@
 #include "TurnTable.h"
 #include "A4988TurnTable.h"
 
-namespace scanner
+namespace freelss
 {
 
 TurnTable * TurnTable::m_instance = NULL;

@@ -23,18 +23,32 @@
 #include "Scanner.h"
 #include "A4988TurnTable.h"
 #include "RelayLaser.h"
-#include "Settings.h"
+#include "PresetManager.h"
 #include "HttpServer.h"
-
+#include "PresetManager.h"
+#include "PropertyReaderWriter.h"
+#include "Setup.h"
 
 void ReleaseSingletons()
 {
-	scanner::HttpServer::release();
-	scanner::Laser::release();
-	scanner::Camera::release();
-	scanner::Settings::release();
+	freelss::HttpServer::release();
+	freelss::Laser::release();
+	freelss::Camera::release();
 }
 
+std::string GetPropertiesFile()
+{
+	// Get the users home directory
+	char * home = getenv("HOME");
+	if (home == NULL)
+	{
+		std::cerr << "Could not detect the user's home directory";
+		return "";
+	}
+
+	return home + std::string("/.freelss.properties");
+
+}
 int main(int argc, char **argv)
 {
 	int retVal = 0;
@@ -48,38 +62,25 @@ int main(int argc, char **argv)
 	{
 		// Setup wiring pi
 		wiringPiSetup();
-		
-		// Get the users home directory
-		char * home = getenv("HOME");
-		if (home == NULL)
-		{
-			throw scanner::Exception("Could not detect the user's home directory");
-		}
 
-		std::string settingsDb = home + std::string("/.scannerdb");
+		freelss::LoadProperties();
+		freelss::A4988TurnTable::initialize();
+		freelss::RelayLaser::initialize();
 
-		scanner::Settings::initialize(settingsDb.c_str());
-		scanner::A4988TurnTable::initialize();
-		scanner::RelayLaser::initialize();
-
-		int port = 80;
-		scanner::HttpServer::get()->start(port);
+		int port = freelss::Setup::get()->httpPort;
 
 		std::cout << "Running on port " << port << "..." << std::endl;
-		char input;
+		freelss::HttpServer::get()->start(port);
+
 		while (true)
 		{
-			std::cin >> input;
-			if (input == 'Q')
-			{
-				break;
-			}
+			freelss::Thread::usleep(100000);
 		}
-		std::cout << "Received: " << input << std::endl;
+
 
 		ReleaseSingletons();
 	}
-	catch (scanner::Exception& ex)
+	catch (freelss::Exception& ex)
 	{
 		std::cerr << "Exception: " << ex << std::endl;
 		ReleaseSingletons();
@@ -102,8 +103,12 @@ int main(int argc, char **argv)
 	return retVal;
 }
 
-namespace scanner
+namespace freelss
 {
+
+const std::string SCAN_OUTPUT_DIR = "/scans";
+const std::string DEBUG_OUTPUT_DIR = "/debug";
+const std::string PROPERTIES_FILE = GetPropertiesFile();
 
 time_t ScanResult::getScanDate() const
 {
@@ -113,6 +118,48 @@ time_t ScanResult::getScanDate() const
 	}
 
 	return files.front().creationTime;
+}
+
+void LoadProperties()
+{
+	PropertyReaderWriter reader;
+
+	std::vector<Property> properties;
+
+	// Read the presets from the file
+	if (access(PROPERTIES_FILE.c_str(), F_OK) != -1)
+	{
+		properties = reader.readProperties(PROPERTIES_FILE);
+	}
+
+	PresetManager * presetMgr = PresetManager::get();
+
+	// Read the presets
+	presetMgr->decodeProperties(properties);
+
+	// Create the default Preset object if there are no presets
+	if (presetMgr->getPresets().empty())
+	{
+		Preset defaultPreset;
+		defaultPreset.name = "Default";
+
+		defaultPreset.id = presetMgr->addPreset(defaultPreset);
+		presetMgr->setActivePreset(defaultPreset.id);
+	}
+
+	// Load the hardware setup information
+	Setup::get()->decodeProperties(properties);
+}
+
+void SaveProperties()
+{
+	// Encode the info as Property objects
+	std::vector<Property> properties;
+	PresetManager::get()->encodeProperties(properties);
+	Setup::get()->encodeProperties(properties);
+
+	PropertyReaderWriter writer;
+	writer.writeProperties(properties, PROPERTIES_FILE);
 }
 
 double GetTimeInSeconds()
@@ -131,6 +178,63 @@ double GetTimeInSeconds()
 	}
 
 	return sec;
+}
+
+std::string ToString(real value)
+{
+	std::stringstream sstr;
+	sstr << value;
+
+	return sstr.str();
+}
+
+std::string ToString(int value)
+{
+	std::stringstream sstr;
+	sstr << value;
+
+	return sstr.str();
+}
+
+real ToReal(const std::string& str)
+{
+	return atof(str.c_str());
+}
+
+int ToInt(const std::string& str)
+{
+	return atoi(str.c_str());
+}
+
+bool EndsWith(const std::string& str, const std::string& ending)
+{
+	if (str.length() >= ending.length())
+	{
+		return (0 == str.compare (str.length() - ending.length(), ending.length(), ending));
+	}
+
+	return false;
+}
+
+void HtmlEncode(std::string& str)
+{
+    std::string buffer;
+    buffer.reserve(str.size());
+    for(size_t iPos = 0; iPos != str.size(); ++iPos)
+    {
+        switch(str[iPos])
+        {
+            case '\"': buffer.append("&quot;");      break;
+            case '\'': buffer.append("&apos;");      break;
+            case '<':  buffer.append("&lt;");        break;
+            case '>':  buffer.append("&gt;");        break;
+            case '.':  buffer.append("&#46;");       break;
+            case '=':  buffer.append("&#61;");       break;
+            default:   buffer.append(&str[iPos], 1); break;
+        }
+    }
+
+    str.swap(buffer);
 }
 
 } // ns scanner

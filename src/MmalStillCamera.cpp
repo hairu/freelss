@@ -41,7 +41,7 @@
 #define SCREEN_HEIGHT 1080
 
 
-namespace scanner
+namespace freelss
 {
 
 struct Mmal_CallbackData

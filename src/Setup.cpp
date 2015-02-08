@@ -53,16 +53,16 @@ Setup::Setup() :
 	httpPort(80)
 {
 	cameraLocation.x = 0;
-	cameraLocation.y = 87.63;
-	cameraLocation.z = 269.24;
+	cameraLocation.y = 82.55;
+	cameraLocation.z = 260.35;
 
-	leftLaserLocation.x = -146.05;
-	leftLaserLocation.y = 87.63;
-	leftLaserLocation.z = 269.24;
+	leftLaserLocation.x = -125.73;
+	leftLaserLocation.y = 82.55;
+	leftLaserLocation.z = 260.35;
 
-	rightLaserLocation.x = 146.05;
-	rightLaserLocation.y = 87.63;
-	rightLaserLocation.z = 269.24;
+	rightLaserLocation.x = 114.3;
+	rightLaserLocation.y = 82.55;
+	rightLaserLocation.z = 260.35;
 }
 
 

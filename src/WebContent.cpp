@@ -20,15 +20,23 @@
 
 #include "Main.h"
 #include "WebContent.h"
-#include "Settings.h"
+#include "PresetManager.h"
+#include "Setup.h"
 #include "Laser.h"
 #include "Camera.h"
 
-namespace scanner
+namespace freelss
 {
 
 const std::string WebContent::CSS = "\
 <style type=\"text/css\">\
+.menu2 {\
+	float: right;\
+	width: 350px;\
+	height: 20px;\
+	padding-bottom: 5px;\
+	margin-right: 20px;\
+}\
 body {\
 	font-size: 20px;\
 	font-family: Verdana, serif, Arial, Helvetica;\
@@ -41,6 +49,14 @@ A:visited {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 A:hover   {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000000 2px 2px 2px; text-decoration: underline;}\
 A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000000 2px 2px 2px; text-decoration: underline;}\
 .submit {\
+	height: 40px;\
+	margin-bottom: 10px;\
+	font-weight: bold;\
+	font-size: 18px;\
+	margin-right: 15px;\
+}\
+.controlSubmit {\
+	width: 200px;\
 	height: 40px;\
 	margin-bottom: 10px;\
 	font-weight: bold;\
@@ -101,9 +117,17 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 	height: 1px;\
 }\
 #menuContainer {\
-	width: 100%;\
-	margin: auto;\
+	width: 800px;\
 	text-align: center;\
+	padding-bottom: 50px;\
+}\
+#cal1ContentDiv {\
+    margin-top: 75px;\
+}\
+#cal1ControlsDiv {\
+	float: left;\
+}\
+#cal1GenerateDebugDiv {\
 	padding-bottom: 50px;\
 }\
 #cal1ImageDiv {\
@@ -118,6 +142,19 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 	background-size: contain;\
 	background-repeat: no-repeat;\
 	background-image: url('skull.jpg');\
+}\
+#outerPresetDiv {\
+	margin-top: 75px;\
+	background-color: rgb(130, 130, 130);\
+	width: 650px;\
+	margin-bottom: 10px;\
+	padding-top: 10px;\
+}\
+#presetTextDiv {\
+	float: left;\
+	padding-left: 25px;\
+	padding-right: 12px;\
+	padding-top: 5px;\
 }\
 </style>";
 
@@ -164,6 +201,34 @@ function leftLaserClick(event) {\
 }\
 </script>";
 
+const std::string WebContent::PROFILE_NAME = "PROFILE_NAME";
+const std::string WebContent::CAMERA_X = "CAMERA_X";
+const std::string WebContent::CAMERA_Y = "CAMERA_Y";
+const std::string WebContent::CAMERA_Z = "CAMERA_Z";
+const std::string WebContent::CAMERA_MODE = "CAMERA_MODE";
+const std::string WebContent::RIGHT_LASER_X = "RIGHT_LASER_X";
+const std::string WebContent::RIGHT_LASER_Y = "RIGHT_LASER_Y";
+const std::string WebContent::RIGHT_LASER_Z = "RIGHT_LASER_Z";
+const std::string WebContent::RIGHT_LASER_PIN = "RIGHT_LASER_PIN";
+const std::string WebContent::LEFT_LASER_X = "LEFT_LASER_X";
+const std::string WebContent::LEFT_LASER_Y = "LEFT_LASER_Y";
+const std::string WebContent::LEFT_LASER_Z = "LEFT_LASER_Z";
+const std::string WebContent::LEFT_LASER_PIN = "LEFT_LASER_PIN";
+const std::string WebContent::LASER_MAGNITUDE_THRESHOLD = "LASER_MAGNITUDE_THRESHOLD";
+const std::string WebContent::LASER_DELAY = "LASER_DELAY";
+const std::string WebContent::LASER_ON_VALUE = "LASER_ON_VALUE";
+const std::string WebContent::LASER_SELECTION = "LASER_SELECTION";
+const std::string WebContent::STABILITY_DELAY = "STABILITY_DELAY";
+const std::string WebContent::MAX_LASER_WIDTH = "MAX_LASER_WIDTH";
+const std::string WebContent::MIN_LASER_WIDTH = "MIN_LASER_WIDTH";
+const std::string WebContent::STEPS_PER_REVOLUTION = "STEPS_PER_REVOLUTION";
+const std::string WebContent::ENABLE_PIN = "ENABLE_PIN";
+const std::string WebContent::STEP_PIN = "STEP_PIN";
+const std::string WebContent::DIRECTION_PIN = "DIRECTION_PIN";
+const std::string WebContent::DIRECTION_VALUE = "DIRECTION_VALUE";
+const std::string WebContent::RESPONSE_DELAY = "RESPONSE_DELAY";
+const std::string WebContent::STEP_DELAY = "STEP_DELAY";
+const std::string WebContent::FRAMES_PER_REVOLUTION = "FRAMES_PER_REVOLUTION";
 
 const std::string WebContent::CAMERA_X_DESCR = "X-compoment of camera location. ie: The camera is always at X = 0.";
 const std::string WebContent::CAMERA_Y_DESCR = "Y-component of camera location. ie: The distance from camera center to the XZ plane";
@@ -188,6 +253,7 @@ const std::string WebContent::STEP_PIN_DESCR = "The wiringPi pin number for step
 const std::string WebContent::STEP_DELAY_DESCR = "The amount of time between steps in microseconds";
 const std::string WebContent::DIRECTION_PIN_DESCR = "The wiringPi pin number for the stepper motor direction or rotation";
 const std::string WebContent::RESPONSE_DELAY_DESCR = "The time it takes for the stepper controller to recognize a pin value change in microseconds";
+const std::string WebContent::FRAMES_PER_REVOLUTION_DESCR = "The number of frames that should be taken for a scan. Default is 800.";
 
 std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 {
@@ -208,7 +274,6 @@ std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 <p>Click the button to start the scan </p>\
 <form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
 <div><div class=\"settingsText\">Degrees</div><input name=\"degrees\" class=\"settingsInput\" value=\"360\"> degrees</div>\
-    <div><div class=\"settingsText\">Detail</div><input name=\"detail\" class=\"settingsInput\" value=\"800\"> samples per revolution</div>\
 	<input type=\"hidden\" name=\"cmd\" value=\"startScan\">\
 	<input class=\"submit\" type=\"submit\" value=\"Start Scan\">\
 </form>";
@@ -290,6 +355,7 @@ std::string WebContent::scanRunning(real progress, real remainingTime)
 {
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
+		 << "<meta http-equiv=\"refresh\" content=\"5\">"
 		 << CSS
 		 << std::endl
 		 << JAVASCRIPT
@@ -300,7 +366,6 @@ std::string WebContent::scanRunning(real progress, real remainingTime)
 	     << "% complete with "
 	     << (remainingTime / 60.0)
 	     << " minutes remaining.</p>"
-	     << "<p><a href=\"/\">Refresh</a></p>"
 	     << "<form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
 	     << "<input type=\"hidden\" name=\"cmd\" value=\"stopScan\">"
 	     << "<input type=\"submit\" value=\"Stop Scan\">"
@@ -310,8 +375,10 @@ std::string WebContent::scanRunning(real progress, real remainingTime)
 	     return sstr.str();
 }
 
-std::string WebContent::cal1()
+std::string WebContent::cal1(const std::string& inMessage)
 {
+	std::string message = inMessage.empty() ? std::string("") : ("<h2>" + inMessage + "</h2>");
+
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
 		 << CSS
@@ -325,24 +392,48 @@ std::string WebContent::cal1()
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
-</div>\
-<div id=\"cal1ImageDiv\">\
-	<div style=\"position: absolute\">\
-		<img onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" width=\"1296\" src=\"camImage_\""
+</div>"
+	     << message
+         << "\
+<div id=\"cal1ContentDiv\">\
+  <div id=\"cal1ControlsDiv\">\
+    <div id=\"cal1GenerateDebugDiv\">\
+		<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
+			<input name=\"cmd\" value=\"generateDebug\" type=\"hidden\">\
+			<input style=\"height: 60px\" class=\"controlSubmit\" value=\"Test\" type=\"submit\">\
+		</form>\
+    </div>\
+	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"><input name=\"cmd\" value=\"toggleLeftLaser\" type=\"hidden\"><input class=\"controlSubmit\" value=\"Toggle Left Laser\" type=\"submit\"></form>\
+	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"> <input name=\"cmd\" value=\"toggleRightLaser\" type=\"hidden\"> <input class=\"controlSubmit\" value=\"Toggle Right Laser\" type=\"submit\"> </form>\
+	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">  <input name=\"cmd\" value=\"disableMotor\" type=\"hidden\">  <input class=\"controlSubmit\" value=\"Disable Motor\" type=\"submit\">  </form>\
+	<div>\
+		<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
+		<input name=\"cmd\" value=\"rotateTable\" type=\"hidden\">\
+		<input name=\"degrees\" style=\"width: 75px\" class=\"settingsInput\" value=\"360\" type=\"text\">\
+		<input class=\"submit\" style=\"width: 110px\" value=\"Rotate\" type=\"submit\">\
+		</form>\
+	</div>\
+		<div class=\"settingsDescr\">Rotates the turntable in degrees.</div>\
+  </div>\
+<div style=\"position: relative\">\
+	<div>\
+		<img style=\"position: absolute\" onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" width=\"1296\" src=\"camImage_\""
 	<< time(NULL)
 	<< ".jpg\">\
 	</div>\
-	<div id=\"vLine\"> </div>\
-	<div id=\"hLine\"> </div>\
+	<div style=\"margin-left: 215px;\">\
+	  <div id=\"vLine\"> </div>\
+	  <div id=\"hLine\"> </div>\
+    </div>\
+</div>\
 </div></body></html>";
 
 	     return sstr.str();
 }
-
-std::string WebContent::settings(const std::string& message, const std::string& rotationDegrees)
+std::string WebContent::setup(const std::string& message)
 {
+	const Setup * setup = Setup::get();
 
-	Settings * settings = Settings::get();
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
 		 << CSS
@@ -356,61 +447,114 @@ std::string WebContent::settings(const std::string& message, const std::string& 
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
-</div>\
-<h1>Settings </h1>\
-<form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
-<input type=\"hidden\" name=\"cmd\" value=\"toggleLeftLaser\">\
-<input class=\"submit\" type=\"submit\" value=\"Toggle Left Laser\">\
-</form>\
- <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
- <input type=\"hidden\" name=\"cmd\" value=\"toggleRightLaser\">\
- <input class=\"submit\" type=\"submit\" value=\"Toggle Right Laser\">\
- </form>\
- <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
-  <input type=\"hidden\" name=\"cmd\" value=\"disableMotor\">\
-  <input class=\"submit\" type=\"submit\" value=\"Disable Motor\">\
-  </form>\
- <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
-  <input type=\"hidden\" name=\"cmd\" value=\"autoCalibrate\">\
-  <input class=\"submit\" type=\"submit\" value=\"Auto-Calibrate\">\
-  </form>\
- <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
-  <input type=\"hidden\" name=\"cmd\" value=\"generateDebug\">\
-  <input class=\"submit\" type=\"submit\" value=\"Generate Debug Data\">\
-  </form>\
-<div>\
-  <a href=\"/dbg/1.jpg\">Base</a>\
-  <a href=\"/dbg/2.jpg\">Laser On</a>\
-  <a href=\"/dbg/3.png\">Difference</a>\
-  <a href=\"/dbg/4.png\">Laser</a>\
-  <a href=\"/dbg/5.png\">Overlay</a>\
-  <a href=\"/dbg/0.csv\">Difference Values</a>\
-</div><div><form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
-<input type=\"hidden\" name=\"cmd\" value=\"rotateTable\">\
-<input name=\"degrees\" class=\"settingsInput\" type=\"text\" value=\""
-	     << rotationDegrees << "\"> degrees\
-<input class=\"submit\" type=\"submit\" value=\"Rotate Table\">\
-</form></div>\
-	     ";
-if (!message.empty())
+</div>";
+
+	if (!message.empty())
+	{
+		sstr << "<h2>" << message << "</h2>";
+	}
+
+
+	sstr << "<form action=\"/setup\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
+	sstr << "<p><input class=\"submit\" type=\"submit\" value=\"Save\"></p>";
+
+	sstr << setting(WebContent::CAMERA_X, "Camera X", setup->cameraLocation.x / 25.4f, CAMERA_X_DESCR, "in.", true);
+	sstr << setting(WebContent::CAMERA_Y, "Camera Y", setup->cameraLocation.y / 25.4f, CAMERA_Y_DESCR,  "in.");
+	sstr << setting(WebContent::CAMERA_Z, "Camera Z", setup->cameraLocation.z / 25.4f, CAMERA_Z_DESCR,  "in.");
+	sstr << setting(WebContent::RIGHT_LASER_X, "Right Laser X", setup->rightLaserLocation.x / 25.4f, RIGHT_LASER_X_DESCR,  "in.");
+	sstr << setting(WebContent::RIGHT_LASER_Y, "Right Laser Y", setup->rightLaserLocation.y / 25.4f, RIGHT_LASER_Y_DESCR,  "in.", true);
+	sstr << setting(WebContent::RIGHT_LASER_Z, "Right Laser Z", setup->rightLaserLocation.z / 25.4f, RIGHT_LASER_Z_DESCR,  "in.", true);
+	sstr << setting(WebContent::LEFT_LASER_X, "Left Laser X", setup->leftLaserLocation.x / 25.4f, LEFT_LASER_X_DESCR,  "in.");
+	sstr << setting(WebContent::LEFT_LASER_Y, "Left Laser Y", setup->leftLaserLocation.y / 25.4f, LEFT_LASER_Y_DESCR,  "in.", true);
+	sstr << setting(WebContent::LEFT_LASER_Z, "Left Laser Z", setup->leftLaserLocation.z / 25.4f, LEFT_LASER_Z_DESCR,  "in.", true);
+
+	sstr << setting(WebContent::RIGHT_LASER_PIN, "Right Laser Pin", setup->rightLaserPin, RIGHT_LASER_PIN_DESCR);
+	sstr << setting(WebContent::LEFT_LASER_PIN, "Left Laser Pin", setup->leftLaserPin, LEFT_LASER_PIN_DESCR);
+	sstr << setting(WebContent::LASER_ON_VALUE, "Laser On Value", setup->laserOnValue, LASER_ON_VALUE_DESCR);
+
+	sstr << setting(WebContent::STEPS_PER_REVOLUTION, "Steps Per Revolution", setup->stepsPerRevolution, STEPS_PER_REVOLUTION_DESCR);
+	sstr << setting(WebContent::ENABLE_PIN, "Motor Enable Pin", setup->motorEnablePin, ENABLE_PIN_DESCR);
+	sstr << setting(WebContent::STEP_PIN, "Motor Step Pin", setup->motorStepPin, STEP_PIN_DESCR);
+	sstr << setting(WebContent::STEP_DELAY, "Motor Step Delay", setup->motorStepDelay, STEP_DELAY_DESCR, "&mu;s");
+	sstr << setting(WebContent::DIRECTION_PIN, "Motor Direction Pin", setup->motorDirPin, DIRECTION_PIN_DESCR);
+	sstr << setting(WebContent::RESPONSE_DELAY, "Motor Response Delay", setup->motorResponseDelay, RESPONSE_DELAY_DESCR, "&mu;s");
+
+	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"save\">\
+<input class=\"submit\" type=\"submit\" value=\"Save\">\
+</p></form>\
+</body></html>";
+
+	     return sstr.str();
+}
+
+std::string WebContent::settings(const std::string& message)
+{
+
+	const Preset& preset = PresetManager::get()->getActivePreset();
+
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+		 << CSS
+		 << std::endl
+		 << JAVASCRIPT
+		 << std::endl
+		 << "</head>"
+	     << "\
+<body>\
+<div id=\"menuContainer\">\
+  <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
+  <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
+  <div class=\"menu2\"><a href=\"/setup\"><small><small>Setup</small></small></a></div>\
+</div>";
+
+	if (!message.empty())
 	{
 		sstr << "<h2>" << message << "</h2>";
 	}
 
 
 	sstr << "<form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
-	sstr << "<p><input class=\"submit\" type=\"submit\" value=\"Save\"></p>";
+
+	sstr << "\
+	<div id=\"outerPresetDiv\">\
+		<div id=\"presetTextDiv\">Preset</div>\
+		<div style=\"float: left\"><input name=\""
+		<< WebContent::PROFILE_NAME
+		<< "\" value=\""
+		<< preset.name
+		<< "\" type=\"text\"></div>\
+<div style=\"padding-left: 10px; float: left\"><input name=\"cmd\" class=\"submit\" value=\"Save\" type=\"submit\"></div>\
+<div style=\"padding-left: 0px\"><input name=\"cmd\" class=\"submit\" value=\"Delete\" type=\"submit\"></div>";
+
+	const std::vector<Preset>& profs = PresetManager::get()->getPresets();
+	for (size_t iProf = 0; iProf < profs.size(); iProf++)
+	{
+		const Preset& prof = profs[iProf];
+
+		sstr << "<div style=\"padding-left: 10px; padding-bottom: 10px\">"
+		     << "<div style=\"width: 500px\">"
+		     << (iProf + 1)
+		     << ".<a href=\"/settings?cmd=activate&id="
+		     << prof.id
+		     << "\">&nbsp;&nbsp;"
+		     << prof.name
+		     << "</a></div>"
+		     << "</div>";
+	}
+
+	sstr << "</div>";
 
 	//
 	// Laser selection UI
 	//
-	int laserSel = settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_SELECTION);
-	std::string leftSel  = laserSel == (int)Laser::LEFT_LASER  ? " SELECTED" : "";
-	std::string rightSel = laserSel == (int)Laser::RIGHT_LASER ? " SELECTED" : "";
-	std::string bothSel  = laserSel == (int)Laser::ALL_LASERS  ? " SELECTED" : "";
+	Laser::LaserSide laserSel = preset.laserSide;
+	std::string leftSel  = laserSel == Laser::LEFT_LASER  ? " SELECTED" : "";
+	std::string rightSel = laserSel == Laser::RIGHT_LASER ? " SELECTED" : "";
+	std::string bothSel  = laserSel == Laser::ALL_LASERS  ? " SELECTED" : "";
 
 	sstr << "<div><div class=\"settingsText\">Laser Selection</div>";
-	sstr << "<select name=\"" << Settings::LASER_SELECTION << "\">";
+	sstr << "<select name=\"" << WebContent::LASER_SELECTION << "\">";
 	sstr << "<option value=\"0\"" << leftSel << ">Left Laser</option>\r\n";
 	sstr << "<option value=\"1\"" << rightSel << ">Right Laser</option>\r\n";
 	sstr << "<option value=\"2\"" << bothSel << ">Both Lasers</option>\r\n";
@@ -420,15 +564,15 @@ if (!message.empty())
 	//
 	// Camera Mode UI
 	//
-	int cameraMode = settings->readInt(Settings::GENERAL_SETTINGS, Settings::CAMERA_MODE);
-	std::string still5Sel  = cameraMode == (int)Camera::CM_STILL_5MP  ? " SELECTED" : "";
-	std::string video5Sel = cameraMode == (int)Camera::CM_VIDEO_5MP ? " SELECTED" : "";
-	std::string videoHDSel = cameraMode == (int)Camera::CM_VIDEO_HD ? " SELECTED" : "";
-	std::string video1P2Sel = cameraMode == (int)Camera::CM_VIDEO_1P2MP ? " SELECTED" : "";
-	std::string videoVGASel = cameraMode == (int)Camera::CM_VIDEO_VGA ? " SELECTED" : "";
+	Camera::CameraMode cameraMode = preset.cameraMode;
+	std::string still5Sel   = cameraMode == Camera::CM_STILL_5MP  ? " SELECTED" : "";
+	std::string video5Sel   = cameraMode == Camera::CM_VIDEO_5MP ? " SELECTED" : "";
+	std::string videoHDSel  = cameraMode == Camera::CM_VIDEO_HD ? " SELECTED" : "";
+	std::string video1P2Sel = cameraMode == Camera::CM_VIDEO_1P2MP ? " SELECTED" : "";
+	std::string videoVGASel = cameraMode == Camera::CM_VIDEO_VGA ? " SELECTED" : "";
 
 	sstr << "<div><div class=\"settingsText\">Camera Mode</div>";
-	sstr << "<select name=\"" << Settings::CAMERA_MODE<< "\">";
+	sstr << "<select name=\"" << WebContent::CAMERA_MODE<< "\">";
 	sstr << "<option value=\"" << (int)Camera::CM_STILL_5MP << "\"" << still5Sel << ">5 Megapixel (still mode, 2592x1944)</option>\r\n";
 	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_5MP << "\"" << video5Sel << ">5 Megapixel (video mode, 2592x1944)</option>\r\n";
 	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_HD << "\"" << videoHDSel << ">1.9 Megapixel (video mode, 1600x1200)</option>\r\n";
@@ -437,33 +581,14 @@ if (!message.empty())
 	sstr << "</select></div>";
 	sstr << "<div class=\"settingsDescr\">The camera mode to use. Video mode is faster but Still mode results in higher quality scans.</div>\n";
 
-	sstr << setting(Settings::CAMERA_X, "Camera X", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_X) / 25.4f), CAMERA_X_DESCR, "in.", true);
-	sstr << setting(Settings::CAMERA_Y, "Camera Y", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_Y) / 25.4f), CAMERA_Y_DESCR,  "in.");
-	sstr << setting(Settings::CAMERA_Z, "Camera Z", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_Z) / 25.4f), CAMERA_Z_DESCR,  "in.");
-	sstr << setting(Settings::RIGHT_LASER_X, "Right Laser X", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::RIGHT_LASER_X) / 25.4f), RIGHT_LASER_X_DESCR,  "in.");
-	sstr << setting(Settings::RIGHT_LASER_Y, "Right Laser Y", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::RIGHT_LASER_Y) / 25.4f), RIGHT_LASER_Y_DESCR,  "in.", true);
-	sstr << setting(Settings::RIGHT_LASER_Z, "Right Laser Z", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::RIGHT_LASER_Z) / 25.4f), RIGHT_LASER_Z_DESCR,  "in.", true);
-	sstr << setting(Settings::LEFT_LASER_X, "Left Laser X", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_X) / 25.4f), LEFT_LASER_X_DESCR,  "in.");
-	sstr << setting(Settings::LEFT_LASER_Y, "Left Laser Y", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_Y) / 25.4f), LEFT_LASER_Y_DESCR,  "in.", true);
-	sstr << setting(Settings::LEFT_LASER_Z, "Left Laser Z", (real)(settings->readReal(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_Z) / 25.4f), LEFT_LASER_Z_DESCR,  "in.", true);
-	sstr << setting(Settings::LASER_MAGNITUDE_THRESHOLD, "Laser Threshold", (real)settings->readReal(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD), LASER_MAGNITUDE_THRESHOLD_DESCR);
-	sstr << setting(Settings::LASER_DELAY, "Laser Delay", settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_DELAY), LASER_DELAY_DESCR, "&mu;s");
-	sstr << setting(Settings::RIGHT_LASER_PIN, "Right Laser Pin", settings->readInt(Settings::GENERAL_SETTINGS, Settings::RIGHT_LASER_PIN), RIGHT_LASER_PIN_DESCR);
-	sstr << setting(Settings::LEFT_LASER_PIN, "Left Laser Pin", settings->readInt(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_PIN), LEFT_LASER_PIN_DESCR);
-	sstr << setting(Settings::LASER_ON_VALUE, "Laser On Value", settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_ON_VALUE), LASER_ON_VALUE_DESCR);
-	sstr << setting(Settings::STABILITY_DELAY, "Stability Delay", settings->readInt(Settings::GENERAL_SETTINGS, Settings::STABILITY_DELAY), STABILITY_DELAY_DESCR, "&mu;s");
-	sstr << setting(Settings::MAX_LASER_WIDTH, "Max Laser Width", settings->readInt(Settings::GENERAL_SETTINGS, Settings::MAX_LASER_WIDTH), MAX_LASER_WIDTH_DESCR, "px.");
-	sstr << setting(Settings::MIN_LASER_WIDTH, "Min Laser Width", settings->readInt(Settings::GENERAL_SETTINGS, Settings::MIN_LASER_WIDTH), MIN_LASER_WIDTH_DESCR, "px.");
-	sstr << setting(Settings::STEPS_PER_REVOLUTION, "Steps Per Revolution", settings->readInt(Settings::GENERAL_SETTINGS, Settings::STEPS_PER_REVOLUTION), STEPS_PER_REVOLUTION_DESCR);
-	sstr << setting(Settings::ENABLE_PIN, "Motor Enable Pin", settings->readInt(Settings::A4988_SETTINGS, Settings::ENABLE_PIN), ENABLE_PIN_DESCR);
-	sstr << setting(Settings::STEP_PIN, "Motor Step Pin", settings->readInt(Settings::A4988_SETTINGS, Settings::STEP_PIN), STEP_PIN_DESCR);
-	sstr << setting(Settings::STEP_DELAY, "Motor Step Delay", settings->readInt(Settings::A4988_SETTINGS, Settings::STEP_DELAY), STEP_DELAY_DESCR, "&mu;s");
-	sstr << setting(Settings::DIRECTION_PIN, "Motor Direction Pin", settings->readInt(Settings::A4988_SETTINGS, Settings::DIRECTION_PIN), DIRECTION_PIN_DESCR);
-	sstr << setting(Settings::RESPONSE_DELAY, "Motor Response Delay", settings->readInt(Settings::A4988_SETTINGS, Settings::RESPONSE_DELAY), RESPONSE_DELAY_DESCR, "&mu;s");
+	sstr << setting(WebContent::FRAMES_PER_REVOLUTION, "Frames Per Revolution", preset.framesPerRevolution, FRAMES_PER_REVOLUTION_DESCR);
+	sstr << setting(WebContent::LASER_MAGNITUDE_THRESHOLD, "Laser Threshold", preset.laserThreshold, LASER_MAGNITUDE_THRESHOLD_DESCR);
+	sstr << setting(WebContent::LASER_DELAY, "Laser Delay", preset.laserDelay, LASER_DELAY_DESCR, "&mu;s");
+	sstr << setting(WebContent::STABILITY_DELAY, "Stability Delay", preset.stabilityDelay, STABILITY_DELAY_DESCR, "&mu;s");
+	sstr << setting(WebContent::MAX_LASER_WIDTH, "Max Laser Width", preset.maxLaserWidth, MAX_LASER_WIDTH_DESCR, "px.");
+	sstr << setting(WebContent::MIN_LASER_WIDTH, "Min Laser Width", preset.minLaserWidth, MIN_LASER_WIDTH_DESCR, "px.");
 
-	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"save\">\
-<input class=\"submit\" type=\"submit\" value=\"Save\">\
-</p></form>\
+	sstr << "</form>\
 <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
 <p><br><br><br><form> <input type=\"hidden\" name=\"cmd\" value=\"shutdown\">\
 <input class=\"submit\" type=\"submit\" value=\"Shutdown\"></p></form>\

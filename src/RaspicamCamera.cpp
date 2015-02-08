@@ -23,7 +23,7 @@
 #include "Thread.h"
 
 
-namespace scanner
+namespace freelss
 {
 
 RaspicamCamera::RaspicamCamera(int imageWidth, int imageHeight) :

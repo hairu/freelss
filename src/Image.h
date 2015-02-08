@@ -20,7 +20,7 @@
 
 #pragma once
 
-namespace scanner
+namespace freelss
 {
 
 /** RGB Image with the same dimensions that the camera takes */

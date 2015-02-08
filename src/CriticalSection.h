@@ -20,7 +20,7 @@
 
 #pragma once
 
-namespace scanner
+namespace freelss
 {
 
 /** CriticalSection implementation */

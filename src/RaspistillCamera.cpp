@@ -21,7 +21,7 @@
 #include "Main.h"
 #include "RaspistillCamera.h"
 
-namespace scanner
+namespace freelss
 {
 
 

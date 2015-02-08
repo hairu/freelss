@@ -22,7 +22,7 @@
 
 #include "Laser.h"
 
-namespace scanner
+namespace freelss
 {
 
 class Calibrator

@@ -21,7 +21,7 @@
 #include "Main.h"
 #include "CriticalSection.h"
 
-namespace scanner
+namespace freelss
 {
 
 CriticalSection::CriticalSection()

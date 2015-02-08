@@ -21,7 +21,7 @@
 #include "Main.h"
 #include "Thread.h"
 
-namespace scanner
+namespace freelss
 {
 
 // The threaded function
@@ -33,7 +33,7 @@ static void * G_Thread_ThreadFunc ( void *ptr )
 	{
 		thread->run();
 	}
-	catch (scanner::Exception& ex)
+	catch (freelss::Exception& ex)
 	{
 		std::cerr << "Exception thrown: " << ex << std::endl;
 	}

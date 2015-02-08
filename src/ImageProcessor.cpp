@@ -20,9 +20,8 @@
 
 #include "Main.h"
 #include "ImageProcessor.h"
-#include "Settings.h"
+#include "PresetManager.h"
 #include "Camera.h"
-#include "mpfit.h"
 
 // Only one of these filters should be defined
 #define CENTERMASS_FILTER 1
@@ -30,7 +29,11 @@
 #define PEAK_FILTER       0
 #define INV_SQRT_2PI      0.3989422804014327
 
-namespace scanner
+#if GUASS_FILTER
+#include <mpfit.h>
+#endif
+
+namespace freelss
 {
 
 const real ImageProcessor::RED_HUE_LOWER_THRESHOLD = 30;
@@ -101,10 +104,10 @@ ImageProcessor::ImageProcessor()
 {
 	m_laserRanges = new ImageProcessor::LaserRange[Camera::getInstance()->getImageWidth() + 1];
 
-	Settings * settings = Settings::get();
-	m_laserMagnitudeThreshold = settings->readReal(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD);
-	m_maxLaserWidth = settings->readInt(Settings::GENERAL_SETTINGS, Settings::MAX_LASER_WIDTH);
-	m_minLaserWidth = settings->readInt(Settings::GENERAL_SETTINGS, Settings::MIN_LASER_WIDTH);
+	Preset& preset = PresetManager::get()->getActivePreset();
+	m_laserMagnitudeThreshold = preset.laserThreshold;
+	m_maxLaserWidth = preset.maxLaserWidth;
+	m_minLaserWidth = preset.minLaserWidth;
 }
 
 ImageProcessor::~ImageProcessor()
@@ -177,10 +180,10 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 		for (unsigned iCol = 0; iCol < rowStep; iCol += components)
 		{
 			// Perform image subtraction
-#if 0
+#if 1
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int magSq = r * r;
-			unsigned char mag = 255.0f * (magSq * 0.000015379f);
+			real mag = 255.0f * (magSq * 0.000015379f);
 #else
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int g = (int)br[iCol + 1] - (int)ar[iCol + 1];
@@ -196,16 +199,10 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 					dr[iCol + 1] = mag;
 					dr[iCol + 2] = mag;
 				}
-				else if (magSq > 0)
+				else
 				{
 					dr[iCol + 0] = mag;
 					dr[iCol + 1] = mag;
-					dr[iCol + 2] = 0;
-				}
-				else
-				{
-					dr[iCol + 0] = 0;
-					dr[iCol + 1] = 0;
 					dr[iCol + 2] = 0;
 				}
 			}
@@ -221,7 +218,7 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 
 				if (debuggingCsvFile != NULL)
 				{
-					rowOut << magSq << ", ";
+					rowOut << mag << ", ";
 					numRowOut++;
 				}
 			}

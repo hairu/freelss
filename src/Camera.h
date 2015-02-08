@@ -22,7 +22,7 @@
 #include "Image.h"
 #include "CriticalSection.h"
 
-namespace scanner
+namespace freelss
 {
 
 /** Camera interface */

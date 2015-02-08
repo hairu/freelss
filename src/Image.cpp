@@ -27,7 +27,7 @@ static boolean EmptyBuffer(jpeg_compress_struct* cinfo) { return TRUE; }
 static void TermBuffer(jpeg_compress_struct* cinfo) { }
 
 
-namespace scanner
+namespace freelss
 {
 
 Image::Image() :

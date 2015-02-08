@@ -23,7 +23,7 @@
 // Forward declaration
 struct MHD_Daemon;
 
-namespace scanner
+namespace freelss
 {
 
 class Scanner;

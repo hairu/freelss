@@ -24,9 +24,9 @@
 #include "RaspicamCamera.h"
 #include "MmalStillCamera.h"
 #include "MmalVideoCamera.h"
-#include "Settings.h"
+#include "PresetManager.h"
 
-namespace scanner
+namespace freelss
 {
 
 CriticalSection Camera::m_cs = CriticalSection();
@@ -105,7 +105,7 @@ void Camera::release()
 void Camera::reinitialize()
 {
 	// Read the camera type from settings
-	Camera::CameraMode cameraMode = (Camera::CameraMode) Settings::get()->readInt(Settings::GENERAL_SETTINGS, Settings::CAMERA_MODE);
+	Camera::CameraMode cameraMode = PresetManager::get()->getActivePreset().cameraMode;
 	Camera::CameraType type;
 	int reqImageWidth;
 	int reqImageHeight;
