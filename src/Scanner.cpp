@@ -285,7 +285,7 @@ void Scanner::run()
 
 		if (m_turnTable == NULL)
 		{
-			throw Exception("Laser object is NULL");
+			throw Exception("Turntable object is NULL");
 		}
 
 		float rotation = 0;

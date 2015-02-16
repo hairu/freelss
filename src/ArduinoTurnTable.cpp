@@ -97,8 +97,8 @@ void ArduinoTurnTable::setMotorEnabled(bool enabled)
         {
         ArduinoSerial::sendchar(MC_TURN_STEPPER_ON);
         // Turn the scanner light on full
-        ArduinoSerial::sendchar(MC_TURN_LIGHT_ON);      // Light on full.
-        ArduinoSerial::sendchar(255);
+        ArduinoSerial::sendchar(MC_TURN_LIGHT_ON);      // Light on part way.
+        ArduinoSerial::sendchar(99);
         }
     else 
         {   

@@ -61,13 +61,13 @@ void ArduinoLaser::turnOn(Laser::LaserSide laser)
 {
 	if (laser == Laser::RIGHT_LASER || laser == Laser::ALL_LASERS)
 	{
-        scanner::ArduinoSerial::sendchar(MC_TURN_LASER_ON);
+        scanner::ArduinoSerial::sendchar(MC_TURN_ALT_LASER_ON);
 		m_rightLaserOn = true;
 	}
 
 	if (laser == Laser::LEFT_LASER || laser == Laser::ALL_LASERS)
 	{
-        scanner::ArduinoSerial::sendchar(MC_TURN_ALT_LASER_ON);
+        scanner::ArduinoSerial::sendchar(MC_TURN_LASER_ON);
 		m_leftLaserOn = true;
 	}
 
@@ -78,13 +78,13 @@ void ArduinoLaser::turnOff(Laser::LaserSide laser)
 {
 	if (laser == Laser::RIGHT_LASER || laser == Laser::ALL_LASERS)
 	{
-        scanner::ArduinoSerial::sendchar(MC_TURN_LASER_OFF);
+        scanner::ArduinoSerial::sendchar(MC_TURN_ALT_LASER_OFF);
 		m_rightLaserOn = false;
 	}
 
 	if (laser == Laser::LEFT_LASER || laser == Laser::ALL_LASERS)
 	{
-        scanner::ArduinoSerial::sendchar(MC_TURN_ALT_LASER_OFF);
+        scanner::ArduinoSerial::sendchar(MC_TURN_LASER_OFF);
 		m_leftLaserOn = false;
 	}
 }

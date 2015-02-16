@@ -89,7 +89,7 @@ void RaspistillCamera::writeToDisk(const char * filename)
 {
 	std::stringstream sstr;
     #ifdef USE_LINUX_HARDWARE
-    sstr << "sleep 1.5;fswebcam -d /dev/video0 -r " << m_imageWidth << "x" << m_imageHeight << " --no-timestamp --no-banner ";
+    sstr << "sleep 1.5;fswebcam -d /dev/video1 -r " << m_imageWidth << "x" << m_imageHeight << " --no-timestamp --no-banner ";
     #else
 	sstr << "raspistill -t 100 -ex night -awb off -br 40 -n -o ";
     #endif

@@ -52,6 +52,7 @@ void LocationMapper::mapPoints(PixelLocation * laserLocations,
 	const real MAX_DIST_Y = (8 * 25.4); // TODO: Max height from the turn table (This should be a setting somewhere)
 	// const real MAX_DIST_XZ_SQ = (MAX_DIST_Y / 2) * (MAX_DIST_Y / 2); // Max in the XZ plane
 	const real MAX_DIST_XZ_SQ = (MAX_DIST_Y) * (MAX_DIST_Y); // Max in the XZ plane
+    const real MAX_DIST_Z = 100; // TODO: Radius of turntable; should be in settings.
 
 	int numIntersectionFails = 0;
 	int numDistanceFails = 0;
@@ -82,10 +83,12 @@ void LocationMapper::mapPoints(PixelLocation * laserLocations,
 		ColoredPoint * point = &points[outNumLocations];
 		if(intersectLaserPlane(ray, point, laserLocations[iLoc]))
 		{
-			// The point must be above the turn table and less than the max distance from the center of the turn table
+			// The point must be above the turn table,
+            // less than the max distance from the center of the turn table,
+            // and not behind the turntable.
 			real distXZSq = point->x * point->x + point->z * point->z;
-
-			if (point->y >= 0.0 && distXZSq < MAX_DIST_XZ_SQ && point->y < MAX_DIST_Y)
+			if (point->y >= 0.0 && distXZSq < MAX_DIST_XZ_SQ &&
+                 point->y < MAX_DIST_Y && abs(point->z) < MAX_DIST_Z)
 			{
 				// Set the color
 				if (haveImage)
