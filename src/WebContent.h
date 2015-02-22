@@ -70,7 +70,10 @@ public:
 	static const std::string RESPONSE_DELAY;
 	static const std::string STEP_DELAY;
 	static const std::string FRAMES_PER_REVOLUTION;
-
+	static const std::string GENERATE_XYZ;
+	static const std::string GENERATE_STL;
+	static const std::string GENERATE_PLY;
+	static const std::string SEPARATE_LASERS_BY_COLOR;
 private:
 	static std::string setting(const std::string& name, const std::string& label,
 			const std::string& value, const std::string& description, const std::string& units = "", bool readOnly = false);
@@ -80,6 +83,8 @@ private:
 
 	static std::string setting(const std::string& name, const std::string& label,
 			real value, const std::string& description, const std::string& units = "", bool readOnly = false);
+
+	static std::string checkbox(const std::string& name, const std::string& label, bool checked, const std::string& description);
 
 	static std::string scanResult(size_t index, const ScanResult& result);
 
@@ -109,6 +114,10 @@ private:
 	static const std::string DIRECTION_PIN_DESCR;
 	static const std::string RESPONSE_DELAY_DESCR;
 	static const std::string FRAMES_PER_REVOLUTION_DESCR;
+	static const std::string GENERATE_XYZ_DESCR;
+	static const std::string GENERATE_STL_DESCR;
+	static const std::string GENERATE_PLY_DESCR;
+	static const std::string SEPARATE_LASERS_BY_COLOR_DESCR;
 };
 
 }

@@ -36,11 +36,6 @@ static real32 DistanceSquared(const ColoredPoint& a, const ColoredPoint&b)
 	return dx * dx + dy * dy + dz * dz;
 }
 
-static bool SortRecordByRow(const NeutralFileRecord& a, const NeutralFileRecord& b)
-{
-	return a.pixel.y < b.pixel.y;
-}
-
 
 StlWriter::StlWriter() :
 	m_maxEdgeDistMmSq(12.4 * 12.2),  // TODO: Make this a setting or autodetect it based off the distance to table and the detail level
@@ -52,122 +47,6 @@ StlWriter::StlWriter() :
 	m_normal[2] = 0;
 }
 
-void StlWriter::computeAverage(const std::vector<NeutralFileRecord>& bin, NeutralFileRecord& out)
-{
-	out = bin.front();
-
-	real32 invSize = 1.0f / bin.size();
-
-	real32 rotation = 0;
-	real32 pixelLocationX = 0;
-	real32 pixelLocationY = 0;
-	real32 ptX = 0;
-	real32 ptY = 0;
-	real32 ptZ = 0;
-	real32 ptR = 0;
-	real32 ptG = 0;
-	real32 ptB = 0;
-
-	for (size_t iBin = 0; iBin < bin.size(); iBin++)
-	{
-		const NeutralFileRecord& br = bin[iBin];
-
-		rotation += invSize * br.rotation;
-		pixelLocationX += invSize * br.pixel.x;
-		pixelLocationY += invSize * br.pixel.y;
-		ptX += invSize * br.point.x;
-		ptY += invSize * br.point.y;
-		ptZ += invSize * br.point.z;
-		ptR += invSize * br.point.r;
-		ptG += invSize * br.point.g;
-		ptB += invSize * br.point.b;
-	}
-
-	out.rotation = rotation;
-	out.pixel.x = pixelLocationX;  // TODO: We should probably round these values
-	out.pixel.y = pixelLocationY;
-	out.point.x = ptX;
-	out.point.y = ptY;
-	out.point.z = ptZ;
-	out.point.r = ptR;
-	out.point.g = ptG;
-	out.point.b = ptB;
-}
-
-void StlWriter::lowpassFilter(std::vector<NeutralFileRecord>& output, std::vector<NeutralFileRecord>& frame, unsigned maxNumRows, unsigned numRowBins)
-{
-	output.clear();
-
-	// Sanity check
-	if (frame.empty())
-	{
-		return;
-	}
-
-	// Sort by image row
-	std::sort(frame.begin(), frame.end(), SortRecordByRow);
-
-	unsigned binSize = maxNumRows / numRowBins;
-
-	// Holds the current contents of the bin
-	std::vector<NeutralFileRecord> bin;
-	unsigned nextBinY = frame.front().pixel.y + binSize;
-
-	// unsigned bin = frame.front().pixel.y / numRowBins;
-	for (size_t iFr = 0; iFr < frame.size(); iFr++)
-	{
-		NeutralFileRecord& record = frame[iFr];
-
-		if (record.pixel.y < nextBinY)
-		{
-			bin.push_back(record);
-		}
-		else
-		{
-			// Average the bin results and add it to the output
-			if (!bin.empty())
-			{
-				NeutralFileRecord out;
-				computeAverage(bin, out);
-
-				output.push_back(out);
-				bin.clear();
-			}
-
-			nextBinY = record.pixel.y + binSize;
-			bin.push_back(record);
-		}
-	}
-
-	// Process any results still left in the bin
-	if (!bin.empty())
-	{
-		NeutralFileRecord out;
-		computeAverage(bin, out);
-
-		output.push_back(out);
-		bin.clear();
-	}
-}
-
-bool StlWriter::readNextStep(std::vector<NeutralFileRecord>& out, const std::vector<NeutralFileRecord>& results, size_t & resultIndex)
-{
-	out.clear();
-
-	if (resultIndex >= results.size() || results.empty())
-	{
-		return false;
-	}
-
-	int pseudoStep = results[resultIndex].pseudoFrame;
-	while (pseudoStep == results[resultIndex].pseudoFrame && resultIndex < results.size())
-	{
-		out.push_back(results[resultIndex]);
-		resultIndex++;
-	}
-
-	return true;
-}
 
 void StlWriter::write(const std::string& baseFilename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst)
 {
@@ -176,13 +55,6 @@ void StlWriter::write(const std::string& baseFilename, const std::vector<Neutral
 	if (!fout.is_open())
 	{
 		throw Exception("Error opening STL file for writing: " + stlFilename);
-	}
-
-	std::string xyzFilename = baseFilename + ".xyz";
-	std::ofstream xyz (xyzFilename.c_str());
-	if (!xyz.is_open())
-	{
-		throw Exception("Error opening STL file for writing: " + xyzFilename);
 	}
 
 	uint32 maxNumRows = Camera::getInstance()->getImageHeight(); // TODO: Make this use the image height that generated the result and not the current Camera
@@ -208,26 +80,15 @@ void StlWriter::write(const std::string& baseFilename, const std::vector<Neutral
 
 		size_t resultIndex = 0;
 		size_t totNumPoints = 0;
-		while (readNextStep(frameC, results, resultIndex))
+		while (NeutralFileRecord::readNextFrame(frameC, results, resultIndex))
 		{
 			// Reduce the number of result rows and filter out some of the noise
-			lowpassFilter(* currentFrame, frameC, maxNumRows, numRowBins);
+			NeutralFileRecord::lowpassFilter(* currentFrame, frameC, maxNumRows, numRowBins);
 
 			totNumPoints += currentFrame->size();
 
 			// Sort the results in decreasing Y
 			//std::sort(currentFrame->begin(), currentFrame->end(), SortRecordByYValue);
-
-			// Write the filtered results to the XYZ file
-			for (size_t iRec = 0; iRec < currentFrame->size(); iRec++)
-			{
-				const NeutralFileRecord& rec = currentFrame->at(iRec);
-				const ColoredPoint & pt = rec.point;
-
-				xyz << pt.x        << " " << pt.y        << " " << pt.z        << " "
-				    << pt.normal.x << " " << pt.normal.y << " " << pt.normal.z
-				    << std::endl;
-			}
 
 			if (iStep > 0)
 			{
@@ -272,12 +133,10 @@ void StlWriter::write(const std::string& baseFilename, const std::vector<Neutral
 	catch (...)
 	{
 		fout.close();
-		xyz.close();
 		throw;
 	}
 
 	fout.close();
-	xyz.close();
 }
 
 void StlWriter::writeHeader(std::ofstream& fout)

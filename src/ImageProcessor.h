@@ -38,11 +38,11 @@ public:
 	 *     This can be helpful when debugging laser detection issues.
 	 * @param laserLocations - Output variable to store the laser locations.
 	 * @param maxNumLocations - The maximum number of locations to store in @p laserLocations.
-	 * @param thresholdFactor - Scales the laser threshold by this amount.  default = 1.0
+	 * @param percentPixelsOverThreshold - The percentage of pixels that were over the threshold amount.
 	 * @return Returns the number of locations written to @p laserLocations.
 	 */
 	int process(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations, int maxNumLocations,
-			    int& firstRowLaserCol, int & numSuspectedBadLaserLocations, int & numImageProcessingRetries, const char * debuggingCsvFile);
+			    int& firstRowLaserCol, real & percentPixelsOverThreshold, const char * debuggingCsvFile);
 
 private:
 
@@ -58,14 +58,10 @@ private:
 
 	real detectLaserRangeCenter(const ImageProcessor::LaserRange& range, unsigned char * ar, unsigned char * br);
 
-	int subProcess(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations,
-			       int maxNumLocations, real laserThreshold, int& firstRowLaserCol, int & numSuspectedBadLaserLocations, const char * debuggingCsvFile);
-
 	/** Converts the RGB color to HSV */
 	static void toHsv(unsigned char r, unsigned char g, unsigned char b, Hsv * hsv);
 	static const real RED_HUE_LOWER_THRESHOLD;
 	static const real RED_HUE_UPPER_THRESHOLD;
-	static const int NUM_LASER_RANGE_THRESHOLD;
 	static const unsigned RANGE_DISTANCE_THRESHOLD;
 
 	/** The LaserRanges for each column */

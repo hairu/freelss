@@ -29,7 +29,7 @@ Preset::Preset() :
 	name("Preset"),
 	laserSide(Laser::RIGHT_LASER),
 	cameraMode(Camera::CM_VIDEO_1P2MP),
-	laserThreshold(3),
+	laserThreshold(10),
 	minLaserWidth(3),
 	maxLaserWidth(40),
 	maxObjectSize(215.9),  // 8.5"
@@ -38,7 +38,11 @@ Preset::Preset() :
 	laserDelay(180000),
 	stabilityDelay(0),
 	id(-1),
-	framesPerRevolution(800)
+	framesPerRevolution(800),
+	generateXyz (false),
+	generateStl(true),
+	generatePly(true),
+	laserMergeAction (LMA_PREFER_RIGHT_LASER)
 {
 	// Do nothing
 }
@@ -57,6 +61,10 @@ void Preset::encodeProperties(std::vector<Property>& properties, bool isActivePr
 	properties.push_back(Property("presets." + name + ".laserDelay", ToString(laserDelay)));
 	properties.push_back(Property("presets." + name + ".stabilityDelay", ToString(stabilityDelay)));
 	properties.push_back(Property("presets." + name + ".framesPerRevolution", ToString(framesPerRevolution)));
+	properties.push_back(Property("presets." + name + ".generateXyz", ToString(generateXyz)));
+	properties.push_back(Property("presets." + name + ".generateStl", ToString(generateStl)));
+	properties.push_back(Property("presets." + name + ".generatePly", ToString(generatePly)));
+	properties.push_back(Property("presets." + name + ".laserMergeAction", ToString((int)laserMergeAction)));
 
 	if (isActivePreset)
 	{
@@ -123,6 +131,22 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 			else if (EndsWith(prop.name, name + ".framesPerRevolution"))
 			{
 				framesPerRevolution = ToInt(prop.value);
+			}
+			else if (EndsWith(prop.name, name + ".generateXyz"))
+			{
+				generateXyz = ToBool(prop.value);
+			}
+			else if (EndsWith(prop.name, name + ".generateStl"))
+			{
+				generateStl = ToBool(prop.value);
+			}
+			else if (EndsWith(prop.name, name + ".generatePly"))
+			{
+				generatePly = ToBool(prop.value);
+			}
+			else if (EndsWith(prop.name, name + ".laserMergeAction"))
+			{
+				laserMergeAction = (LaserMergeAction)ToInt(prop.value);
 			}
 		}
 	}

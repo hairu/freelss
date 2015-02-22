@@ -13,7 +13,8 @@ OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	NeutralFileWriter.o NeutralFileReader.o RaspicamCamera.o \
 	Camera.o ScanResultsWriter.o MmalStillCamera.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
-	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o
+	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
+	XyzWriter.o
 
 all: freelss 
 
@@ -113,10 +114,15 @@ Setup.o: Setup.cpp Setup.h Main.h
 LaserResultsMerger.o: LaserResultsMerger.cpp LaserResultsMerger.h Main.h
 	$(CC) -c $(CFLAGS) LaserResultsMerger.cpp
 
+XyzWriter.o: XyzWriter.cpp XyzWriter.h Main.h
+	$(CC) -c $(CFLAGS) XyzWriter.cpp
+
 github:
 	mkdir -p ../../github
 	mkdir -p ../../github/src
-	cp -f *.h *.cpp Makefile ../../github/src
+	mkdir -p ../../github/config
+	cp ../config/freelss ../../github/config/
+	cp -f *.h *.cpp Makefile ../../github/src/
 
 run: freelss
 	sudo ./freelss
@@ -126,6 +132,11 @@ dist: clean
 
 install: freelss
 	sudo cp -f freelss /usr/local/bin/freelss
+
+startup: install
+	sudo cp ../config/freelss /etc/init.d/freelss
+	sudo update-rc.d freelss remove
+	sudo update-rc.d freelss defaults
 
 clean:
 	rm -f *.o *.gch *~ freelss

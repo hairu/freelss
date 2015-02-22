@@ -206,6 +206,21 @@ struct Ray
 
 struct NeutralFileRecord
 {
+	/** Populates frameC with the next frame from the results vector starting at index resultIndex */
+	static bool readNextFrame(std::vector<NeutralFileRecord>& out, const std::vector<NeutralFileRecord>& results, size_t & resultIndex);
+
+	/**
+	 * Reduce the number of result rows and filter out some of the noise
+	 * @param maxNumRows - The number of rows in the image the produced the frame.
+	 * @param numRowBins - The total number of row bins in the entire image, not necessarily what is returned by this function.
+	 */
+	static void lowpassFilter(std::vector<NeutralFileRecord>& output, std::vector<NeutralFileRecord>& frame, unsigned maxNumRows, unsigned numRowBins);
+
+	/**
+	 * Computes the average of all the records in the bin.
+	 */
+	static void computeAverage(const std::vector<NeutralFileRecord>& bin, NeutralFileRecord& out);
+
 	PixelLocation pixel;
 	ColoredPoint point;
 	real rotation;
@@ -232,8 +247,10 @@ double GetTimeInSeconds();
 
 std::string ToString(real value);
 std::string ToString(int value);
+std::string ToString(bool value);
 real ToReal(const std::string& str);
 int ToInt(const std::string& str);
+bool ToBool(const std::string& str);
 bool EndsWith(const std::string& str, const std::string& ending);
 void HtmlEncode(std::string& data);
 void LoadProperties();

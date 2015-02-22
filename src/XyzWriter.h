@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -20,37 +20,17 @@
 
 #pragma once
 
-#include "Preset.h"
-
 namespace freelss
 {
 
 /**
- * This class merges the left and right laser results into a single result set.
- * It uses the results from the left laser in places where the right laser does
- * not have information.  It utilizes a volumetric masking technique to determine
- * if the right laser already has information in a given area.
+ * Writes the scan results as an XYZ file.
  */
-class LaserResultsMerger
+class XyzWriter
 {
 public:
-	LaserResultsMerger();
 
-	void merge(std::vector<NeutralFileRecord> & out,
-            std::vector<NeutralFileRecord> & leftLaserResults,
-            std::vector<NeutralFileRecord> & rightLaserResults,
-            int numFramesPerRevolution,
-            int numFramesBetweenLaserPlanes,
-            int maxPointY,
-            Preset::LaserMergeAction mergeAction);
-
-private:
-
-	int getIndex(const NeutralFileRecord& record);
-
-	int m_numFramesBetweenLaserPlanes;
-	real m_numFramesPerRevolution;
-	real m_maxPointY;
+	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results);
 };
 
 }

@@ -230,6 +230,20 @@ static void SavePreset(RequestInfo * reqInfo)
 		preset->framesPerRevolution = ToInt(framesPerRevolution.c_str());
 	}
 
+	preset->generatePly = !reqInfo->arguments[WebContent::GENERATE_PLY].empty();
+	preset->generateStl = !reqInfo->arguments[WebContent::GENERATE_STL].empty();
+	preset->generateXyz = !reqInfo->arguments[WebContent::GENERATE_XYZ].empty();
+
+	if (reqInfo->arguments[WebContent::SEPARATE_LASERS_BY_COLOR].empty())
+	{
+		preset->laserMergeAction = Preset::LMA_PREFER_RIGHT_LASER;
+	}
+	else
+	{
+		preset->laserMergeAction = Preset::LMA_SEPARATE_BY_COLOR;
+		preset->generatePly = true;
+	}
+
 	/** Save the properties */
 	SaveProperties();
 }

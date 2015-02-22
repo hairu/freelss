@@ -93,8 +93,8 @@ private:
 		double fileWritingTime;
 		double meshBuildTime;
 		double laserTime;
-		int numScanRetries;
-		int numImageProcessingRetries;
+		double laserMergeTime;
+		int numFrameRetries;
 		int numFrames;
 	};
 
@@ -113,11 +113,12 @@ private:
 
 	void finishWritingToOutput();
 
-	void processScan(std::vector<NeutralFileRecord> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
+	/**
+	 * Returns true if the scan was processed successfully and false if there was a problem and the frame needs to be again.
+	 */
+	bool processScan(std::vector<NeutralFileRecord> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
 
 	void writeRangePoints(ColoredPoint * points, int numLocationsMapped,Laser::LaserSide laserSide);
-
-
 
 private:
 	/** Unowned objects */
@@ -162,14 +163,11 @@ private:
 	/** Protection for the running, progress, and any other status parameters */
 	CriticalSection m_status;
 
-	/** The maximum number of times to try a scan (at a particular rotation) before giving up */
-	const int m_maxNumScanTries;
+	/** The maximum number of times to try a frame (at a particular rotation) before giving up */
+	const int m_maxNumFrameRetries;
 
-	/** The threshold for number of suspected bad laser locations before a rescan is required */
-	const int m_badLaserLocationThreshold;
-
-	// Diagnostic info
-	int m_numSuspectedBadLaserLocations;
+	/** The threshold for percentage of pixels over the threshold */
+	const real m_maxPercentPixelsOverThreshold;
 
 	/** The image points for every column */
 	ColoredPoint * m_columnPoints;

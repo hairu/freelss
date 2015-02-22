@@ -60,7 +60,7 @@ Setup::Setup() :
 	leftLaserLocation.y = 82.55;
 	leftLaserLocation.z = 260.35;
 
-	rightLaserLocation.x = 114.3;
+	rightLaserLocation.x = 125.73;
 	rightLaserLocation.y = 82.55;
 	rightLaserLocation.z = 260.35;
 }

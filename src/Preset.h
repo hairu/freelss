@@ -33,6 +33,10 @@ namespace freelss
 class Preset
 {
 public:
+
+	/** The action that should be taken to merge laser results */
+	enum LaserMergeAction {LMA_PREFER_RIGHT_LASER, LMA_SEPARATE_BY_COLOR };
+
 	Preset();
 
 	/** Encodes property information to the properties vector */
@@ -59,6 +63,10 @@ public:
 	int stabilityDelay;
 	int id;
 	int framesPerRevolution;
+	bool generateXyz;
+	bool generateStl;
+	bool generatePly;
+	LaserMergeAction laserMergeAction;
 };
 
 }

@@ -51,8 +51,15 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 		                       std::vector<NeutralFileRecord> & rightLaserResults,
 		                       int numFramesPerRevolution,
 		                       int numFramesBetweenLaserPlanes,
-		                       int maxPointY)
+		                       int maxPointY,
+		                       Preset::LaserMergeAction mergeAction)
 {
+	// Sanity check
+	if (mergeAction != Preset::LMA_PREFER_RIGHT_LASER && mergeAction != Preset::LMA_SEPARATE_BY_COLOR)
+	{
+		throw Exception("Unsupported Laser Merge Action");
+	}
+
 	// Sanity check
 	if (leftLaserResults.empty() &&  rightLaserResults.empty())
 	{
@@ -92,9 +99,14 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 		{
 			NeutralFileRecord& right = rightLaserResults[iRight];
 			right.pseudoFrame = right.frame;
-			//right.point.r = 0;
-			//right.point.g = 0;
-			//right.point.b = 0;
+
+			// Make the Right laser black
+			if (mergeAction == Preset::LMA_SEPARATE_BY_COLOR)
+			{
+				right.point.r = 0;
+				right.point.g = 0;
+				right.point.b = 0;
+			}
 		}
 
 		for (size_t iLeft = 0; iLeft < leftLaserResults.size(); iLeft++)
@@ -110,9 +122,13 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 				left.pseudoFrame -= m_numFramesPerRevolution;
 			}
 
-			//left.point.r = 255;
-			//left.point.g = 0;
-			//left.point.b = 0;
+			// Make the Left laser red
+			if (mergeAction == Preset::LMA_SEPARATE_BY_COLOR)
+			{
+				left.point.r = 255;
+				left.point.g = 0;
+				left.point.b = 0;
+			}
 		}
 
 		int numCulledPoints = 0;
@@ -141,12 +157,15 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 			}
 			else
 			{
-				/*
-				left.point.r = 175;
-				left.point.g = 175;
-				left.point.b = 175;
-				out.push_back(left);
-				*/
+				// Make the culled left laser results gray
+				if (mergeAction == Preset::LMA_SEPARATE_BY_COLOR)
+				{
+					left.point.r = 175;
+					left.point.g = 175;
+					left.point.b = 175;
+					out.push_back(left);
+				}
+
 				numCulledPoints++;
 			}
 		}

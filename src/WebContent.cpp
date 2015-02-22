@@ -229,6 +229,10 @@ const std::string WebContent::DIRECTION_VALUE = "DIRECTION_VALUE";
 const std::string WebContent::RESPONSE_DELAY = "RESPONSE_DELAY";
 const std::string WebContent::STEP_DELAY = "STEP_DELAY";
 const std::string WebContent::FRAMES_PER_REVOLUTION = "FRAMES_PER_REVOLUTION";
+const std::string WebContent::GENERATE_XYZ = "GENERATE_XYZ";
+const std::string WebContent::GENERATE_STL = "GENERATE_STL";
+const std::string WebContent::GENERATE_PLY = "GENERATE_PLY";
+const std::string WebContent::SEPARATE_LASERS_BY_COLOR = "SEPARATE_LASERS_BY_COLOR";
 
 const std::string WebContent::CAMERA_X_DESCR = "X-compoment of camera location. ie: The camera is always at X = 0.";
 const std::string WebContent::CAMERA_Y_DESCR = "Y-component of camera location. ie: The distance from camera center to the XZ plane";
@@ -254,6 +258,10 @@ const std::string WebContent::STEP_DELAY_DESCR = "The amount of time between ste
 const std::string WebContent::DIRECTION_PIN_DESCR = "The wiringPi pin number for the stepper motor direction or rotation";
 const std::string WebContent::RESPONSE_DELAY_DESCR = "The time it takes for the stepper controller to recognize a pin value change in microseconds";
 const std::string WebContent::FRAMES_PER_REVOLUTION_DESCR = "The number of frames that should be taken for a scan. Default is 800.";
+const std::string WebContent::GENERATE_XYZ_DESCR = "Whether to generate an XYZ point cloud file from the scan.";
+const std::string WebContent::GENERATE_STL_DESCR = "Whether to generate an STL mesh from the scan.";
+const std::string WebContent::GENERATE_PLY_DESCR = "Whether to generate a PLY point clould from the scan.";
+const std::string WebContent::SEPARATE_LASERS_BY_COLOR_DESCR = "Calibration debugging option to separate the results from different lasers by color (requires PLY).";
 
 std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 {
@@ -587,6 +595,10 @@ std::string WebContent::settings(const std::string& message)
 	sstr << setting(WebContent::STABILITY_DELAY, "Stability Delay", preset.stabilityDelay, STABILITY_DELAY_DESCR, "&mu;s");
 	sstr << setting(WebContent::MAX_LASER_WIDTH, "Max Laser Width", preset.maxLaserWidth, MAX_LASER_WIDTH_DESCR, "px.");
 	sstr << setting(WebContent::MIN_LASER_WIDTH, "Min Laser Width", preset.minLaserWidth, MIN_LASER_WIDTH_DESCR, "px.");
+	sstr << checkbox(WebContent::GENERATE_PLY, "Generate PLY File", preset.generatePly, GENERATE_PLY_DESCR);
+	sstr << checkbox(WebContent::GENERATE_STL, "Generate STL File", preset.generateStl, GENERATE_STL_DESCR);
+	sstr << checkbox(WebContent::GENERATE_XYZ, "Generate XYZ File", preset.generateXyz, GENERATE_XYZ_DESCR);
+	sstr << checkbox(WebContent::SEPARATE_LASERS_BY_COLOR, "Separate the Lasers", preset.laserMergeAction == Preset::LMA_SEPARATE_BY_COLOR, SEPARATE_LASERS_BY_COLOR_DESCR);
 
 	sstr << "</form>\
 <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
@@ -620,6 +632,28 @@ std::string WebContent::setting(const std::string& name, const std::string& labe
 	{
 		sstr << units;
 	}
+
+	sstr << "</div><div class=\"settingsDescr\">" << description << "</div>\n";
+
+
+	return sstr.str();
+}
+
+std::string WebContent::checkbox(const std::string& name, const std::string& label, bool checked, const std::string& description)
+{
+	std::stringstream sstr;
+	sstr << "<div><div class=\"settingsText\">"
+		 << label
+		 << "</div><input class=\"settingsInput\" name=\""
+		 << name
+		 << "\" type=\"checkbox\"";
+
+	if (checked)
+	{
+		sstr << " checked";
+	}
+
+	sstr << "> ";
 
 	sstr << "</div><div class=\"settingsDescr\">" << description << "</div>\n";
 
