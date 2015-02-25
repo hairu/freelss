@@ -21,7 +21,7 @@
 #include "Main.h"
 #include "PlyWriter.h"
 
-namespace scanner
+namespace freelss
 {
 
 PlyWriter::PlyWriter() :

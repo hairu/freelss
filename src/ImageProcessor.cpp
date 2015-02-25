@@ -20,9 +20,8 @@
 
 #include "Main.h"
 #include "ImageProcessor.h"
-#include "Settings.h"
+#include "PresetManager.h"
 #include "Camera.h"
-#include "mpfit.h"
 
 // Only one of these filters should be defined
 #define CENTERMASS_FILTER 1
@@ -30,12 +29,15 @@
 #define PEAK_FILTER       0
 #define INV_SQRT_2PI      0.3989422804014327
 
-namespace scanner
+#if GUASS_FILTER
+#include <mpfit.h>
+#endif
+
+namespace freelss
 {
 
 const real ImageProcessor::RED_HUE_LOWER_THRESHOLD = 30;
 const real ImageProcessor::RED_HUE_UPPER_THRESHOLD = 329;
-const int ImageProcessor::NUM_LASER_RANGE_THRESHOLD = 3;
 const unsigned ImageProcessor::RANGE_DISTANCE_THRESHOLD = 5;
 
 struct GaussPrivate
@@ -101,10 +103,10 @@ ImageProcessor::ImageProcessor()
 {
 	m_laserRanges = new ImageProcessor::LaserRange[Camera::getInstance()->getImageWidth() + 1];
 
-	Settings * settings = Settings::get();
-	m_laserMagnitudeThreshold = settings->readReal(Settings::GENERAL_SETTINGS, Settings::LASER_MAGNITUDE_THRESHOLD);
-	m_maxLaserWidth = settings->readInt(Settings::GENERAL_SETTINGS, Settings::MAX_LASER_WIDTH);
-	m_minLaserWidth = settings->readInt(Settings::GENERAL_SETTINGS, Settings::MIN_LASER_WIDTH);
+	Preset& preset = PresetManager::get()->getActivePreset();
+	m_laserMagnitudeThreshold = preset.laserThreshold;
+	m_maxLaserWidth = preset.maxLaserWidth;
+	m_minLaserWidth = preset.minLaserWidth;
 }
 
 ImageProcessor::~ImageProcessor()
@@ -113,22 +115,7 @@ ImageProcessor::~ImageProcessor()
 }
 
 int ImageProcessor::process(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations,
-		int maxNumLocations, int& firstRowLaserCol, int & numSuspectedBadLaserLocations, int & numImageProcessingRetries, const char * debuggingCsvFile)
-{
-	int numBad = 0;
-	int numLocations = 0;
-
-	numLocations = subProcess(before, after, debuggingImage, laserLocations, maxNumLocations, m_laserMagnitudeThreshold, firstRowLaserCol, numBad, debuggingCsvFile);
-
-	numSuspectedBadLaserLocations += numBad;
-
-	return numLocations;
-}
-
-// We want to detect a red, white, to red transition in the image
-int ImageProcessor::subProcess(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations,
-		                       int maxNumLocations, real laserThreshold, int& firstRowLaserCol, int & numSuspectedBadLaserLocations,
-		                       const char * debuggingCsvFile)
+		int maxNumLocations, int& firstRowLaserCol, real & percentPixelsOverThreshold, const char * debuggingCsvFile)
 {	
 	const real MAX_MAGNITUDE_SQ = 255 * 255 * 3; // The maximum pixel magnitude sq we can see
 	const real INV_MAX_MAGNITUDE_SQ = 1.0f / MAX_MAGNITUDE_SQ;
@@ -150,14 +137,15 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 		rowOut.open(debuggingCsvFile, std::ios::out);
 	}
 	
-	unsigned width = before.getWidth();
-	unsigned height = before.getHeight();
+	const unsigned width = before.getWidth();
+	const unsigned height = before.getHeight();
 	unsigned components = before.getNumComponents();
 	unsigned rowStep = width * components;
 
 	int numLocations = 0;
 
 	int numMerged = 0;
+	int numPixelsOverThreshold = 0;
 
 	// The location that we last detected a laser line
 	int prevLaserCol = firstRowLaserCol;
@@ -180,7 +168,7 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 #if 0
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int magSq = r * r;
-			unsigned char mag = 255.0f * (magSq * 0.000015379f);
+			real mag = 255.0f * (magSq * 0.000015379f);
 #else
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int g = (int)br[iCol + 1] - (int)ar[iCol + 1];
@@ -190,29 +178,26 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 #endif
 			if (writeDebugImage)
 			{
-				if (mag > laserThreshold)
+				if (mag > m_laserMagnitudeThreshold)
 				{
 					dr[iCol + 0] = mag;
 					dr[iCol + 1] = mag;
 					dr[iCol + 2] = mag;
 				}
-				else if (magSq > 0)
+				else
 				{
 					dr[iCol + 0] = mag;
 					dr[iCol + 1] = mag;
 					dr[iCol + 2] = 0;
 				}
-				else
-				{
-					dr[iCol + 0] = 0;
-					dr[iCol + 1] = 0;
-					dr[iCol + 2] = 0;
-				}
 			}
 
 			// Compare it against the threshold
-			if (mag > laserThreshold)
+			if (mag > m_laserMagnitudeThreshold)
 			{
+				// Flag that this pixel was over the threshold value
+				numPixelsOverThreshold++;
+
 				// The start of pixels with laser in them
 				if (m_laserRanges[numLaserRanges].startCol == -1)
 				{
@@ -221,7 +206,7 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 
 				if (debuggingCsvFile != NULL)
 				{
-					rowOut << magSq << ", ";
+					rowOut << mag << ", ";
 					numRowOut++;
 				}
 			}
@@ -295,11 +280,6 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 
 			numLocations++;
 
-			// Detect if we think this may have been a bad detection
-			if (numLaserRanges > NUM_LASER_RANGE_THRESHOLD)
-			{
-				numSuspectedBadLaserLocations++;
-			}
 		}
 
 		// Increment to the next row
@@ -321,6 +301,9 @@ int ImageProcessor::subProcess(const Image& before, const Image& after, Image * 
 	{
 		rowOut.close();
 	}
+
+	// Compute the number of pixels over the threshold
+	percentPixelsOverThreshold = 100.0f * numPixelsOverThreshold / (width * height);
 
 	return numLocations;
 }

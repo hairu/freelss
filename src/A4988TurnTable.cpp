@@ -21,21 +21,22 @@
 #include "Main.h"
 #include "A4988TurnTable.h"
 #include "Thread.h"
-#include "Settings.h"
+#include "Setup.h"
+#include "PresetManager.h"
 
-namespace scanner
+namespace freelss
 {
 
 A4988TurnTable::A4988TurnTable()
 {
-	Settings * settings = Settings::get();
-	m_responseDelay = settings->readInt(Settings::A4988_SETTINGS, Settings::RESPONSE_DELAY);
-	m_stepDelay = settings->readInt(Settings::A4988_SETTINGS, Settings::STEP_DELAY);
-	m_enablePin = settings->readInt(Settings::A4988_SETTINGS, Settings::ENABLE_PIN);
-	m_stepPin = settings->readInt(Settings::A4988_SETTINGS, Settings::STEP_PIN);
-	m_directionPin = settings->readInt(Settings::A4988_SETTINGS, Settings::DIRECTION_PIN);
-	m_stepsPerRevolution = settings->readInt(Settings::GENERAL_SETTINGS, Settings::STEPS_PER_REVOLUTION);
-	m_stabilityDelay = settings->readInt(Settings::GENERAL_SETTINGS, Settings::STABILITY_DELAY);
+	Setup * setup = Setup::get();
+	m_responseDelay = setup->motorResponseDelay;
+	m_stepDelay = setup->motorStepDelay;
+	m_enablePin = setup->motorEnablePin;
+	m_stepPin = setup->motorStepPin;
+	m_directionPin = setup->motorDirPin;
+	m_stepsPerRevolution = setup->stepsPerRevolution;
+	m_stabilityDelay = PresetManager::get()->getActivePreset().stabilityDelay;
 }
 
 A4988TurnTable::~A4988TurnTable()
@@ -47,11 +48,11 @@ A4988TurnTable::~A4988TurnTable()
 
 void A4988TurnTable::initialize()
 {
-	Settings * settings = Settings::get();
-	int responseDelay = settings->readInt(Settings::A4988_SETTINGS, Settings::RESPONSE_DELAY);
-	int enablePin = settings->readInt(Settings::A4988_SETTINGS, Settings::ENABLE_PIN);
-	int stepPin = settings->readInt(Settings::A4988_SETTINGS, Settings::STEP_PIN);
-	int directionPin = settings->readInt(Settings::A4988_SETTINGS, Settings::DIRECTION_PIN);
+	Setup * setup = Setup::get();
+	int responseDelay = setup->motorResponseDelay;
+	int enablePin = setup->motorEnablePin;
+	int stepPin = setup->motorStepPin;
+	int directionPin = setup->motorDirPin;
 
 	// Disable the stepper
 	pinMode(enablePin, OUTPUT);

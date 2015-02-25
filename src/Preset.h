@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -20,21 +20,53 @@
 
 #pragma once
 
+#include "Laser.h"
+#include "Camera.h"
+
 namespace freelss
 {
-class PlyWriter
+
+/**
+ * Holds camera settings, image processing settings, delay settings,
+ * and other related settings for scanning.
+ */
+class Preset
 {
 public:
-	PlyWriter();
-	~PlyWriter();
-	
-	void begin(const char * filename);
-	void writePoints(ColoredPoint * points, int numPoints);
-	void end();
-private:
-	std::ofstream m_fout;
-	std::string m_filename;
-	int m_totalNumPoints;
+
+	/** The action that should be taken to merge laser results */
+	enum LaserMergeAction {LMA_PREFER_RIGHT_LASER, LMA_SEPARATE_BY_COLOR };
+
+	Preset();
+
+	/** Encodes property information to the properties vector */
+	void encodeProperties(std::vector<Property>& properties, bool isActivePreset);
+
+	/**
+	 * Decodes property information from the given vector.
+	 */
+	void decodeProperties(const std::vector<Property>& properties, const std::string& name, bool &isActivePreset);
+
+	/** Detects the names of all the presets */
+	static std::vector<std::string> detectPresetNames(const std::vector<Property>& properties);
+
+	std::string name;
+	Laser::LaserSide laserSide;
+	Camera::CameraMode cameraMode;
+	real laserThreshold;
+	int minLaserWidth;
+	int maxLaserWidth;
+	real maxObjectSize;
+	real maxTriangleEdgeLength;
+	int numLaserRowBins;
+	int laserDelay;
+	int stabilityDelay;
+	int id;
+	int framesPerRevolution;
+	bool generateXyz;
+	bool generateStl;
+	bool generatePly;
+	LaserMergeAction laserMergeAction;
 };
 
 }

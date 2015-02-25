@@ -26,7 +26,7 @@
 #include "ScanResultsWriter.h"
 #include "Laser.h"
 
-namespace scanner
+namespace freelss
 {
 
 class TurnTable;
@@ -64,8 +64,6 @@ public:
 	 */
 	std::vector<ScanResult> getPastScanResults();
 
-	void setDetail(int detail);
-
 	void setRange(real range);
 
 	/** Indicates if a scan is running or not */
@@ -95,14 +93,14 @@ private:
 		double fileWritingTime;
 		double meshBuildTime;
 		double laserTime;
-		int numScanRetries;
-		int numImageProcessingRetries;
-		int numScans;
+		double laserMergeTime;
+		int numFrameRetries;
+		int numFrames;
 	};
 
 	void singleScan(std::vector<NeutralFileRecord> & leftLaserResults,
 			        std::vector<NeutralFileRecord> & rightLaserResults,
-					int step,
+					int frame,
 			        float rotation,
 			        float stepRotation,
 			        LocationMapper& leftLocMapper,
@@ -115,11 +113,12 @@ private:
 
 	void finishWritingToOutput();
 
-	void processScan(std::vector<NeutralFileRecord> & results, int step, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
+	/**
+	 * Returns true if the scan was processed successfully and false if there was a problem and the frame needs to be again.
+	 */
+	bool processScan(std::vector<NeutralFileRecord> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
 
 	void writeRangePoints(ColoredPoint * points, int numLocationsMapped,Laser::LaserSide laserSide);
-
-	void mergeLaserResults(std::vector<NeutralFileRecord> & results, std::vector<NeutralFileRecord> & leftLaserResults, std::vector<NeutralFileRecord> & rightLaserResults);
 
 private:
 	/** Unowned objects */
@@ -138,9 +137,6 @@ private:
 	 */
 	void acquireImage(Image * image);
 
-	/** The maximum number of laser scans per 360 revolution */
-	static const int MAX_SAMPLES_PER_FULL_REVOLUTION;
-
 	/** Array of laser locations */
 	PixelLocation * m_laserLocations;
 
@@ -155,9 +151,6 @@ private:
 	/** Indicates if a scan is running or not */
 	bool m_running;
 
-	/** The detail level */
-	int m_detail;
-
 	/** The degrees to scan */
 	real m_range;
 
@@ -170,14 +163,11 @@ private:
 	/** Protection for the running, progress, and any other status parameters */
 	CriticalSection m_status;
 
-	/** The maximum number of times to try a scan (at a particular rotation) before giving up */
-	const int m_maxNumScanTries;
+	/** The maximum number of times to try a frame (at a particular rotation) before giving up */
+	const int m_maxNumFrameRetries;
 
-	/** The threshold for number of suspected bad laser locations before a rescan is required */
-	const int m_badLaserLocationThreshold;
-
-	// Diagnostic info
-	int m_numSuspectedBadLaserLocations;
+	/** The threshold for percentage of pixels over the threshold */
+	const real m_maxPercentPixelsOverThreshold;
 
 	/** The image points for every column */
 	ColoredPoint * m_columnPoints;
@@ -203,6 +193,9 @@ private:
 	/** The angle between the left and right laser planes */
 	real m_radiansBetweenLaserPlanes;
 
+	/** The number of radians between each frame */
+	real m_radiansPerFrame;
+
 	/** Location of the right laser */
 	Vector3 m_rightLaserLoc;
 
@@ -218,11 +211,8 @@ private:
 	/** The range CSV output */
 	std::ofstream m_rangeFout;
 
-	/** The number of radians advanced from a single step */
-	float m_radiansPerStep;
-
 	/** The number of frames between the laser planes */
-	float m_numScansBetweenLaserPlanes;
+	float m_numFramesBetweenLaserPlanes;
 
 	/** The laser to scan with */
 	Laser::LaserSide m_laserSelection;

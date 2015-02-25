@@ -43,7 +43,7 @@
 #define CAMERA_IMAGE_WIDTH 1280
 #define CAMERA_IMAGE_HEIGHT 960
 
-namespace scanner
+namespace freelss
 {
 
 struct Mmal_CallbackData

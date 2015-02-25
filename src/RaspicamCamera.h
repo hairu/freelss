@@ -29,7 +29,7 @@ namespace raspicam
 	class RaspiCam;
 }
 
-namespace scanner
+namespace freelss
 {
 
 class RaspicamCamera : public Camera

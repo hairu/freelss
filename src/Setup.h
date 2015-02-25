@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -22,19 +22,45 @@
 
 namespace freelss
 {
-class PlyWriter
+
+/**
+ * Holds setup information about the hardware.
+ */
+class Setup
 {
 public:
-	PlyWriter();
-	~PlyWriter();
-	
-	void begin(const char * filename);
-	void writePoints(ColoredPoint * points, int numPoints);
-	void end();
+
+	/** Returns the singleton instance */
+	static Setup * get();
+
+	/** Encodes property information to the properties vector */
+	void encodeProperties(std::vector<Property>& properties);
+
+	/** Decodes property information from the given vector  */
+	void decodeProperties(const std::vector<Property>& properties);
+
+	Vector3 cameraLocation;
+	Vector3 leftLaserLocation;
+	Vector3 rightLaserLocation;
+	int rightLaserPin;
+	int leftLaserPin;
+	int motorEnablePin;
+	int motorStepPin;
+	int motorDirPin;
+	int motorDirPinValue;
+	int laserOnValue;
+	int stepsPerRevolution;
+	int motorResponseDelay;
+	int motorStepDelay;
+	int httpPort;
+
 private:
-	std::ofstream m_fout;
-	std::string m_filename;
-	int m_totalNumPoints;
+
+	/** Default Constructor */
+	Setup();
+
+	/** Singleton instance */
+	static Setup * m_instance;
 };
 
 }

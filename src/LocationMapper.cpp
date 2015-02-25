@@ -20,9 +20,10 @@
 
 #include "Main.h"
 #include "LocationMapper.h"
+#include "PresetManager.h"
 #include "Camera.h"
 
-namespace scanner
+namespace freelss
 {
 
 LocationMapper::LocationMapper(const Vector3& laserLoc, const Vector3& cameraLoc) :
@@ -40,6 +41,8 @@ LocationMapper::LocationMapper(const Vector3& laserLoc, const Vector3& cameraLoc
 	m_sensorWidth = camera->getSensorWidth();
 	m_sensorHeight = camera->getSensorHeight();
 
+	m_maxObjectSize = PresetManager::get()->getActivePreset().maxObjectSize;
+
 	calculateLaserPlane();
 }
 
@@ -49,10 +52,7 @@ void LocationMapper::mapPoints(PixelLocation * laserLocations,
 		                       int numLocations,
 	                           int & outNumLocations)
 {
-	const real MAX_DIST_Y = (8 * 25.4); // TODO: Max height from the turn table (This should be a setting somewhere)
-	// const real MAX_DIST_XZ_SQ = (MAX_DIST_Y / 2) * (MAX_DIST_Y / 2); // Max in the XZ plane
-	const real MAX_DIST_XZ_SQ = (MAX_DIST_Y) * (MAX_DIST_Y); // Max in the XZ plane
-
+	real maxXZDistFromOriginSq = (m_maxObjectSize / 2) * (m_maxObjectSize / 2);
 	int numIntersectionFails = 0;
 	int numDistanceFails = 0;
 
@@ -85,7 +85,7 @@ void LocationMapper::mapPoints(PixelLocation * laserLocations,
 			// The point must be above the turn table and less than the max distance from the center of the turn table
 			real distXZSq = point->x * point->x + point->z * point->z;
 
-			if (point->y >= 0.0 && distXZSq < MAX_DIST_XZ_SQ && point->y < MAX_DIST_Y)
+			if (point->y >= 0.0 && distXZSq < maxXZDistFromOriginSq && point->y < m_maxObjectSize)
 			{
 				// Set the color
 				if (haveImage)

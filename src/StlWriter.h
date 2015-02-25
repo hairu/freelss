@@ -20,16 +20,14 @@
 
 #pragma once
 
-namespace scanner
+namespace freelss
 {
 
-class NeutralFileReader;
 
 class StlWriter
 {
 public:
 	StlWriter();
-
 
 	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst);
 
@@ -37,29 +35,26 @@ private:
 	void writeHeader(std::ofstream& fout);
 	void populateBuffer(NeutralFileRecord * records, int numRecords, NeutralFileRecord ** buffer, int maxNumRecords);
 	void writeTrianglesForColumn(const std::vector<NeutralFileRecord>& currentFrame, const std::vector<NeutralFileRecord>& lastFrame, std::ofstream& fout, uint32& numTriangles);
-	void writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, std::ofstream& fout);
-
-	/**
-	 * Reduce the number of result rows and filter out some of the noise
-	 * @param maxNumRows - The number of rows in the image the produced the frame.
-	 * @param numRowBins - The total number of row bins in the entire image, not necessarily what is returned by this function.
-	 */
-	void lowpassFilter(std::vector<NeutralFileRecord>& output, std::vector<NeutralFileRecord>& frame, unsigned maxNumRows, unsigned numRowBins);
-
-	/**
-	 * Computes the average of all the records in the bin.
-	 */
-	void computeAverage(const std::vector<NeutralFileRecord>& bin, NeutralFileRecord& out);
+	void writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, bool flipNormal, std::ofstream& fout);
 
 	bool isValidTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3);
 
-	bool readNextStep(std::vector<NeutralFileRecord>& frameC, const std::vector<NeutralFileRecord>& results, size_t & resultIndex);
+	/**
+	 * Indicates if the face is oriented point into the model and the normal needs to get flipped.
+	 * This method assumes that the camera is looking straight down -z and x = 0.  The y doesn't matter.
+	 * This method assumes that all points were taken from the same laser.
+	 */
+	bool isInwardFacingFace(const NeutralFileRecord& p1, const NeutralFileRecord& p2, const NeutralFileRecord& p3);
+
 
 	/** The max triangle edge distance in mm sq */
 	real32 m_maxEdgeDistMmSq;
 
 	real32 m_normal[3];
 	uint16 m_attribute;
+
+	/** The image width of the current camera */
+	int m_imageWidth;
 };
 
 }

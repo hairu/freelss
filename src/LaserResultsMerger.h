@@ -20,21 +20,37 @@
 
 #pragma once
 
+#include "Preset.h"
+
 namespace freelss
 {
-class PlyWriter
+
+/**
+ * This class merges the left and right laser results into a single result set.
+ * It uses the results from the left laser in places where the right laser does
+ * not have information.  It utilizes a volumetric masking technique to determine
+ * if the right laser already has information in a given area.
+ */
+class LaserResultsMerger
 {
 public:
-	PlyWriter();
-	~PlyWriter();
-	
-	void begin(const char * filename);
-	void writePoints(ColoredPoint * points, int numPoints);
-	void end();
+	LaserResultsMerger();
+
+	void merge(std::vector<NeutralFileRecord> & out,
+            std::vector<NeutralFileRecord> & leftLaserResults,
+            std::vector<NeutralFileRecord> & rightLaserResults,
+            int numFramesPerRevolution,
+            int numFramesBetweenLaserPlanes,
+            int maxPointY,
+            Preset::LaserMergeAction mergeAction);
+
 private:
-	std::ofstream m_fout;
-	std::string m_filename;
-	int m_totalNumPoints;
+
+	int getIndex(const NeutralFileRecord& record);
+
+	int m_numFramesBetweenLaserPlanes;
+	real m_numFramesPerRevolution;
+	real m_maxPointY;
 };
 
 }

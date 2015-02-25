@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -22,19 +22,15 @@
 
 namespace freelss
 {
-class PlyWriter
+
+/**
+ * Writes the scan results as an XYZ file.
+ */
+class XyzWriter
 {
 public:
-	PlyWriter();
-	~PlyWriter();
-	
-	void begin(const char * filename);
-	void writePoints(ColoredPoint * points, int numPoints);
-	void end();
-private:
-	std::ofstream m_fout;
-	std::string m_filename;
-	int m_totalNumPoints;
+
+	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results);
 };
 
 }

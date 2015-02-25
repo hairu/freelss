@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -20,21 +20,55 @@
 
 #pragma once
 
+#include "Preset.h"
+
 namespace freelss
 {
-class PlyWriter
+
+/**
+ * Manages access to the Preset instances.
+ */
+class PresetManager
 {
 public:
-	PlyWriter();
-	~PlyWriter();
-	
-	void begin(const char * filename);
-	void writePoints(ColoredPoint * points, int numPoints);
-	void end();
+
+	static PresetManager * get();
+
+	/** Returns the preset that is currently active */
+	Preset& getActivePreset();
+
+	/** Sets the given preset as the active preset */
+	void setActivePreset(int presetId);
+
+	/** Removes the active preset */
+	void removeActivePreset();
+
+	/** Returns the presets */
+	const std::vector<Preset>& getPresets();
+
+	/** Adds the preset */
+	int addPreset(const Preset& preset);
+
+	/** Encodes property information to the properties vector */
+	void encodeProperties(std::vector<Property>& properties);
+
+	/** Decodes property information from the given vector  */
+	void decodeProperties(const std::vector<Property>& properties);
+
 private:
-	std::ofstream m_fout;
-	std::string m_filename;
-	int m_totalNumPoints;
+
+	PresetManager();
+
+	static PresetManager * m_instance;
+
+	/** The Presets */
+	std::vector<Preset> m_presets;
+
+	/** The ID of the next preset */
+	int m_nextId;
+
+	/** The index of the preset that is currently active */
+	int m_activePresetIndex;
 };
 
 }

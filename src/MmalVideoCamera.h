@@ -28,7 +28,7 @@ struct MMAL_PORT_T;
 struct MMAL_POOL_T;
 struct MMAL_QUEUE_T;
 
-namespace scanner
+namespace freelss
 {
 
 // Forward declaration

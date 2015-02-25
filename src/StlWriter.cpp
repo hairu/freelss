@@ -22,8 +22,9 @@
 #include "NeutralFileReader.h"
 #include "StlWriter.h"
 #include "Camera.h"
+#include "Laser.h"
 
-namespace scanner
+namespace freelss
 {
 
 static real32 DistanceSquared(const ColoredPoint& a, const ColoredPoint&b)
@@ -35,137 +36,17 @@ static real32 DistanceSquared(const ColoredPoint& a, const ColoredPoint&b)
 	return dx * dx + dy * dy + dz * dz;
 }
 
-static bool SortRecordByRow(const NeutralFileRecord& a, const NeutralFileRecord& b)
-{
-	return a.pixel.y < b.pixel.y;
-}
-
 
 StlWriter::StlWriter() :
 	m_maxEdgeDistMmSq(12.4 * 12.2),  // TODO: Make this a setting or autodetect it based off the distance to table and the detail level
-	m_attribute(0)
+	m_attribute(0),
+	m_imageWidth(0)
 {
 	m_normal[0] = 0;
 	m_normal[1] = 0;
 	m_normal[2] = 0;
 }
 
-void StlWriter::computeAverage(const std::vector<NeutralFileRecord>& bin, NeutralFileRecord& out)
-{
-	out = bin.front();
-
-	real32 invSize = 1.0f / bin.size();
-
-	real32 rotation = 0;
-	real32 pixelLocationX = 0;
-	real32 pixelLocationY = 0;
-	real32 ptX = 0;
-	real32 ptY = 0;
-	real32 ptZ = 0;
-	real32 ptR = 0;
-	real32 ptG = 0;
-	real32 ptB = 0;
-
-	for (size_t iBin = 0; iBin < bin.size(); iBin++)
-	{
-		const NeutralFileRecord& br = bin[iBin];
-
-		rotation += invSize * br.rotation;
-		pixelLocationX += invSize * br.pixel.x;
-		pixelLocationY += invSize * br.pixel.y;
-		ptX += invSize * br.point.x;
-		ptY += invSize * br.point.y;
-		ptZ += invSize * br.point.z;
-		ptR += invSize * br.point.r;
-		ptG += invSize * br.point.g;
-		ptB += invSize * br.point.b;
-	}
-
-	out.rotation = rotation;
-	out.pixel.x = pixelLocationX;  // TODO: We should probably round these values
-	out.pixel.y = pixelLocationY;
-	out.point.x = ptX;
-	out.point.y = ptY;
-	out.point.z = ptZ;
-	out.point.r = ptR;
-	out.point.g = ptG;
-	out.point.b = ptB;
-}
-
-void StlWriter::lowpassFilter(std::vector<NeutralFileRecord>& output, std::vector<NeutralFileRecord>& frame, unsigned maxNumRows, unsigned numRowBins)
-{
-	output.clear();
-
-	// Sanity check
-	if (frame.empty())
-	{
-		return;
-	}
-
-	// Sort by image row
-	std::sort(frame.begin(), frame.end(), SortRecordByRow);
-
-	unsigned binSize = maxNumRows / numRowBins;
-
-	// Holds the current contents of the bin
-	std::vector<NeutralFileRecord> bin;
-	unsigned nextBinY = frame.front().pixel.y + binSize;
-
-	// unsigned bin = frame.front().pixel.y / numRowBins;
-	for (size_t iFr = 0; iFr < frame.size(); iFr++)
-	{
-		NeutralFileRecord& record = frame[iFr];
-
-		if (record.pixel.y < nextBinY)
-		{
-			bin.push_back(record);
-		}
-		else
-		{
-			// Average the bin results and add it to the output
-			if (!bin.empty())
-			{
-				NeutralFileRecord out;
-				computeAverage(bin, out);
-
-				output.push_back(out);
-				bin.clear();
-			}
-
-			nextBinY = record.pixel.y + binSize;
-			bin.push_back(record);
-		}
-	}
-
-	// Process any results still left in the bin
-	if (!bin.empty())
-	{
-		NeutralFileRecord out;
-		computeAverage(bin, out);
-
-		output.push_back(out);
-		bin.clear();
-	}
-}
-
-bool StlWriter::readNextStep(std::vector<NeutralFileRecord>& out, const std::vector<NeutralFileRecord>& results, size_t & resultIndex)
-{
-	out.clear();
-
-	if (resultIndex >= results.size() || results.empty())
-	{
-		return false;
-	}
-
-	int pseudoStep = results[resultIndex].pseudoStep;
-	while (pseudoStep == results[resultIndex].pseudoStep && resultIndex < results.size())
-	{
-		out.push_back(results[resultIndex]);
-		resultIndex++;
-	}
-
-	return true;
-}
 
 void StlWriter::write(const std::string& baseFilename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst)
 {
@@ -176,15 +57,9 @@ void StlWriter::write(const std::string& baseFilename, const std::vector<Neutral
 		throw Exception("Error opening STL file for writing: " + stlFilename);
 	}
 
-	std::string xyzFilename = baseFilename + ".xyz";
-	std::ofstream xyz (xyzFilename.c_str());
-	if (!xyz.is_open())
-	{
-		throw Exception("Error opening STL file for writing: " + xyzFilename);
-	}
-
 	uint32 maxNumRows = Camera::getInstance()->getImageHeight(); // TODO: Make this use the image height that generated the result and not the current Camera
-	uint32 numRowBins = 400; // TODO: Autodetect this or have it in Settings
+	m_imageWidth = Camera::getInstance()->getImageWidth();
+	uint32 numRowBins = 400; // TODO: Autodetect this or have it in Database
 
 	// Write the STL header
 	writeHeader(fout);
@@ -205,26 +80,15 @@ void StlWriter::write(const std::string& baseFilename, const std::vector<Neutral
 
 		size_t resultIndex = 0;
 		size_t totNumPoints = 0;
-		while (readNextStep(frameC, results, resultIndex))
+		while (NeutralFileRecord::readNextFrame(frameC, results, resultIndex))
 		{
 			// Reduce the number of result rows and filter out some of the noise
-			lowpassFilter(* currentFrame, frameC, maxNumRows, numRowBins);
+			NeutralFileRecord::lowpassFilter(* currentFrame, frameC, maxNumRows, numRowBins);
 
 			totNumPoints += currentFrame->size();
 
 			// Sort the results in decreasing Y
 			//std::sort(currentFrame->begin(), currentFrame->end(), SortRecordByYValue);
-
-			// Write the filtered results to the XYZ file
-			for (size_t iRec = 0; iRec < currentFrame->size(); iRec++)
-			{
-				const NeutralFileRecord& rec = currentFrame->at(iRec);
-				const ColoredPoint & pt = rec.point;
-
-				xyz << pt.x        << " " << pt.y        << " " << pt.z        << " "
-				    << pt.normal.x << " " << pt.normal.y << " " << pt.normal.z
-				    << std::endl;
-			}
 
 			if (iStep > 0)
 			{
@@ -269,12 +133,10 @@ void StlWriter::write(const std::string& baseFilename, const std::vector<Neutral
 	catch (...)
 	{
 		fout.close();
-		xyz.close();
 		throw;
 	}
 
 	fout.close();
-	xyz.close();
 }
 
 void StlWriter::writeHeader(std::ofstream& fout)
@@ -289,6 +151,28 @@ void StlWriter::writeHeader(std::ofstream& fout)
 	// Write number of triangles
 	uint32 numTriangles = 0;
 	fout.write((const char *)&numTriangles, sizeof(uint32));
+}
+
+bool StlWriter::isInwardFacingFace(const NeutralFileRecord& p1, const NeutralFileRecord& p2, const NeutralFileRecord& p3)
+{
+	int laserSide = p1.laserSide;
+	bool inwardFacing = false;
+	float halfImageWidth = m_imageWidth * 0.5f; // If it's past the centerline then it will result in an inward facing triangle
+
+	if (laserSide == (int)Laser::LEFT_LASER)
+	{
+		inwardFacing = p1.pixel.x > halfImageWidth || p2.pixel.x > halfImageWidth || p3.pixel.x > halfImageWidth;
+	}
+	else if (laserSide == (int)Laser::RIGHT_LASER)
+	{
+		inwardFacing = p1.pixel.x < halfImageWidth || p2.pixel.x < halfImageWidth || p3.pixel.x < halfImageWidth;
+	}
+	else
+	{
+		throw Exception("Unsupported LaserSide in StlWriter::isInwardFacingFace");
+	}
+
+	return inwardFacing;
 }
 
 /*
@@ -332,7 +216,9 @@ void StlWriter::writeTrianglesForColumn(const std::vector<NeutralFileRecord>& cu
 				// if (distSq1 < distSq2 && distSq1 <= m_maxEdgeDistMmSq)
 				if (distSq1 < distSq2)
 				{
-					writeTriangle(l1.point, c1.point, c2.point, fout);
+					// Determine if we need to flip the normal or not
+					bool flipNormal = isInwardFacingFace(l1, c1, c2);
+					writeTriangle(l1.point, c1.point, c2.point, flipNormal, fout);
 					numTriangles++;
 				}
 				else
@@ -340,7 +226,8 @@ void StlWriter::writeTrianglesForColumn(const std::vector<NeutralFileRecord>& cu
 					// Connect to this triangle
 					if (isValidTriangle(l2.point, l1.point, c1.point))
 					{
-						writeTriangle(l2.point, l1.point, c1.point, fout);
+						bool flipNormal = isInwardFacingFace(l2, l1, c1);
+						writeTriangle(l2.point, l1.point, c1.point, flipNormal, fout);
 						numTriangles++;
 					}
 					else
@@ -382,17 +269,37 @@ bool StlWriter::isValidTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2
 	return true;
 }
 
-void StlWriter::writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, std::ofstream& fout)
+void StlWriter::writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, bool flipNormal, std::ofstream& fout)
 {
-	real32 pt1x = pt1.x;
-	real32 pt1y = pt1.y;
-	real32 pt1z = pt1.z;
-	real32 pt2x = pt2.x;
-	real32 pt2y = pt2.y;
-	real32 pt2z = pt2.z;
-	real32 pt3x = pt3.x;
-	real32 pt3y = pt3.y;
-	real32 pt3z = pt3.z;
+	real32 pt1x, pt1y, pt1z;
+	real32 pt2x, pt2y, pt2z;
+	real32 pt3x, pt3y, pt3z;
+
+
+	if (!flipNormal)
+	{
+		pt1x = pt1.x;
+		pt1y = pt1.y;
+		pt1z = pt1.z;
+		pt2x = pt2.x;
+		pt2y = pt2.y;
+		pt2z = pt2.z;
+		pt3x = pt3.x;
+		pt3y = pt3.y;
+		pt3z = pt3.z;
+	}
+	else
+	{
+		pt1x = pt3.x;
+		pt1y = pt3.y;
+		pt1z = pt3.z;
+		pt2x = pt2.x;
+		pt2y = pt2.y;
+		pt2z = pt2.z;
+		pt3x = pt1.x;
+		pt3y = pt1.y;
+		pt3z = pt1.z;
+	}
 
 
 	fout.write((const char *)&m_normal, sizeof(real32) * 3);

@@ -19,58 +19,57 @@
 */
 
 #include "Main.h"
-#include "Laser.h"
-#include "RelayLaser.h"
+#include "XyzWriter.h"
+#include "Camera.h"
 
 namespace freelss
 {
 
-Laser * Laser::m_instance = NULL;
-
-Laser::Laser()
+void XyzWriter::write(const std::string& baseFilename, const std::vector<NeutralFileRecord>& results)
 {
-	// Do nothing
-}
-
-Laser::~Laser()
-{
-	// Do nothing
-}
-
-Laser * Laser::getInstance()
-{
-	if (m_instance == NULL)
+	std::string xyzFilename = baseFilename + ".xyz";
+	std::ofstream xyz (xyzFilename.c_str());
+	if (!xyz.is_open())
 	{
-		m_instance = new RelayLaser();
+		throw Exception("Error opening STL file for writing: " + xyzFilename);
 	}
 
-	return m_instance;
+	uint32 maxNumRows = Camera::getInstance()->getImageHeight(); // TODO: Make this use the image height that generated the result and not the current Camera
+	uint32 numRowBins = 400; // TODO: Autodetect this or have it in Database
+
+	try
+	{
+		int iFrame = 0;
+
+		std::vector<NeutralFileRecord> frameA;
+		std::vector<NeutralFileRecord> currentFrame;
+
+		size_t resultIndex = 0;
+		while (NeutralFileRecord::readNextFrame(frameA, results, resultIndex))
+		{
+			// Reduce the number of result rows and filter out some of the noise
+			NeutralFileRecord::lowpassFilter(currentFrame, frameA, maxNumRows, numRowBins);
+
+			// Write the filtered results to the XYZ file
+			for (size_t iRec = 0; iRec < currentFrame.size(); iRec++)
+			{
+				const NeutralFileRecord& rec = currentFrame[iRec];
+				const ColoredPoint & pt = rec.point;
+
+				xyz << pt.x        << " " << pt.y        << " " << pt.z        << " "
+				    << pt.normal.x << " " << pt.normal.y << " " << pt.normal.z
+				    << std::endl;
+			}
+		}
+	}
+	catch (...)
+	{
+		xyz.close();
+		throw;
+	}
+
+	xyz.close();
 }
 
-void Laser::release()
-{
-	delete m_instance;
-	m_instance = NULL;
-}
 
-std::string Laser::toString(Laser::LaserSide side)
-{
-	std::string str = "";
-
-	if (side == RIGHT_LASER)
-	{
-		str = "RIGHT_LASER";
-	}
-	else if (side == LEFT_LASER)
-	{
-		str = "LEFT_LASER";
-	}
-	else if (side == ALL_LASERS)
-	{
-		str = "ALL_LASERS";
-	}
-
-	return str;
-}
-
-} // ns scanner
+} // ns freelss

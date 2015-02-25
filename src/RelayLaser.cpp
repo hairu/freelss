@@ -21,9 +21,10 @@
 #include "Main.h"
 #include "RelayLaser.h"
 #include "Thread.h"
-#include "Settings.h"
+#include "PresetManager.h"
+#include "Setup.h"
 
-namespace scanner
+namespace freelss
 {
 
 RelayLaser::RelayLaser() :
@@ -35,11 +36,14 @@ RelayLaser::RelayLaser() :
 	m_rightLaserOn(false),
 	m_leftLaserOn(false)
 {
-	Settings * settings = Settings::get();
-	m_rightLaserPin = settings->readInt(Settings::GENERAL_SETTINGS, Settings::RIGHT_LASER_PIN);
-	m_leftLaserPin = settings->readInt(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_PIN);
-	m_laserDelay = settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_DELAY);
-	m_laserOnValue = settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_ON_VALUE);
+	Setup * setup = Setup::get();
+	Preset& preset = PresetManager::get()->getActivePreset();
+
+	m_rightLaserPin = setup->rightLaserPin;
+	m_leftLaserPin = setup->leftLaserPin;
+	m_laserOnValue = setup->laserOnValue;
+	m_laserDelay = preset.laserDelay;
+
 	m_laserOffValue = m_laserOnValue ? 0 : 1;
 }
 
@@ -50,10 +54,10 @@ RelayLaser::~RelayLaser()
 
 void RelayLaser::initialize()
 {
-	Settings * settings = Settings::get();
-	int rightLaserPin = settings->readInt(Settings::GENERAL_SETTINGS, Settings::RIGHT_LASER_PIN);
-	int leftLaserPin = settings->readInt(Settings::GENERAL_SETTINGS, Settings::LEFT_LASER_PIN);
-	int laserOnValue = settings->readInt(Settings::GENERAL_SETTINGS, Settings::LASER_ON_VALUE);
+	Setup * setup = Setup::get();
+	int rightLaserPin = setup->rightLaserPin;
+	int leftLaserPin = setup->leftLaserPin;
+	int laserOnValue = setup->laserOnValue;
 	int laserOffValue = laserOnValue ? 0 : 1;
 
 	// Setup the pin but disable the laser

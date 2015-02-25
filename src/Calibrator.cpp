@@ -20,20 +20,23 @@
 
 #include "Main.h"
 #include "Calibrator.h"
-#include "Settings.h"
+#include "PresetManager.h"
 #include "Camera.h"
 #include "Laser.h"
 #include "ImageProcessor.h"
+#include "Setup.h"
+#include "PresetManager.h"
 
-namespace scanner
+namespace freelss
 {
 
 real Calibrator::computeCameraZ(real pixelY)
 {
-	// Read the Y-value for the camera from Settings
-	Settings * settings = Settings::get();
+	// Read the Y-value for the camera from Database
+	Setup * setup = Setup::get();
+
 	Camera * camera = Camera::getInstance();
-	real cameraY = settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_Y);
+	real cameraY = setup->cameraLocation.y;
 
 	// Camera focal length
 	real focalLength = camera->getFocalLength();
@@ -82,8 +85,7 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 	bool detected = false;
 	ImageProcessor imageProcessor;
 	int firstRowLaserCol = 0;
-	int numSuspectedBadLaserLocations = 0;
-	int numImageProcessingRetries = 0;
+	real percentPixelsOverThreshold = 0;
 	int numLocations = 0;
 	int maxNumLocations = camera->getImageHeight();
 	PixelLocation * laserLocations = new PixelLocation[maxNumLocations];
@@ -96,8 +98,7 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 				laserLocations,
 				maxNumLocations,
 				firstRowLaserCol,
-				numSuspectedBadLaserLocations,
-				numImageProcessingRetries,
+				percentPixelsOverThreshold,
 				NULL);
 
 		//
@@ -130,8 +131,7 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 		// Detect the laser location using this XY pixel value
 		if (maxLocation != NULL)
 		{
-			Settings * settings = Settings::get();
-			real cameraZ = settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_Z);
+			real cameraZ = Setup::get()->cameraLocation.z;
 
 			* laserX = computeLaserX(cameraZ, (real) maxLocation->x, (real)maxLocation->y);
 			detected = true;
@@ -159,9 +159,10 @@ real Calibrator::computeLaserX(real cameraZ, real xPixel, real yPixel)
 	// Compute ray going from camera through the 3D scene at the clicked location
 	//
 
-	Settings * settings = Settings::get();
-	real cameraX = settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_X);
-	real cameraY = settings->readReal(Settings::GENERAL_SETTINGS, Settings::CAMERA_Y);
+	Setup * setup = Setup::get();
+
+	real cameraX = setup->cameraLocation.x;
+	real cameraY = setup->cameraLocation.y;
 
 	Camera * camera = Camera::getInstance();
 	real imageHeight = camera->getImageHeight();
@@ -174,7 +175,7 @@ real Calibrator::computeLaserX(real cameraZ, real xPixel, real yPixel)
 	real pctX = xPixel / imageWidth;
 	real pctY = (imageHeight - yPixel) / imageHeight;
 	real worldX = cameraX + (pctX * sensorWidth) - sensorWidth * 0.5;
-	real worldY = cameraY + (pctY * sensorWidth) - sensorHeight * 0.5;
+	real worldY = cameraY + (pctY * sensorHeight) - sensorHeight * 0.5;
 	real worldZ = cameraZ - focalLength;
 
 	Ray ray;

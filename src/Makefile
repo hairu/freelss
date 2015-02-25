@@ -6,14 +6,15 @@ CFLAGS=-O3 -Wall -Winvalid-pch -fexceptions -I/usr/local/include -I/opt/vc/inclu
 	-I/opt/vc/include/interface/mmal/util
 
 LFLAGS=-lraspicam -lmmal -lmmal_core -lmmal_util -lvcos -lpthread -lpng -ljpeg -lsqlite3 -lwiringPi -lmicrohttpd -lbcm_host -L/usr/local/lib -L/opt/vc/lib
-OBJECTS=WebContent.o Settings.o Main.o \
+OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	HttpServer.o CriticalSection.o Scanner.o Image.o ImageProcessor.o \
 	Thread.o A4988TurnTable.o RelayLaser.o LocationMapper.o \
 	PlyWriter.o Calibrator.o RaspistillCamera.o \
 	NeutralFileWriter.o NeutralFileReader.o RaspicamCamera.o \
 	Camera.o ScanResultsWriter.o MmalStillCamera.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
-	Laser.o
+	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
+	XyzWriter.o
 
 all: freelss 
 
@@ -35,8 +36,8 @@ Scanner.o: Scanner.cpp Scanner.h Main.h
 HttpServer.o: HttpServer.cpp HttpServer.h Main.h
 	$(CC) -c $(CFLAGS) HttpServer.cpp
 
-Settings.o: Settings.cpp Settings.h Main.h
-	$(CC) -c $(CFLAGS) Settings.cpp
+PropertyReaderWriter.o: PropertyReaderWriter.cpp PropertyReaderWriter.h Main.h
+	$(CC) -c $(CFLAGS) PropertyReaderWriter.cpp
 
 Image.o: Image.cpp Image.h
 	$(CC) -c $(CFLAGS) Image.cpp
@@ -101,16 +102,41 @@ TurnTable.o: TurnTable.cpp TurnTable.h Main.h
 Laser.o: Laser.cpp Laser.h Main.h
 	$(CC) -c $(CFLAGS) Laser.cpp
 
+Preset.o: Preset.cpp Preset.h Main.h
+	$(CC) -c $(CFLAGS) Preset.cpp
+
+PresetManager.o: PresetManager.cpp PresetManager.h Main.h
+	$(CC) -c $(CFLAGS) PresetManager.cpp
+
+Setup.o: Setup.cpp Setup.h Main.h
+	$(CC) -c $(CFLAGS) Setup.cpp
+
+LaserResultsMerger.o: LaserResultsMerger.cpp LaserResultsMerger.h Main.h
+	$(CC) -c $(CFLAGS) LaserResultsMerger.cpp
+
+XyzWriter.o: XyzWriter.cpp XyzWriter.h Main.h
+	$(CC) -c $(CFLAGS) XyzWriter.cpp
+
 github:
-	mkdir -p ../github
-	mkdir -p ../github/src
-	cp -f *.h *.cpp Makefile ../github/src
+	mkdir -p ../../github
+	mkdir -p ../../github/src
+	mkdir -p ../../github/config
+	cp ../config/freelss ../../github/config/
+	cp -f *.h *.cpp Makefile ../../github/src/
 
 run: freelss
 	sudo ./freelss
 
 dist: clean
 	tar -cvzf freelss.tar.gz ../../Scanner --exclude=".svn"
+
+install: freelss
+	sudo cp -f freelss /usr/local/bin/freelss
+
+startup: install
+	sudo cp ../config/freelss /etc/init.d/freelss
+	sudo update-rc.d freelss remove
+	sudo update-rc.d freelss defaults
 
 clean:
 	rm -f *.o *.gch *~ freelss
