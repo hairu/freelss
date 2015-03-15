@@ -28,9 +28,9 @@ $ ./build
 
 Download and install Raspicam
 ```
-$ wget http://downloads.sourceforge.net/project/raspicam/raspicam-0.1.1.zip
-$ unzip raspicam-0.1.1.zip
-$ cd raspicam-0.1.1
+$ wget http://downloads.sourceforge.net/project/raspicam/raspicam-0.1.3.zip
+$ unzip raspicam-0.1.3.zip
+$ cd raspicam-0.1.3
 $ mkdir build
 $ cd build
 $ cmake ..
