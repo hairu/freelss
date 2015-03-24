@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -35,7 +35,7 @@ const std::string WebContent::CSS = "\
 	width: 350px;\
 	height: 20px;\
 	padding-bottom: 5px;\
-	margin-right: 20px;\
+	margin-right: 100px;\
 }\
 body {\
 	font-size: 20px;\
@@ -202,6 +202,7 @@ function leftLaserClick(event) {\
 </script>";
 
 const std::string WebContent::PROFILE_NAME = "PROFILE_NAME";
+const std::string WebContent::SERIAL_NUMBER = "SERIAL_NUMBER";
 const std::string WebContent::CAMERA_X = "CAMERA_X";
 const std::string WebContent::CAMERA_Y = "CAMERA_Y";
 const std::string WebContent::CAMERA_Z = "CAMERA_Z";
@@ -233,7 +234,10 @@ const std::string WebContent::GENERATE_XYZ = "GENERATE_XYZ";
 const std::string WebContent::GENERATE_STL = "GENERATE_STL";
 const std::string WebContent::GENERATE_PLY = "GENERATE_PLY";
 const std::string WebContent::SEPARATE_LASERS_BY_COLOR = "SEPARATE_LASERS_BY_COLOR";
+const std::string WebContent::UNIT_OF_LENGTH = "UNIT_OF_LENGTH";
+const std::string WebContent::VERSION_NAME = "VERSION_NAME";
 
+const std::string WebContent::SERIAL_NUMBER_DESCR = "The serial number of the ATLAS 3D scanner";
 const std::string WebContent::CAMERA_X_DESCR = "X-compoment of camera location. ie: The camera is always at X = 0.";
 const std::string WebContent::CAMERA_Y_DESCR = "Y-component of camera location. ie: The distance from camera center to the XZ plane";
 const std::string WebContent::CAMERA_Z_DESCR = "Z-component of camera location. ie: The distance from camera center to origin";
@@ -438,9 +442,76 @@ std::string WebContent::cal1(const std::string& inMessage)
 
 	     return sstr.str();
 }
+
+std::string WebContent::showUpdate(SoftwareUpdate * update, const std::string& message)
+{
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+		 << CSS
+		 << std::endl
+		 << JAVASCRIPT
+		 << std::endl
+		 << "</head>"
+		 << "\
+<body>\
+<div id=\"menuContainer\">\
+  <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
+  <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
+</div>";
+
+	if (update != NULL)
+	{
+		sstr << "<p>Update Available: " << update->name << "</p>";
+		sstr << "<div><form action=\"/applyUpdate\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
+		sstr <<" <input type=\"submit\" name=\"applyUpdate\" value=\"Apply Update\">";
+		sstr <<" <input type=\"hidden\" name=\"majorVersion\" value=\"" << update->majorVersion << "\">";
+		sstr <<" <input type=\"hidden\" name=\"minorVersion\" value=\"" << update->minorVersion << "\">";
+		sstr << "</form></div>";
+	}
+	else if (!message.empty())
+	{
+		sstr << "<h2>" << message << "</h2>";
+	}
+	else
+	{
+		sstr << "<h2>No updates available.</h2>";
+	}
+
+	sstr << "</body></html>";
+
+	return sstr.str();
+}
+
+std::string WebContent::updateApplied(SoftwareUpdate * update, const std::string& message, bool success)
+{
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+		 << CSS
+		 << std::endl
+		 << JAVASCRIPT
+		 << std::endl
+		 << "</head>"
+		 << "\
+<body>\
+<div id=\"menuContainer\">\
+  <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
+  <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
+</div>";
+
+	sstr << "<h2>" << message << "</h2>";
+
+	sstr << "</body></html>";
+
+	return sstr.str();
+}
+
 std::string WebContent::setup(const std::string& message)
 {
 	const Setup * setup = Setup::get();
+	UnitOfLength srcUnit = UL_MILLIMETERS; // Lengths are always represented in millimeters internally
+	UnitOfLength dstUnit = setup->unitOfLength;
 
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
@@ -462,19 +533,30 @@ std::string WebContent::setup(const std::string& message)
 		sstr << "<h2>" << message << "</h2>";
 	}
 
-
 	sstr << "<form action=\"/setup\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
 	sstr << "<p><input class=\"submit\" type=\"submit\" value=\"Save\"></p>";
 
-	sstr << setting(WebContent::CAMERA_X, "Camera X", setup->cameraLocation.x / 25.4f, CAMERA_X_DESCR, "in.", true);
-	sstr << setting(WebContent::CAMERA_Y, "Camera Y", setup->cameraLocation.y / 25.4f, CAMERA_Y_DESCR,  "in.");
-	sstr << setting(WebContent::CAMERA_Z, "Camera Z", setup->cameraLocation.z / 25.4f, CAMERA_Z_DESCR,  "in.");
-	sstr << setting(WebContent::RIGHT_LASER_X, "Right Laser X", setup->rightLaserLocation.x / 25.4f, RIGHT_LASER_X_DESCR,  "in.");
-	sstr << setting(WebContent::RIGHT_LASER_Y, "Right Laser Y", setup->rightLaserLocation.y / 25.4f, RIGHT_LASER_Y_DESCR,  "in.", true);
-	sstr << setting(WebContent::RIGHT_LASER_Z, "Right Laser Z", setup->rightLaserLocation.z / 25.4f, RIGHT_LASER_Z_DESCR,  "in.", true);
-	sstr << setting(WebContent::LEFT_LASER_X, "Left Laser X", setup->leftLaserLocation.x / 25.4f, LEFT_LASER_X_DESCR,  "in.");
-	sstr << setting(WebContent::LEFT_LASER_Y, "Left Laser Y", setup->leftLaserLocation.y / 25.4f, LEFT_LASER_Y_DESCR,  "in.", true);
-	sstr << setting(WebContent::LEFT_LASER_Z, "Left Laser Z", setup->leftLaserLocation.z / 25.4f, LEFT_LASER_Z_DESCR,  "in.", true);
+	sstr << setting(WebContent::SERIAL_NUMBER, "Serial Number", setup->serialNumber, SERIAL_NUMBER_DESCR);
+
+	std::string mmSel = setup->unitOfLength == UL_MILLIMETERS ? " SELECTED" : "";
+	std::string inSel = setup->unitOfLength == UL_INCHES ? " SELECTED" : "";
+
+	sstr << "<div><div class=\"settingsText\">Unit of Length</div>";
+	sstr << "<select name=\"" << WebContent::UNIT_OF_LENGTH << "\">";
+	sstr << "<option value=\"1\"" << mmSel << ">Millimeters</option>\r\n";
+	sstr << "<option value=\"2\"" << inSel << ">Inches</option>\r\n";
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">The unit of length for future values entered on the setup page.</div>\n";
+
+	sstr << setting(WebContent::CAMERA_X, "Camera X", ConvertUnitOfLength(setup->cameraLocation.x, srcUnit, dstUnit), CAMERA_X_DESCR, ToString(dstUnit) + ".", true);
+	sstr << setting(WebContent::CAMERA_Y, "Camera Y", ConvertUnitOfLength(setup->cameraLocation.y, srcUnit, dstUnit), CAMERA_Y_DESCR,  ToString(dstUnit) + ".");
+	sstr << setting(WebContent::CAMERA_Z, "Camera Z", ConvertUnitOfLength(setup->cameraLocation.z, srcUnit, dstUnit), CAMERA_Z_DESCR,  ToString(dstUnit) + ".");
+	sstr << setting(WebContent::RIGHT_LASER_X, "Right Laser X", ConvertUnitOfLength(setup->rightLaserLocation.x, srcUnit, dstUnit), RIGHT_LASER_X_DESCR,  ToString(dstUnit) + ".");
+	sstr << setting(WebContent::RIGHT_LASER_Y, "Right Laser Y", ConvertUnitOfLength(setup->rightLaserLocation.y, srcUnit, dstUnit), RIGHT_LASER_Y_DESCR,  ToString(dstUnit) + ".", true);
+	sstr << setting(WebContent::RIGHT_LASER_Z, "Right Laser Z", ConvertUnitOfLength(setup->rightLaserLocation.z, srcUnit, dstUnit), RIGHT_LASER_Z_DESCR,  ToString(dstUnit) + ".", true);
+	sstr << setting(WebContent::LEFT_LASER_X, "Left Laser X", ConvertUnitOfLength(setup->leftLaserLocation.x, srcUnit, dstUnit), LEFT_LASER_X_DESCR,  ToString(dstUnit) + ".");
+	sstr << setting(WebContent::LEFT_LASER_Y, "Left Laser Y", ConvertUnitOfLength(setup->leftLaserLocation.y, srcUnit, dstUnit), LEFT_LASER_Y_DESCR,  ToString(dstUnit) + ".", true);
+	sstr << setting(WebContent::LEFT_LASER_Z, "Left Laser Z", ConvertUnitOfLength(setup->leftLaserLocation.z, srcUnit, dstUnit), LEFT_LASER_Z_DESCR,  ToString(dstUnit) + ".", true);
 
 	sstr << setting(WebContent::RIGHT_LASER_PIN, "Right Laser Pin", setup->rightLaserPin, RIGHT_LASER_PIN_DESCR);
 	sstr << setting(WebContent::LEFT_LASER_PIN, "Left Laser Pin", setup->leftLaserPin, LEFT_LASER_PIN_DESCR);
@@ -486,6 +568,7 @@ std::string WebContent::setup(const std::string& message)
 	sstr << setting(WebContent::STEP_DELAY, "Motor Step Delay", setup->motorStepDelay, STEP_DELAY_DESCR, "&mu;s");
 	sstr << setting(WebContent::DIRECTION_PIN, "Motor Direction Pin", setup->motorDirPin, DIRECTION_PIN_DESCR);
 	sstr << setting(WebContent::RESPONSE_DELAY, "Motor Response Delay", setup->motorResponseDelay, RESPONSE_DELAY_DESCR, "&mu;s");
+	sstr << setting(WebContent::VERSION_NAME, "Firmware Version", FREELSS_VERSION_NAME, "The version of FreeLSS the scanner is running", "", true);
 
 	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"save\">\
 <input class=\"submit\" type=\"submit\" value=\"Save\">\
@@ -513,7 +596,7 @@ std::string WebContent::settings(const std::string& message)
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
-  <div class=\"menu2\"><a href=\"/setup\"><small><small>Setup</small></small></a></div>\
+  <div class=\"menu2\"><a href=\"/checkUpdate\"><small><small>Check for Update</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/setup\"><small><small>Setup</small></small></a></div>\
 </div>";
 
 	if (!message.empty())

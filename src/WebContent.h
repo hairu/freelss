@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -41,8 +41,11 @@ public:
 	static std::string cal1(const std::string& message);
 	static std::string settings(const std::string& message);
 	static std::string setup(const std::string& message);
+	static std::string showUpdate(SoftwareUpdate * update, const std::string& message);
+	static std::string updateApplied(SoftwareUpdate * update, const std::string& message, bool success);
 
 	static const std::string PROFILE_NAME;
+	static const std::string SERIAL_NUMBER;
 	static const std::string CAMERA_X;
 	static const std::string CAMERA_Y;
 	static const std::string CAMERA_Z;
@@ -74,6 +77,9 @@ public:
 	static const std::string GENERATE_STL;
 	static const std::string GENERATE_PLY;
 	static const std::string SEPARATE_LASERS_BY_COLOR;
+	static const std::string UNIT_OF_LENGTH;
+	static const std::string VERSION_NAME;
+
 private:
 	static std::string setting(const std::string& name, const std::string& label,
 			const std::string& value, const std::string& description, const std::string& units = "", bool readOnly = false);
@@ -90,6 +96,7 @@ private:
 
 	static const std::string CSS;
 	static const std::string JAVASCRIPT;
+	static const std::string SERIAL_NUMBER_DESCR;
 	static const std::string CAMERA_X_DESCR;
 	static const std::string CAMERA_Y_DESCR;
 	static const std::string CAMERA_Z_DESCR;

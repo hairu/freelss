@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -28,6 +28,7 @@
 #include "Scanner.h"
 #include "Camera.h"
 #include "Calibrator.h"
+#include "UpdateManager.h"
 
 #define POSTBUFFERSIZE 2048
 #define MAX_PIN 7
@@ -252,38 +253,47 @@ static void SaveSetup(RequestInfo * reqInfo)
 {
 	Setup * setup = Setup::get();
 
+	// Get the original units in case we need to convert
+	UnitOfLength srcUnits = setup->unitOfLength;
+
+	std::string unitOfLength = reqInfo->arguments[WebContent::UNIT_OF_LENGTH];
+	if (!unitOfLength.empty())
+	{
+		setup->unitOfLength = (UnitOfLength) ToInt(unitOfLength);
+	}
+
 	std::string cameraY = reqInfo->arguments[WebContent::CAMERA_Y];
 	if (!cameraY.empty())
 	{
-		setup->cameraLocation.y = 25.4 * ToReal(cameraY.c_str());
-		setup->rightLaserLocation.y = 25.4 * ToReal(cameraY.c_str());
-		setup->leftLaserLocation.y = 25.4 * ToReal(cameraY.c_str());
+		setup->cameraLocation.y = ConvertUnitOfLength(ToReal(cameraY), srcUnits, UL_MILLIMETERS);
+		setup->rightLaserLocation.y = ConvertUnitOfLength(ToReal(cameraY), srcUnits, UL_MILLIMETERS);
+		setup->leftLaserLocation.y = ConvertUnitOfLength(ToReal(cameraY), srcUnits, UL_MILLIMETERS);
 	}
 
 	std::string cameraZ = reqInfo->arguments[WebContent::CAMERA_Z];
 	if (!cameraZ.empty())
 	{
-		setup->cameraLocation.z = 25.4 * ToReal(cameraZ.c_str());
-		setup->rightLaserLocation.z = 25.4 * ToReal(cameraZ.c_str());
-		setup->leftLaserLocation.z = 25.4 * ToReal(cameraZ.c_str());
+		setup->cameraLocation.z = ConvertUnitOfLength(ToReal(cameraZ), srcUnits, UL_MILLIMETERS);
+		setup->rightLaserLocation.z = ConvertUnitOfLength(ToReal(cameraZ), srcUnits, UL_MILLIMETERS);
+		setup->leftLaserLocation.z = ConvertUnitOfLength(ToReal(cameraZ), srcUnits, UL_MILLIMETERS);
 	}
 
 	std::string rightLaserX = reqInfo->arguments[WebContent::RIGHT_LASER_X];
 	if (!rightLaserX.empty())
 	{
-		setup->rightLaserLocation.x = 25.4 * ToReal(rightLaserX.c_str());
+		setup->rightLaserLocation.x = ConvertUnitOfLength(ToReal(rightLaserX), srcUnits, UL_MILLIMETERS);
 	}
 
 	std::string leftLaserX = reqInfo->arguments[WebContent::LEFT_LASER_X];
 	if (!leftLaserX.empty())
 	{
-		setup->leftLaserLocation.x = 25.4 * ToReal(leftLaserX.c_str());
+		setup->leftLaserLocation.x = ConvertUnitOfLength(ToReal(leftLaserX), srcUnits, UL_MILLIMETERS);
 	}
 
 	std::string rightLaserPin = reqInfo->arguments[WebContent::RIGHT_LASER_PIN];
 	if (!rightLaserPin.empty())
 	{
-		int pin = ToInt(rightLaserPin.c_str());
+		int pin = ToInt(rightLaserPin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Laser Pin Setting");
@@ -295,7 +305,7 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string leftLaserPin = reqInfo->arguments[WebContent::LEFT_LASER_PIN];
 	if (!leftLaserPin.empty())
 	{
-		int pin = ToInt(leftLaserPin.c_str());
+		int pin = ToInt(leftLaserPin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Laser Pin Setting");
@@ -307,19 +317,19 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string laserOnValue = reqInfo->arguments[WebContent::LASER_ON_VALUE];
 	if (!laserOnValue.empty())
 	{
-		setup->laserOnValue = ToInt(laserOnValue.c_str());
+		setup->laserOnValue = ToInt(laserOnValue);
 	}
 
 	std::string stepsPerRev = reqInfo->arguments[WebContent::STEPS_PER_REVOLUTION];
 	if (!stepsPerRev.empty())
 	{
-		setup->stepsPerRevolution = ToInt(stepsPerRev.c_str());
+		setup->stepsPerRevolution = ToInt(stepsPerRev);
 	}
 
 	std::string enablePin = reqInfo->arguments[WebContent::ENABLE_PIN];
 	if (!enablePin.empty())
 	{
-		int pin = ToInt(enablePin.c_str());
+		int pin = ToInt(enablePin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Enable Pin Setting");
@@ -331,7 +341,7 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string stepPin = reqInfo->arguments[WebContent::STEP_PIN];
 	if (!stepPin.empty())
 	{
-		int pin = ToInt(stepPin.c_str());
+		int pin = ToInt(stepPin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Step Pin Setting");
@@ -343,13 +353,13 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string stepDelay = reqInfo->arguments[WebContent::STEP_DELAY];
 	if (!stepDelay.empty())
 	{
-		setup->motorStepDelay = ToInt(stepDelay.c_str());
+		setup->motorStepDelay = ToInt(stepDelay);
 	}
 
 	std::string dirPin = reqInfo->arguments[WebContent::DIRECTION_PIN];
 	if (!dirPin.empty())
 	{
-		int pin = ToInt(dirPin.c_str());
+		int pin = ToInt(dirPin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Direction Pin Setting");
@@ -361,13 +371,19 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string dirPinValue = reqInfo->arguments[WebContent::DIRECTION_VALUE];
 	if (!dirPinValue.empty())
 	{
-		setup->motorDirPinValue = ToInt(dirPinValue.c_str());
+		setup->motorDirPinValue = ToInt(dirPinValue);
 	}
 
 	std::string responseDelay = reqInfo->arguments[WebContent::RESPONSE_DELAY];
 	if (!responseDelay.empty())
 	{
-		setup->motorResponseDelay = ToInt(responseDelay.c_str());
+		setup->motorResponseDelay = ToInt(responseDelay);
+	}
+
+	std::string serialNumber = reqInfo->arguments[WebContent::SERIAL_NUMBER];
+	if (!serialNumber.empty())
+	{
+		setup->serialNumber = serialNumber;
 	}
 
 	// Save the properties
@@ -722,6 +738,9 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			}
 			else if (reqInfo->method == RequestInfo::POST && cmd == "shutdown")
 			{
+				// Turn on both lasers
+				Laser::getInstance()->turnOn(Laser::ALL_LASERS);
+
 				system("shutdown -h now&");
 				message = "Shutting down....";
 			}
@@ -887,6 +906,76 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 					ret = BuildError(reqInfo->connection, message, MHD_HTTP_INTERNAL_SERVER_ERROR);
 				}
 			}
+		}
+		else if (reqInfo->url == "/checkUpdate")
+		{
+			std::string message = "";
+			SoftwareUpdate * update = NULL;
+			UpdateManager * updateMgr = UpdateManager::get();
+			try
+			{
+				updateMgr->checkForUpdates();
+				update = updateMgr->getLatestUpdate();
+			}
+			catch (Exception& ex)
+			{
+				message = ex;
+			}
+
+			std::string page = WebContent::showUpdate(update, message);
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/applyUpdate" && reqInfo->method == RequestInfo::POST)
+		{
+			int majorVersion = ToInt(reqInfo->arguments["majorVersion"]);
+			int minorVersion = ToInt(reqInfo->arguments["minorVersion"]);
+			std::string message;
+			bool success = true;
+
+			UpdateManager * updateMgr = UpdateManager::get();
+			SoftwareUpdate * update = updateMgr->getLatestUpdate();
+			if (update == NULL)
+			{
+				message = "Error retrieving update";
+				success = false;
+			}
+			else if (majorVersion != update->majorVersion || minorVersion != update->minorVersion)
+			{
+				message = "Mismatch error with update version";
+				success = false;
+			}
+			else
+			{
+				try
+				{
+					updateMgr->applyUpdate(update);
+					message = "Update Successful.  Restarting...";
+					success = true;
+				}
+				catch (Exception& ex)
+				{
+					message = ex;
+					success = false;
+				}
+			}
+
+			std::string page = WebContent::updateApplied(update, message, success);
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/reboot" && reqInfo->method == RequestInfo::POST)
+		{
+			system("reboot&");
+			std::string page = "Rebooting...";
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
 		}
 		else
 		{

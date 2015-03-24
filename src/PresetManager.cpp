@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -43,6 +43,12 @@ PresetManager * PresetManager::get()
 	return PresetManager::m_instance;
 }
 
+void PresetManager::release()
+{
+	delete PresetManager::m_instance;
+	PresetManager::m_instance = NULL;
+}
+
 Preset& PresetManager::getActivePreset()
 {
 	if (m_activePresetIndex < 0 || m_activePresetIndex >= (int)m_presets.size())
@@ -52,7 +58,6 @@ Preset& PresetManager::getActivePreset()
 
 	return m_presets[m_activePresetIndex];
 }
-
 
 void PresetManager::setActivePreset(int presetId)
 {

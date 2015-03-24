@@ -3,9 +3,10 @@ CFLAGS=-O3 -Wall -Winvalid-pch -fexceptions -I/usr/local/include -I/opt/vc/inclu
 	-I/opt/vc/include/interface/vcos/pthreads \
 	-I/opt/vc/include/interface/vmcs_host/linux \
 	-I/opt/vc/include/interface\
-	-I/opt/vc/include/interface/mmal/util
+	-I/opt/vc/include/interface/mmal/util\
+	-I../contrib
 
-LFLAGS=-lraspicam -lmmal -lmmal_core -lmmal_util -lvcos -lpthread -lpng -ljpeg -lsqlite3 -lwiringPi -lmicrohttpd -lbcm_host -L/usr/local/lib -L/opt/vc/lib
+LFLAGS=-lcurl -lraspicam -lmmal -lmmal_core -lmmal_util -lvcos -lpthread -lpng -ljpeg -lsqlite3 -lwiringPi -lmicrohttpd -lbcm_host -L/usr/local/lib -L/opt/vc/lib
 OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	HttpServer.o CriticalSection.o Scanner.o Image.o ImageProcessor.o \
 	Thread.o A4988TurnTable.o RelayLaser.o LocationMapper.o \
@@ -14,7 +15,7 @@ OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	Camera.o ScanResultsWriter.o MmalStillCamera.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
 	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
-	XyzWriter.o
+	XyzWriter.o UpdateManager.o
 
 all: freelss 
 
@@ -117,12 +118,13 @@ LaserResultsMerger.o: LaserResultsMerger.cpp LaserResultsMerger.h Main.h
 XyzWriter.o: XyzWriter.cpp XyzWriter.h Main.h
 	$(CC) -c $(CFLAGS) XyzWriter.cpp
 
+UpdateManager.o: UpdateManager.cpp UpdateManager.h Main.h
+	$(CC) -c $(CFLAGS) UpdateManager.cpp
+
 github:
 	mkdir -p ../../github
 	mkdir -p ../../github/src
-	mkdir -p ../../github/config
-	cp ../config/freelss ../../github/config/
-	cp -f *.h *.cpp Makefile ../../github/src/
+	cp -f *.h *.cpp Makefile ../../github/src
 
 run: freelss
 	sudo ./freelss

@@ -20,50 +20,69 @@
 
 #pragma once
 
+#include "CriticalSection.h"
+
 namespace freelss
 {
 
 /**
- * Holds setup information about the hardware.
+ * This class handles the downloading and applying of updates.
  */
-class Setup
+class UpdateManager
 {
 public:
 
 	/** Returns the singleton instance */
-	static Setup * get();
+	static UpdateManager * get();
+
+	/** Releases the singleton instance */
 	static void release();
 
-	/** Encodes property information to the properties vector */
-	void encodeProperties(std::vector<Property>& properties);
+	/** Returns info about the latest software update.  Ownership of returned is transferred to caller. */
+	SoftwareUpdate * getLatestUpdate();
 
-	/** Decodes property information from the given vector  */
-	void decodeProperties(const std::vector<Property>& properties);
+	/** Checks for updates */
+	void checkForUpdates();
 
-	Vector3 cameraLocation;
-	Vector3 leftLaserLocation;
-	Vector3 rightLaserLocation;
-	int rightLaserPin;
-	int leftLaserPin;
-	int motorEnablePin;
-	int motorStepPin;
-	int motorDirPin;
-	int motorDirPinValue;
-	int laserOnValue;
-	int stepsPerRevolution;
-	int motorResponseDelay;
-	int motorStepDelay;
-	int httpPort;
-	std::string serialNumber;
-	UnitOfLength unitOfLength;
+	/** Applies the given software update */
+	void applyUpdate(SoftwareUpdate * update);
+
+protected:
+
+	/** Default Constructor */
+	UpdateManager();
 
 private:
 
-	/** Default Constructor */
-	Setup();
+	/** Downloads the file to the given destination */
+	void downloadFile(const std::string& url,
+			          const std::string& destination,
+					  const std::string& postData = "");
+
+	/** Downloads the file to the given destination */
+	void downloadUpdate(const std::string& url,
+			            const std::string& destination,
+			            const std::string& serialNumber,
+			            int majorVersion,
+			            int minorVersion);
+
+	/** Reads the updates from the given update file */
+	std::vector<SoftwareUpdate> readUpdates(const std::string& filename);
 
 	/** Singleton instance */
-	static Setup * m_instance;
+	static UpdateManager * m_instance;
+
+	/** The url to check for updates */
+	static const std::string UPDATE_URL;
+
+	/** The directory where updates are temporarily stored */
+	static const std::string UPDATE_DIR;
+
+	/** The critical section for this instance */
+	CriticalSection m_cs;
+
+	/** The updates */
+	std::vector<SoftwareUpdate> m_updates;
 };
 
 }
