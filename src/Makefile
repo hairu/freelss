@@ -124,7 +124,9 @@ UpdateManager.o: UpdateManager.cpp UpdateManager.h Main.h
 github:
 	mkdir -p ../../github
 	mkdir -p ../../github/src
+	mkdir -p ../../github/contrib
 	cp -f *.h *.cpp Makefile ../../github/src
+	cp -f ../contrib/*.hpp ../../github/contrib
 
 run: freelss
 	sudo ./freelss
