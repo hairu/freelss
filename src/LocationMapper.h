@@ -70,6 +70,7 @@ private:
 	real m_sensorWidth;
 	real m_sensorHeight;
 	real m_maxObjectSize;
+	real m_groundPlaneHeight;
 };
 
 }

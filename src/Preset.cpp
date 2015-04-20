@@ -42,7 +42,9 @@ Preset::Preset() :
 	generateXyz (false),
 	generateStl(true),
 	generatePly(true),
-	laserMergeAction (LMA_PREFER_RIGHT_LASER)
+	groundPlaneHeight(0),
+	laserMergeAction (LMA_PREFER_RIGHT_LASER),
+	plyDataFormat(PlyWriter::PLY_BINARY)
 {
 	// Do nothing
 }
@@ -64,7 +66,9 @@ void Preset::encodeProperties(std::vector<Property>& properties, bool isActivePr
 	properties.push_back(Property("presets." + name + ".generateXyz", ToString(generateXyz)));
 	properties.push_back(Property("presets." + name + ".generateStl", ToString(generateStl)));
 	properties.push_back(Property("presets." + name + ".generatePly", ToString(generatePly)));
+	properties.push_back(Property("presets." + name + ".groundPlaneHeight", ToString(groundPlaneHeight)));
 	properties.push_back(Property("presets." + name + ".laserMergeAction", ToString((int)laserMergeAction)));
+	properties.push_back(Property("presets." + name + ".plyDataFormat", ToString((int)plyDataFormat)));
 
 	if (isActivePreset)
 	{
@@ -144,9 +148,17 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 			{
 				generatePly = ToBool(prop.value);
 			}
+			else if (EndsWith(prop.name, name + ".groundPlaneHeight"))
+			{
+				groundPlaneHeight = ToReal(prop.value);
+			}
 			else if (EndsWith(prop.name, name + ".laserMergeAction"))
 			{
-				laserMergeAction = (LaserMergeAction)ToInt(prop.value);
+				laserMergeAction = (LaserMergeAction) ToInt(prop.value);
+			}
+			else if (EndsWith(prop.name, name + ".plyDataFormat"))
+			{
+				plyDataFormat = (PlyWriter::DataFormat) ToInt(prop.value);
 			}
 		}
 	}

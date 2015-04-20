@@ -12,10 +12,10 @@ OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	Thread.o A4988TurnTable.o RelayLaser.o LocationMapper.o \
 	PlyWriter.o Calibrator.o RaspistillCamera.o \
 	NeutralFileWriter.o NeutralFileReader.o RaspicamCamera.o \
-	Camera.o ScanResultsWriter.o MmalStillCamera.o \
+	Camera.o MmalStillCamera.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
 	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
-	XyzWriter.o UpdateManager.o
+	XyzWriter.o UpdateManager.o Progress.o
 
 all: freelss 
 
@@ -91,9 +91,6 @@ NeutralFileReader.o: NeutralFileReader.cpp NeutralFileReader.h Main.h
 Camera.o: Camera.cpp Camera.h Main.h
 	$(CC) -c $(CFLAGS) Camera.cpp
 
-ScanResultsWriter.o: ScanResultsWriter.cpp ScanResultsWriter.h Main.h
-	$(CC) -c $(CFLAGS) ScanResultsWriter.cpp
-
 StlWriter.o: StlWriter.cpp StlWriter.h Main.h
 	$(CC) -c $(CFLAGS) StlWriter.cpp
 
@@ -121,12 +118,13 @@ XyzWriter.o: XyzWriter.cpp XyzWriter.h Main.h
 UpdateManager.o: UpdateManager.cpp UpdateManager.h Main.h
 	$(CC) -c $(CFLAGS) UpdateManager.cpp
 
+Progress.o: Progress.cpp Progress.h Main.h
+	$(CC) -c $(CFLAGS) Progress.cpp
+
 github:
 	mkdir -p ../../github
 	mkdir -p ../../github/src
-	mkdir -p ../../github/contrib
 	cp -f *.h *.cpp Makefile ../../github/src
-	cp -f ../contrib/*.hpp ../../github/contrib
 
 run: freelss
 	sudo ./freelss

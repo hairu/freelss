@@ -82,8 +82,8 @@ The origin is the center of the turn table.
 
 // Non-configurable settings
 #define FREELSS_VERSION_MAJOR 1
-#define FREELSS_VERSION_MINOR 2
-#define FREELSS_VERSION_NAME "FreeLSS 1.2"
+#define FREELSS_VERSION_MINOR 3
+#define FREELSS_VERSION_NAME "FreeLSS 1.3"
 
 #define PI 3.14159265359
 
@@ -258,7 +258,7 @@ struct SoftwareUpdate
 };
 
 /** Units of length */
-enum UnitOfLength { UL_UNKNOWN, UL_MILLIMETERS, UL_INCHES };
+enum UnitOfLength { UL_UNKNOWN, UL_MILLIMETERS, UL_INCHES, UL_CENTIMETERS };
 
 /** Returns the current point in time in ms */
 double GetTimeInSeconds();

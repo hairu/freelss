@@ -20,13 +20,15 @@
 
 #include "Main.h"
 #include "PlyWriter.h"
+#include "Preset.h"
 
 namespace freelss
 {
 
 PlyWriter::PlyWriter() :
 		m_filename(),
-		m_totalNumPoints(0)
+		m_totalNumPoints(0),
+		m_dataFormat(PLY_BINARY)
 {
 	// Do nothing
 }
@@ -39,18 +41,43 @@ PlyWriter::~PlyWriter()
 	}
 }
 
-void PlyWriter::begin(const char * filename)
+void PlyWriter::setDataFormat(DataFormat dataRepresentation)
 {
-	m_filename = filename;
+	m_dataFormat = dataRepresentation;
+}
+
+void PlyWriter::begin(const std::string& baseFilename)
+{
+	if (m_fout.is_open())
+	{
+		m_fout.close();
+	}
+
+	m_filename = baseFilename + ".ply";
 	m_totalNumPoints = 0;
-	m_fout.open(filename);
+	m_fout.open(m_filename.c_str());
 	if (!m_fout.is_open())
 	{
-		throw Exception(std::string("Error opening points file, ") + filename);
+		throw Exception(std::string("Error opening points file, ") + m_filename);
 	}
 	
 	m_fout << "ply" << std::endl;
-	m_fout << "format ascii 1.0" << std::endl;
+	m_fout << "format ";
+
+	if (m_dataFormat == PlyWriter::PLY_ASCII)
+	{
+		m_fout << "ascii";
+	}
+	else if (m_dataFormat == PlyWriter::PLY_BINARY)
+	{
+		m_fout << "binary_little_endian";
+	}
+	else
+	{
+		throw Exception("Unsupported PLY data format");
+	}
+
+	m_fout << " 1.0" << std::endl;
 	m_fout << "element vertex             " << std::endl;  // Leave space for updating the vertex count
 	m_fout << "property float x" << std::endl;
 	m_fout << "property float y" << std::endl;
@@ -68,6 +95,22 @@ void PlyWriter::begin(const char * filename)
 
 void PlyWriter::writePoints(ColoredPoint * points, int numPoints)
 {
+	if (m_dataFormat == PlyWriter::PLY_ASCII)
+	{
+		writeAsciiPoints(points, numPoints);
+	}
+	else if (m_dataFormat == PlyWriter::PLY_BINARY)
+	{
+		writeBinaryPoints(points, numPoints);
+	}
+	else
+	{
+		throw Exception("Unsupported PLY data format");
+	}
+}
+
+void PlyWriter::writeAsciiPoints(ColoredPoint * points, int numPoints)
+{
 	m_totalNumPoints += numPoints;
 	for (int iPt = 0; iPt < numPoints; iPt++)
 	{
@@ -75,6 +118,41 @@ void PlyWriter::writePoints(ColoredPoint * points, int numPoints)
 		m_fout << point.x << " " << point.y << " " << point.z << " "
 			   << point.normal.x << " " << point.normal.y << " " << point.normal.z << " "
 			   << (int)point.r << " " << (int)point.g << " " << (int)point.b << std::endl;
+	}
+}
+
+void PlyWriter::writeBinaryPoints(ColoredPoint * points, int numPoints)
+{
+	m_totalNumPoints += numPoints;
+	for (int iPt = 0; iPt < numPoints; iPt++)
+	{
+		const ColoredPoint & point = points[iPt];
+
+		//
+		// Make sure we have the proper data types/sizes
+		//
+		real32 x = point.x;
+		real32 y = point.y;
+		real32 z = point.z;
+		real32 nx = point.normal.x;
+		real32 ny = point.normal.y;
+		real32 nz = point.normal.z;
+		unsigned char r = point.r;
+		unsigned char g = point.g;
+		unsigned char b = point.b;
+
+		//
+		// Write the record
+		//
+		m_fout.write((const char *)&x, sizeof(x));
+		m_fout.write((const char *)&y, sizeof(y));
+		m_fout.write((const char *)&z, sizeof(z));
+		m_fout.write((const char *)&nx, sizeof(nx));
+		m_fout.write((const char *)&ny, sizeof(ny));
+		m_fout.write((const char *)&nz, sizeof(nz));
+		m_fout.write((const char *)&r, sizeof(r));
+		m_fout.write((const char *)&g, sizeof(g));
+		m_fout.write((const char *)&b, sizeof(b));
 	}
 }
 
@@ -86,7 +164,17 @@ void PlyWriter::end()
 	// Re-open the file and update the point count
 	if (m_totalNumPoints > 0)
 	{
-		int filePos = 36;  // The file position where we should write the point count
+		int filePos = 31; // The file position where we should write the point count
+
+		if (m_dataFormat == PlyWriter::PLY_ASCII)
+		{
+			filePos += (int) std::string("ascii").size();
+		}
+		else if (m_dataFormat == PlyWriter::PLY_BINARY)
+		{
+			filePos += (int) std::string("binary_little_endian").size();
+		}
+
 		std::fstream fout (m_filename.c_str());
 		if (!fout.is_open())
 		{

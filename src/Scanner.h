@@ -23,8 +23,9 @@
 #include "ImageProcessor.h"
 #include "Thread.h"
 #include "CriticalSection.h"
-#include "ScanResultsWriter.h"
+#include "PlyWriter.h"
 #include "Laser.h"
+#include "Progress.h"
 
 namespace freelss
 {
@@ -70,13 +71,10 @@ public:
 	bool isRunning();
 
 	/** Returns the progress of the current scan from 0 to 1 */
-	real getProgress();
+	Progress& getProgress();
 
 	/** Get the remaining time for the scan in seconds */
 	real getRemainingTime();
-
-	/** Returns the name of the current operation taking place */
-	std::string getCurrentOperationName();
 
 	/** Generate debugging images and information */
 	void generateDebugInfo(Laser::LaserSide laserSide);
@@ -90,8 +88,8 @@ private:
 		double rotationTime;
 		double startTime;
 		double pointProcessingTime;
-		double fileWritingTime;
-		double meshBuildTime;
+		double pointCloudWritingTime;
+		double meshWritingTime;
 		double laserTime;
 		double laserMergeTime;
 		int numFrameRetries;
@@ -110,8 +108,6 @@ private:
 
 	/** Free the points data */
 	void clearPoints();
-
-	void finishWritingToOutput();
 
 	/**
 	 * Returns true if the scan was processed successfully and false if there was a problem and the frame needs to be again.
@@ -158,7 +154,7 @@ private:
 	std::string m_filename;
 
 	/** The progress of the current scan */
-	real m_progress;
+	Progress m_progress;
 
 	/** Protection for the running, progress, and any other status parameters */
 	CriticalSection m_status;
@@ -184,8 +180,8 @@ private:
 	/** Location of the first left laser line detected in the last image */
 	int m_firstRowLeftLaserCol;
 
-	/** Writes the results to a neutral file, PLY file, or other output file */
-	ScanResultsWriter m_scanResultsWriter;
+	/** Writes the results to a PLY file */
+	PlyWriter m_plyWriter;
 
 	/** Max number of pixel locations */
 	unsigned m_maxNumLocations;
@@ -216,9 +212,6 @@ private:
 
 	/** The laser to scan with */
 	Laser::LaserSide m_laserSelection;
-
-	/** The name of current operation taking place */
-	std::string m_currentOperationName;
 
 	/** The task to perform */
 	Scanner::Task m_task;

@@ -32,6 +32,7 @@ CriticalSection::CriticalSection()
     }
 }
 
+
 CriticalSection::~CriticalSection()
 {
 	if (pthread_mutex_destroy(&m_handle) != 0)
@@ -39,6 +40,7 @@ CriticalSection::~CriticalSection()
 		throw Exception("Error destroying mutex");
 	}
 }
+
 
 void CriticalSection::enter()
 {

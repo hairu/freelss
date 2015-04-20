@@ -29,6 +29,7 @@ class CriticalSection
 public:
 	CriticalSection();
 	~CriticalSection();
+
 	void enter();
 	void leave();
 	

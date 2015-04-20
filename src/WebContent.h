@@ -24,6 +24,8 @@
 namespace freelss
 {
 
+class Progress;
+
 class WebContent
 {
 public:
@@ -37,7 +39,7 @@ public:
 	};
 
 	static std::string scan(const std::vector<ScanResult>& pastScans);
-	static std::string scanRunning(real progress, real remainingTime);
+	static std::string scanRunning(Progress& progress, real remainingTime);
 	static std::string cal1(const std::string& message);
 	static std::string settings(const std::string& message);
 	static std::string setup(const std::string& message);
@@ -79,6 +81,9 @@ public:
 	static const std::string SEPARATE_LASERS_BY_COLOR;
 	static const std::string UNIT_OF_LENGTH;
 	static const std::string VERSION_NAME;
+	static const std::string GROUND_PLANE_HEIGHT;
+	static const std::string PLY_DATA_FORMAT;
+
 
 private:
 	static std::string setting(const std::string& name, const std::string& label,
@@ -125,6 +130,8 @@ private:
 	static const std::string GENERATE_STL_DESCR;
 	static const std::string GENERATE_PLY_DESCR;
 	static const std::string SEPARATE_LASERS_BY_COLOR_DESCR;
+	static const std::string GROUND_PLANE_HEIGHT_DESCR;
+	static const std::string PLY_DATA_FORMAT_DESCR;
 };
 
 }

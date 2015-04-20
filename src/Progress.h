@@ -19,38 +19,32 @@
 */
 
 #pragma once
-#include "Thread.h"
+
 #include "CriticalSection.h"
 
 namespace freelss
 {
 
-/**
- * Writes the scan results in a separate thread so that the scan doesn't have to wait
- * on the I/O to complete.
- */
-class ScanResultsWriter : public Thread
+/** Tracks the progress of a task in a thread-safe manner. */
+class Progress
 {
 public:
+	Progress();
 
-	/** Constructor */
-	ScanResultsWriter();
-	void setBaseFilePath(const std::string& baseFilePath);
-	void write(const NeutralFileRecord& record);
+	real getPercent();
+	std::string getLabel();
 
-	/** The number of records not written yet */
-	size_t getNumPendingRecords();
-
-protected:
-
-	/** The thread function */
-	void run();
+	void setPercent(real percent);
+	void setLabel(const std::string& label);
 
 private:
+	// DISABLE COPY SEMANTICS
+	Progress(const Progress&) { }
+	Progress& operator = (const Progress&) { return *this; }
 
+	real m_percent;
+	std::string m_label;
 	CriticalSection m_cs;
-	std::list<NeutralFileRecord> m_records;
-	std::string m_nfFilename;
-	std::string m_plyFilename;
 };
+
 }

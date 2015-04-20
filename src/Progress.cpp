@@ -18,44 +18,56 @@
  ****************************************************************************
 */
 
-#pragma once
+#include "Main.h"
+#include "Progress.h"
 
 namespace freelss
 {
 
-class Progress;
 
-class StlWriter
+Progress::Progress() :
+	m_percent(0),
+	m_label(""),
+	m_cs()
 {
-public:
-	StlWriter();
-
-	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst, Progress& progress);
-
-private:
-	void writeHeader(std::ofstream& fout);
-	void populateBuffer(NeutralFileRecord * records, int numRecords, NeutralFileRecord ** buffer, int maxNumRecords);
-	void writeTrianglesForColumn(const std::vector<NeutralFileRecord>& currentFrame, const std::vector<NeutralFileRecord>& lastFrame, std::ofstream& fout, uint32& numTriangles);
-	void writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, bool flipNormal, std::ofstream& fout);
-
-	bool isValidTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3);
-
-	/**
-	 * Indicates if the face is oriented point into the model and the normal needs to get flipped.
-	 * This method assumes that the camera is looking straight down -z and x = 0.  The y doesn't matter.
-	 * This method assumes that all points were taken from the same laser.
-	 */
-	bool isInwardFacingFace(const NeutralFileRecord& p1, const NeutralFileRecord& p2, const NeutralFileRecord& p3);
+	// Do nothing
+}
 
 
-	/** The max triangle edge distance in mm sq */
-	real32 m_maxEdgeDistMmSq;
+real Progress::getPercent()
+{
+	real out;
 
-	real32 m_normal[3];
-	uint16 m_attribute;
+	m_cs.enter();
+	out = m_percent;
+	m_cs.leave();
 
-	/** The image width of the current camera */
-	int m_imageWidth;
-};
+	return out;
+}
+
+std::string Progress::getLabel()
+{
+	std::string out;
+
+	m_cs.enter();
+	out = m_label;
+	m_cs.leave();
+
+	return out;
+}
+
+void Progress::setPercent(real percent)
+{
+	m_cs.enter();
+	m_percent = percent;
+	m_cs.leave();
+}
+
+void Progress::setLabel(const std::string& label)
+{
+	m_cs.enter();
+	m_label = label;
+	m_cs.leave();
+}
 
 }

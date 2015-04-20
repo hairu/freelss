@@ -62,7 +62,7 @@ Scanner::Scanner() :
 	m_running(false),
 	m_range(360),
 	m_filename(""),
-	m_progress(0.0),
+	m_progress(),
 	m_status(),
 	m_maxNumFrameRetries(5),                    // TODO: Place this in Database
 	m_maxPercentPixelsOverThreshold(3),           // TODO: Place this in Database
@@ -81,7 +81,6 @@ Scanner::Scanner() :
 	m_rangeFout(),
 	m_numFramesBetweenLaserPlanes(0),
 	m_laserSelection(Laser::ALL_LASERS),
-	m_currentOperationName(""),
 	m_task(GENERATE_SCAN)
 {
 	// Do nothing
@@ -115,15 +114,9 @@ bool Scanner::isRunning()
 	return running;
 }
 
-real Scanner::getProgress()
+Progress& Scanner::getProgress()
 {
-	real progress;
-
-	m_status.enter();
-	progress = m_progress;
-	m_status.leave();
-
-	return progress;
+	return m_progress;
 }
 
 real Scanner::getRemainingTime()
@@ -157,21 +150,22 @@ void Scanner::prepareScan()
 {
 	m_status.enter();
 	m_running = true;
-	m_progress = 0.0;
+	m_progress.setPercent(0);
+
 	m_startTimeSec = GetTimeInSeconds();
 	m_remainingTime = 0;
 
 	if (m_task == Scanner::GENERATE_SCAN)
 	{
-		m_currentOperationName = "Scanning";
+		m_progress.setLabel("Scanning");
 	}
 	else if (m_task == Scanner::GENERATE_DEBUG)
 	{
-		m_currentOperationName = "Generating debug info";
+		m_progress.setLabel("Generating debug info");
 	}
 	else
 	{
-		m_currentOperationName = "Unknown";
+		m_progress.setLabel("Unknown");
 	}
 
 	// Get handles to our hardware devices
@@ -342,8 +336,9 @@ void Scanner::run()
 			double fullTimeSec = 100.0 / percentPerSecond;
 			double remainingSec = fullTimeSec - timeElapsed;
 
+			m_progress.setPercent(progress * 100);
+
 			m_status.enter();
-			m_progress = progress;
 			m_remainingTime = remainingSec;
 			m_status.leave();
 
@@ -358,7 +353,6 @@ void Scanner::run()
 		m_status.enter();
 		m_running = false;
 		m_status.leave();
-		finishWritingToOutput();
 
 		if (m_writeRangeCsvEnabled)
 		{
@@ -372,12 +366,6 @@ void Scanner::run()
 
 	m_turnTable->setMotorEnabled(false);
 
-	// Build the mesh
-	m_status.enter();
-	m_progress = 0.5;
-	m_currentOperationName = "Building mesh";
-	m_status.leave();
-
 	std::cout << "Merging laser results..." << std::endl;
 
 	time1 = GetTimeInSeconds();
@@ -386,7 +374,7 @@ void Scanner::run()
 	std::vector<NeutralFileRecord> results;
 	LaserResultsMerger merger;
 	merger.merge(results, leftLaserResults, rightLaserResults, maxFramesPerRevolution,
-			     m_numFramesBetweenLaserPlanes, Camera::getInstance()->getImageHeight(), preset.laserMergeAction);
+			     m_numFramesBetweenLaserPlanes, Camera::getInstance()->getImageHeight(), preset.laserMergeAction, m_progress);
 
 	// Sort by pseudo-step and row
 	std::cout << "Sort 2... " << std::endl;
@@ -402,19 +390,30 @@ void Scanner::run()
 	std::cout << "Starting output thread..." << std::endl;
 	if (preset.generatePly)
 	{
+		m_progress.setLabel("Generating PLY file");
+		m_progress.setPercent(0);
+
 		std::cout << "Writing PLY file..." << std::endl;
 		time1 = GetTimeInSeconds();
 
-		m_scanResultsWriter.setBaseFilePath(m_filename);
-		m_scanResultsWriter.execute();
-
+		m_plyWriter.setDataFormat(preset.plyDataFormat);
+		m_plyWriter.begin(m_filename);
+		real percent = 0;
 		for (size_t iRec = 0; iRec < results.size(); iRec++)
 		{
-			m_scanResultsWriter.write(results[iRec]);
+			real newPct = 100.0f * iRec / results.size();
+			if (newPct - percent > 0.1)
+			{
+				m_progress.setPercent(newPct);
+				percent = newPct;
+			}
+
+			m_plyWriter.writePoints(&results[iRec].point, 1);
 		}
 
-		finishWritingToOutput();
-		timingStats.fileWritingTime += GetTimeInSeconds() - time1;
+		m_plyWriter.end();
+
+		timingStats.pointCloudWritingTime += GetTimeInSeconds() - time1;
 	}
 
 	// Generate the XYZ file
@@ -423,8 +422,8 @@ void Scanner::run()
 		std::cout << "Generating XYZ file..." << std::endl;
 		time1 = GetTimeInSeconds();
 		XyzWriter xyzWriter;
-		xyzWriter.write(m_filename, results);
-		timingStats.fileWritingTime += GetTimeInSeconds() - time1;
+		xyzWriter.write(m_filename, results, m_progress);
+		timingStats.pointCloudWritingTime += GetTimeInSeconds() - time1;
 	}
 
 	// Generate the STL file
@@ -433,33 +432,19 @@ void Scanner::run()
 		std::cout << "Generating STL mesh..." << std::endl;
 		time1 = GetTimeInSeconds();
 		StlWriter stlWriter;
-		stlWriter.write(m_filename, results, m_range > 359);
-		timingStats.meshBuildTime = GetTimeInSeconds() - time1;
+		stlWriter.write(m_filename, results, m_range > 359, m_progress);
+		timingStats.meshWritingTime = GetTimeInSeconds() - time1;
 	}
 
 	logTimingStats(timingStats);
 
+	m_progress.setPercent(100);
+
 	m_status.enter();
 	m_running = false;
-	m_progress = 1.0;
 	m_status.leave();
 
 	std::cout << "Done." << std::endl;
-}
-
-
-
-void Scanner::finishWritingToOutput()
-{
-	// Wait for all the I/O writing to complete
-	while (m_scanResultsWriter.getNumPendingRecords() > 0)
-	{
-		Thread::usleep(100000);
-	}
-
-	// Wait for the thread to stop
-	m_scanResultsWriter.stop();
-	m_scanResultsWriter.join();
 }
 
 void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
@@ -497,9 +482,10 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 	Image::overlayPixels(debuggingImage, m_laserLocations, numLocations);
 	locWriter.writeImage(debuggingImage, debuggingImage.getWidth(), debuggingImage.getHeight(), baseFilename + "5.png");
 
+	m_progress.setPercent(100);
+
 	m_status.enter();
 	m_running = false;
-	m_progress = 1.0;
 	m_status.leave();
 	std::cout << "Done." << std::endl;
 }
@@ -667,8 +653,6 @@ bool Scanner::processScan(std::vector<NeutralFileRecord> & results, int frame, f
 		// Rotate the points
 		rotatePoints(m_columnPoints, rotation, numLocationsMapped);
 
-		timingStats->pointProcessingTime += GetTimeInSeconds() - time1;
-
 		// Write to the neutral file
 		time1 = GetTimeInSeconds();
 		for (int iLoc = 0; iLoc < numLocationsMapped; iLoc++)
@@ -681,7 +665,7 @@ bool Scanner::processScan(std::vector<NeutralFileRecord> & results, int frame, f
 			record.laserSide = (int) laserSide;
 			results.push_back(record);
 		}
-		timingStats->fileWritingTime += GetTimeInSeconds() - time1;
+		timingStats->pointProcessingTime += GetTimeInSeconds() - time1;
 	}
 
 	return true;
@@ -769,8 +753,8 @@ void Scanner::logTimingStats(const Scanner::TimingStats& stats)
 	double now = GetTimeInSeconds();
 	double totalTime = now - stats.startTime;
 
-	double accountedTime = stats.meshBuildTime + stats.imageAcquisitionTime + stats.imageProcessingTime + stats.pointMappingTime
-			+ stats.pointProcessingTime + stats.rotationTime + stats.fileWritingTime + stats.laserTime + stats.laserMergeTime;
+	double accountedTime = stats.meshWritingTime + stats.imageAcquisitionTime + stats.imageProcessingTime + stats.pointMappingTime
+			+ stats.pointProcessingTime + stats.rotationTime + stats.pointCloudWritingTime + stats.laserTime + stats.laserMergeTime;
 
 	double unaccountedTime = totalTime - accountedTime;
 	double rate = totalTime / stats.numFrames;
@@ -784,8 +768,8 @@ void Scanner::logTimingStats(const Scanner::TimingStats& stats)
 	std::cout << "Point Rotating:\t" << (100.0 * stats.pointProcessingTime / totalTime) << "%" << std::endl;
 	std::cout << "Table Rotation:\t" << (100.0 * stats.rotationTime / totalTime) << "%" << std::endl;
 	std::cout << "Laser Merging:\t" << (100.0 * stats.laserMergeTime / totalTime) << "%" << std::endl;
-	std::cout << "File Writing:\t" << (100.0 * stats.fileWritingTime / totalTime) << "%" << std::endl;
-	std::cout << "Mesh Construction:\t" << (100.0 * stats.meshBuildTime / totalTime) << "%" << std::endl;
+	std::cout << "Point Cloud Writing:\t" << (100.0 * stats.pointCloudWritingTime / totalTime) << "%" << std::endl;
+	std::cout << "Mesh Writing:\t" << (100.0 * stats.meshWritingTime / totalTime) << "%" << std::endl;
 	std::cout << "Num Frame Retries:\t" << stats.numFrameRetries << std::endl;
 	std::cout << "Num Frames:\t" << stats.numFrames << std::endl;
 	std::cout << "Total Time (min):\t" << (totalTime / 60.0) << std::endl << std::endl;
@@ -854,16 +838,6 @@ std::vector<ScanResult> Scanner::getPastScanResults()
 	return results;
 }
 
-std::string Scanner::getCurrentOperationName()
-{
-	std::string operation;
-
-	m_status.enter();
-	operation = m_currentOperationName;
-	m_status.leave();
-
-	return operation;
-}
 
 void Scanner::acquireImage(Image * image)
 {

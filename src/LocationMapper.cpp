@@ -32,7 +32,8 @@ LocationMapper::LocationMapper(const Vector3& laserLoc, const Vector3& cameraLoc
 	m_laserZ(laserLoc.z),
 	m_cameraX(cameraLoc.x),
 	m_cameraY(cameraLoc.y),
-	m_cameraZ(cameraLoc.z)
+	m_cameraZ(cameraLoc.z),
+	m_groundPlaneHeight(0)
 {
 	Camera * camera = Camera::getInstance();
 	m_imageHeight = camera->getImageHeight();
@@ -42,6 +43,7 @@ LocationMapper::LocationMapper(const Vector3& laserLoc, const Vector3& cameraLoc
 	m_sensorHeight = camera->getSensorHeight();
 
 	m_maxObjectSize = PresetManager::get()->getActivePreset().maxObjectSize;
+	m_groundPlaneHeight = PresetManager::get()->getActivePreset().groundPlaneHeight;
 
 	calculateLaserPlane();
 }
@@ -85,7 +87,7 @@ void LocationMapper::mapPoints(PixelLocation * laserLocations,
 			// The point must be above the turn table and less than the max distance from the center of the turn table
 			real distXZSq = point->x * point->x + point->z * point->z;
 
-			if (point->y >= 0.0 && distXZSq < maxXZDistFromOriginSq && point->y < m_maxObjectSize)
+			if (point->y >= m_groundPlaneHeight && distXZSq < maxXZDistFromOriginSq && point->y < m_maxObjectSize)
 			{
 				// Set the color
 				if (haveImage)

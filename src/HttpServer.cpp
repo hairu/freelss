@@ -29,6 +29,7 @@
 #include "Camera.h"
 #include "Calibrator.h"
 #include "UpdateManager.h"
+#include "Progress.h"
 
 #define POSTBUFFERSIZE 2048
 #define MAX_PIN 7
@@ -165,6 +166,10 @@ static void SavePreset(RequestInfo * reqInfo)
 {
 	PresetManager * profMgr = PresetManager::get();
 	Preset * preset = &profMgr->getActivePreset();
+	Setup * setup = Setup::get();
+
+	// Get the original units in case we need to convert
+	UnitOfLength srcUnits = setup->unitOfLength;
 
 	// If the name does not exist, create a new preset
 	std::string presetName = reqInfo->arguments[WebContent::PROFILE_NAME];
@@ -232,6 +237,13 @@ static void SavePreset(RequestInfo * reqInfo)
 	}
 
 	preset->generatePly = !reqInfo->arguments[WebContent::GENERATE_PLY].empty();
+
+	std::string plyDataFormat = reqInfo->arguments[WebContent::PLY_DATA_FORMAT];
+	if (! plyDataFormat.empty())
+	{
+		preset->plyDataFormat = (PlyWriter::DataFormat) ToInt(plyDataFormat);
+	}
+
 	preset->generateStl = !reqInfo->arguments[WebContent::GENERATE_STL].empty();
 	preset->generateXyz = !reqInfo->arguments[WebContent::GENERATE_XYZ].empty();
 
@@ -243,6 +255,12 @@ static void SavePreset(RequestInfo * reqInfo)
 	{
 		preset->laserMergeAction = Preset::LMA_SEPARATE_BY_COLOR;
 		preset->generatePly = true;
+	}
+
+	std::string groundPlaneHeight = reqInfo->arguments[WebContent::GROUND_PLANE_HEIGHT];
+	if (!groundPlaneHeight.empty())
+	{
+		preset->groundPlaneHeight = ConvertUnitOfLength(ToReal(groundPlaneHeight), srcUnits, UL_MILLIMETERS);
 	}
 
 	/** Save the properties */
@@ -409,7 +427,7 @@ static int ShowScanProgress(RequestInfo * reqInfo)
 	// Show the scan progress page
 	HttpServer * server = reqInfo->server;
 	Scanner * scanner = server->getScanner();
-	real progress = scanner->getProgress() * 100.0;
+	Progress& progress = scanner->getProgress();
 	real remainingTime = scanner->getRemainingTime();
 
 	std::string page = WebContent::scanRunning(progress, remainingTime);

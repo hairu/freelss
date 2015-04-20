@@ -23,6 +23,7 @@
 #include "StlWriter.h"
 #include "Camera.h"
 #include "Laser.h"
+#include "Progress.h"
 
 namespace freelss
 {
@@ -48,8 +49,11 @@ StlWriter::StlWriter() :
 }
 
 
-void StlWriter::write(const std::string& baseFilename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst)
+void StlWriter::write(const std::string& baseFilename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst, Progress& progress)
 {
+	progress.setLabel("Generating STL file");
+	progress.setPercent(0);
+
 	std::string stlFilename = baseFilename + ".stl";
 	std::ofstream fout (stlFilename.c_str());
 	if (!fout.is_open())
@@ -80,8 +84,17 @@ void StlWriter::write(const std::string& baseFilename, const std::vector<Neutral
 
 		size_t resultIndex = 0;
 		size_t totNumPoints = 0;
+
+		real percent = 0;
 		while (NeutralFileRecord::readNextFrame(frameC, results, resultIndex))
 		{
+			real newPct = 100.0f * resultIndex / results.size();
+			if (newPct - percent > 0.1)
+			{
+				progress.setPercent(newPct);
+				percent = newPct;
+			}
+
 			// Reduce the number of result rows and filter out some of the noise
 			NeutralFileRecord::lowpassFilter(* currentFrame, frameC, maxNumRows, numRowBins);
 
@@ -143,7 +156,7 @@ void StlWriter::writeHeader(std::ofstream& fout)
 {
 	unsigned char header[80];
 	memset(header, 0, sizeof(header));
-	strcpy((char *)header, "2014 Uriah Liggett");
+	strcpy((char *)header, "2015 Uriah Liggett");
 
 	// Write header string
 	fout.write((const char *)header, sizeof(unsigned char) * 80);

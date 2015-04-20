@@ -344,19 +344,48 @@ void SaveProperties()
 
 real ConvertUnitOfLength(real value, UnitOfLength srcUnits, UnitOfLength dstUnits)
 {
-	real out;
-
+	// Shortcut
 	if (srcUnits == dstUnits)
 	{
-		out = value;
+		return value;
 	}
-	else if (srcUnits == UL_MILLIMETERS && dstUnits == UL_INCHES)
+
+	//
+	// Convert to millimeters
+	//
+	real mmValue;
+	if (srcUnits == UL_MILLIMETERS)
 	{
-		out = value / 25.4;
+		mmValue = value;
 	}
-	else if (srcUnits == UL_INCHES && dstUnits == UL_MILLIMETERS)
+	else if (srcUnits == UL_CENTIMETERS)
 	{
-		out = value * 25.4;
+		mmValue = value * 10.0;
+	}
+	else if (srcUnits == UL_INCHES )
+	{
+		mmValue = value * 25.4;
+	}
+	else
+	{
+		throw Exception("Unsupported Unit of Length");
+	}
+
+	//
+	// Convert to destination units
+	//
+	real out;
+	if (dstUnits == UL_MILLIMETERS)
+	{
+		out = mmValue;
+	}
+	else if (dstUnits == UL_CENTIMETERS)
+	{
+		out = mmValue / 10.0;
+	}
+	else if (dstUnits == UL_INCHES)
+	{
+		out = mmValue / 25.4;
 	}
 	else
 	{
@@ -392,6 +421,10 @@ std::string ToString(UnitOfLength unit)
 	{
 	case UL_MILLIMETERS:
 		out = "mm";
+		break;
+
+	case UL_CENTIMETERS:
+		out = "cm";
 		break;
 
 	case UL_INCHES:

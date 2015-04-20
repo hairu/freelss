@@ -23,6 +23,8 @@
 namespace freelss
 {
 
+class Progress;
+
 /**
  * Writes the scan results as an XYZ file.
  */
@@ -30,7 +32,7 @@ class XyzWriter
 {
 public:
 
-	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results);
+	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results, Progress& progress);
 };
 
 }

@@ -24,6 +24,7 @@
 #include "Setup.h"
 #include "Laser.h"
 #include "Camera.h"
+#include "Progress.h"
 
 namespace freelss
 {
@@ -236,6 +237,8 @@ const std::string WebContent::GENERATE_PLY = "GENERATE_PLY";
 const std::string WebContent::SEPARATE_LASERS_BY_COLOR = "SEPARATE_LASERS_BY_COLOR";
 const std::string WebContent::UNIT_OF_LENGTH = "UNIT_OF_LENGTH";
 const std::string WebContent::VERSION_NAME = "VERSION_NAME";
+const std::string WebContent::GROUND_PLANE_HEIGHT = "GROUND_PLANE_HEIGHT";
+const std::string WebContent::PLY_DATA_FORMAT = "PLY_DATA_FORMAT";
 
 const std::string WebContent::SERIAL_NUMBER_DESCR = "The serial number of the ATLAS 3D scanner";
 const std::string WebContent::CAMERA_X_DESCR = "X-compoment of camera location. ie: The camera is always at X = 0.";
@@ -266,6 +269,8 @@ const std::string WebContent::GENERATE_XYZ_DESCR = "Whether to generate an XYZ p
 const std::string WebContent::GENERATE_STL_DESCR = "Whether to generate an STL mesh from the scan.";
 const std::string WebContent::GENERATE_PLY_DESCR = "Whether to generate a PLY point clould from the scan.";
 const std::string WebContent::SEPARATE_LASERS_BY_COLOR_DESCR = "Calibration debugging option to separate the results from different lasers by color (requires PLY).";
+const std::string WebContent::GROUND_PLANE_HEIGHT_DESCR = "Any scan data less than this height above the turntable will not be included in the output files.";
+const std::string WebContent::PLY_DATA_FORMAT_DESCR = "Whether to generate binary or ASCII PLY files.";
 
 std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 {
@@ -363,8 +368,10 @@ std::string WebContent::scanResult(size_t index, const ScanResult& result)
 	return sstr.str();
 }
 
-std::string WebContent::scanRunning(real progress, real remainingTime)
+std::string WebContent::scanRunning(Progress& progress, real remainingTime)
 {
+	real minRemaining = remainingTime / 60.0;
+
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
 		 << "<meta http-equiv=\"refresh\" content=\"5\">"
@@ -373,11 +380,20 @@ std::string WebContent::scanRunning(real progress, real remainingTime)
 		 << JAVASCRIPT
 		 << std::endl
 		 << "</head>"
-	     << "<body><p>Scan is "
-	     << progress
-	     << "% complete with "
-	     << (remainingTime / 60.0)
-	     << " minutes remaining.</p>"
+	     << "<body><p>"
+	     << progress.getLabel()
+	     << " is "
+	     << progress.getPercent()
+	     << "% complete";
+
+		if (minRemaining > 0.01)
+		{
+			 sstr << " with "
+				  << minRemaining
+				  << " minutes remaining";
+		}
+
+	sstr << ".</p>"
 	     << "<form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
 	     << "<input type=\"hidden\" name=\"cmd\" value=\"stopScan\">"
 	     << "<input type=\"submit\" value=\"Stop Scan\">"
@@ -539,11 +555,13 @@ std::string WebContent::setup(const std::string& message)
 	sstr << setting(WebContent::SERIAL_NUMBER, "Serial Number", setup->serialNumber, SERIAL_NUMBER_DESCR);
 
 	std::string mmSel = setup->unitOfLength == UL_MILLIMETERS ? " SELECTED" : "";
+	std::string cmSel = setup->unitOfLength == UL_CENTIMETERS ? " SELECTED" : "";
 	std::string inSel = setup->unitOfLength == UL_INCHES ? " SELECTED" : "";
 
 	sstr << "<div><div class=\"settingsText\">Unit of Length</div>";
 	sstr << "<select name=\"" << WebContent::UNIT_OF_LENGTH << "\">";
 	sstr << "<option value=\"1\"" << mmSel << ">Millimeters</option>\r\n";
+	sstr << "<option value=\"3\"" << cmSel << ">Centimeters</option>\r\n";
 	sstr << "<option value=\"2\"" << inSel << ">Inches</option>\r\n";
 	sstr << "</select></div>";
 	sstr << "<div class=\"settingsDescr\">The unit of length for future values entered on the setup page.</div>\n";
@@ -580,6 +598,9 @@ std::string WebContent::setup(const std::string& message)
 
 std::string WebContent::settings(const std::string& message)
 {
+	const Setup * setup = Setup::get();
+	UnitOfLength srcUnit = UL_MILLIMETERS; // Lengths are always represented in millimeters internally
+	UnitOfLength dstUnit = setup->unitOfLength;
 
 	const Preset& preset = PresetManager::get()->getActivePreset();
 
@@ -652,6 +673,7 @@ std::string WebContent::settings(const std::string& message)
 	sstr << "</select></div>";
 	sstr << "<div class=\"settingsDescr\">The laser(s) that will be used when scanning.</div>\n";
 
+
 	//
 	// Camera Mode UI
 	//
@@ -674,11 +696,29 @@ std::string WebContent::settings(const std::string& message)
 
 	sstr << setting(WebContent::FRAMES_PER_REVOLUTION, "Frames Per Revolution", preset.framesPerRevolution, FRAMES_PER_REVOLUTION_DESCR);
 	sstr << setting(WebContent::LASER_MAGNITUDE_THRESHOLD, "Laser Threshold", preset.laserThreshold, LASER_MAGNITUDE_THRESHOLD_DESCR);
+	sstr << setting(WebContent::GROUND_PLANE_HEIGHT, "Ground Plane Height", ConvertUnitOfLength(preset.groundPlaneHeight, srcUnit, dstUnit), GROUND_PLANE_HEIGHT_DESCR,  ToString(dstUnit) + ".", false);
 	sstr << setting(WebContent::LASER_DELAY, "Laser Delay", preset.laserDelay, LASER_DELAY_DESCR, "&mu;s");
 	sstr << setting(WebContent::STABILITY_DELAY, "Stability Delay", preset.stabilityDelay, STABILITY_DELAY_DESCR, "&mu;s");
 	sstr << setting(WebContent::MAX_LASER_WIDTH, "Max Laser Width", preset.maxLaserWidth, MAX_LASER_WIDTH_DESCR, "px.");
 	sstr << setting(WebContent::MIN_LASER_WIDTH, "Min Laser Width", preset.minLaserWidth, MIN_LASER_WIDTH_DESCR, "px.");
+
+
+	//
+	// PLY Data Format UI
+	//
+	PlyWriter::DataFormat plyDataFormat = preset.plyDataFormat;
+	std::string plyAsciiSel  = plyDataFormat == PlyWriter::PLY_ASCII  ? " SELECTED" : "";
+	std::string plyBinarySel = plyDataFormat == PlyWriter::PLY_BINARY ? " SELECTED" : "";
+
 	sstr << checkbox(WebContent::GENERATE_PLY, "Generate PLY File", preset.generatePly, GENERATE_PLY_DESCR);
+
+	sstr << "<div><div class=\"settingsText\">PLY Data Format</div>";
+	sstr << "<select name=\"" << WebContent::PLY_DATA_FORMAT << "\">";
+	sstr << "<option value=\"0\"" << plyAsciiSel << ">ASCII</option>\r\n";
+	sstr << "<option value=\"1\"" << plyBinarySel << ">Binary</option>\r\n";
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">" << WebContent::PLY_DATA_FORMAT_DESCR << "</div>\n";
+
 	sstr << checkbox(WebContent::GENERATE_STL, "Generate STL File", preset.generateStl, GENERATE_STL_DESCR);
 	sstr << checkbox(WebContent::GENERATE_XYZ, "Generate XYZ File", preset.generateXyz, GENERATE_XYZ_DESCR);
 	sstr << checkbox(WebContent::SEPARATE_LASERS_BY_COLOR, "Separate the Lasers", preset.laserMergeAction == Preset::LMA_SEPARATE_BY_COLOR, SEPARATE_LASERS_BY_COLOR_DESCR);

@@ -22,6 +22,7 @@
 
 #include "Laser.h"
 #include "Camera.h"
+#include "PlyWriter.h"
 
 namespace freelss
 {
@@ -36,6 +37,7 @@ public:
 
 	/** The action that should be taken to merge laser results */
 	enum LaserMergeAction {LMA_PREFER_RIGHT_LASER, LMA_SEPARATE_BY_COLOR };
+
 
 	Preset();
 
@@ -66,7 +68,9 @@ public:
 	bool generateXyz;
 	bool generateStl;
 	bool generatePly;
+	real groundPlaneHeight;
 	LaserMergeAction laserMergeAction;
+	PlyWriter::DataFormat plyDataFormat;
 };
 
 }

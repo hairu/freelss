@@ -28,13 +28,19 @@ public:
 	PlyWriter();
 	~PlyWriter();
 	
-	void begin(const char * filename);
+	enum DataFormat { PLY_ASCII, PLY_BINARY };
+	void setDataFormat(DataFormat dataRepresentation);
+	void begin(const std::string& baseFilename);
 	void writePoints(ColoredPoint * points, int numPoints);
 	void end();
 private:
+
+	void writeAsciiPoints(ColoredPoint * points, int numPoints);
+	void writeBinaryPoints(ColoredPoint * points, int numPoints);
 	std::ofstream m_fout;
 	std::string m_filename;
 	int m_totalNumPoints;
+	DataFormat m_dataFormat;
 };
 
 }

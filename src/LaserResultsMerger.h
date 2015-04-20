@@ -21,6 +21,7 @@
 #pragma once
 
 #include "Preset.h"
+#include "Progress.h"
 
 namespace freelss
 {
@@ -42,7 +43,8 @@ public:
             int numFramesPerRevolution,
             int numFramesBetweenLaserPlanes,
             int maxPointY,
-            Preset::LaserMergeAction mergeAction);
+            Preset::LaserMergeAction mergeAction,
+            Progress& progress);
 
 private:
 
