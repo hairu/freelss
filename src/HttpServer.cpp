@@ -34,6 +34,7 @@
 #include <three.min.js.h>
 #include <OrbitControls.js.h>
 #include <PLYLoader.js.h>
+#include <licenses.txt.h>
 
 #define POSTBUFFERSIZE 2048
 #define MAX_PIN 7
@@ -1065,6 +1066,13 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			std::string page = "Rebooting...";
 			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
 			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/licenses.txt")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (licenses_txt_len, (void *) licenses_txt, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/plain");
 			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
 			MHD_destroy_response (response);
 		}

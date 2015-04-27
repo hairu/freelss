@@ -854,6 +854,7 @@ std::string WebContent::settings(const std::string& message)
 
 	sstr << "</form>\
 <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
+<p><br><br><a target=\"_\" href=\"/licenses.txt\">Licenses</a></p>\
 <p><br><br><br><form> <input type=\"hidden\" name=\"cmd\" value=\"shutdown\">\
 <input class=\"submit\" type=\"submit\" value=\"Shutdown\"></p></form>\
 </body></html>";
