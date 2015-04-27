@@ -31,6 +31,7 @@
 #include "StlWriter.h"
 #include "XyzWriter.h"
 #include "LaserResultsMerger.h"
+#include "FileWriter.h"
 
 namespace freelss
 {
@@ -81,7 +82,8 @@ Scanner::Scanner() :
 	m_rangeFout(),
 	m_numFramesBetweenLaserPlanes(0),
 	m_laserSelection(Laser::ALL_LASERS),
-	m_task(GENERATE_SCAN)
+	m_task(GENERATE_SCAN),
+	m_results()
 {
 	// Do nothing
 }
@@ -185,6 +187,22 @@ void Scanner::prepareScan()
 	m_status.leave();
 }
 
+Scanner::LiveData Scanner::getLiveDataLock()
+{
+	m_results.enter();
+
+	Scanner::LiveData data;
+	data.leftLaserResults = &m_leftLaserResults;
+	data.rightLaserResults = &m_rightLaserResults;
+
+	return data;
+}
+
+void Scanner::releaseLiveDataLock()
+{
+	m_results.leave();
+}
+
 void Scanner::run()
 {
 	// Prepare to scan
@@ -253,8 +271,12 @@ void Scanner::run()
 		}
 	}
 
-	// The results vector
-	std::vector<NeutralFileRecord> leftLaserResults, rightLaserResults;
+	// Init the results vectors
+	m_results.enter();
+	m_leftLaserResults.clear();
+	m_rightLaserResults.clear();
+	m_results.leave();
+
 	int numFrames = 0;
 
 	int maxFramesPerRevolution = preset.framesPerRevolution;
@@ -324,7 +346,7 @@ void Scanner::run()
 				break;
 			}
 
-			singleScan(leftLaserResults, rightLaserResults, iFrame, rotation, frameRadians, leftLocMapper, rightLocMapper, &timingStats);
+			singleScan(iFrame, rotation, frameRadians, leftLocMapper, rightLocMapper, &timingStats);
 
 			rotation += frameRadians;
 
@@ -373,15 +395,26 @@ void Scanner::run()
 	// Merge the left and right lasers and sort the results
 	std::vector<NeutralFileRecord> results;
 	LaserResultsMerger merger;
-	merger.merge(results, leftLaserResults, rightLaserResults, maxFramesPerRevolution,
+
+	m_results.enter();
+	merger.merge(results, m_leftLaserResults, m_rightLaserResults, maxFramesPerRevolution,
 			     m_numFramesBetweenLaserPlanes, Camera::getInstance()->getImageHeight(), preset.laserMergeAction, m_progress);
+	m_results.leave();
 
 	// Sort by pseudo-step and row
 	std::cout << "Sort 2... " << std::endl;
 	std::sort(results.begin(), results.end(), ComparePseudoSteps);
 	std::cout << "End Sort 2... " << std::endl;
 
-	std::cout << "Merged " << leftLaserResults.size() << " left laser and " << rightLaserResults.size() << " right laser results into " << results.size() << " results." << std::endl;
+	m_results.enter();
+
+	std::cout << "Merged " << m_leftLaserResults.size() << " left laser and " << m_rightLaserResults.size() << " right laser results into " << results.size() << " results." << std::endl;
+
+	m_leftLaserResults.clear();
+	m_rightLaserResults.clear();
+
+	m_results.leave();
+
 	std::cout << "Constructing mesh..." << std::endl;
 
 	timingStats.laserMergeTime += GetTimeInSeconds() - time1;
@@ -393,11 +426,23 @@ void Scanner::run()
 		m_progress.setLabel("Generating PLY file");
 		m_progress.setPercent(0);
 
-		std::cout << "Writing PLY file..." << std::endl;
+		std::string plyFilename = m_filename + ".ply";
+
+		std::cout << "Writing PLY file... " << plyFilename <<  std::endl;
 		time1 = GetTimeInSeconds();
 
-		m_plyWriter.setDataFormat(preset.plyDataFormat);
-		m_plyWriter.begin(m_filename);
+		FileWriter plyOut(plyFilename.c_str());
+		if (!plyOut.is_open())
+		{
+			throw Exception("Error opening file for writing: " + plyFilename);
+		}
+
+		/** Writes the results to a PLY file */
+		PlyWriter plyWriter;
+		plyWriter.setDataFormat(preset.plyDataFormat);
+		plyWriter.setTotalNumPoints((int)results.size());
+		plyWriter.begin(&plyOut);
+
 		real percent = 0;
 		for (size_t iRec = 0; iRec < results.size(); iRec++)
 		{
@@ -408,11 +453,11 @@ void Scanner::run()
 				percent = newPct;
 			}
 
-			m_plyWriter.writePoints(&results[iRec].point, 1);
+			plyWriter.writePoints(&results[iRec].point, 1);
 		}
 
-		m_plyWriter.end();
-
+		plyWriter.end();
+		plyOut.close();
 		timingStats.pointCloudWritingTime += GetTimeInSeconds() - time1;
 	}
 
@@ -490,7 +535,7 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 	std::cout << "Done." << std::endl;
 }
 
-void Scanner::singleScan(std::vector<NeutralFileRecord> & leftLaserResults, std::vector<NeutralFileRecord> & rightLaserResults, int frame, float rotation, float frameRotation,
+void Scanner::singleScan(int frame, float rotation, float frameRotation,
 		                 LocationMapper& leftLocMapper, LocationMapper& rightLocMapper, TimingStats * timingStats)
 {
 	double time1 = GetTimeInSeconds();
@@ -537,7 +582,7 @@ void Scanner::singleScan(std::vector<NeutralFileRecord> & leftLaserResults, std:
 			timingStats->laserTime += GetTimeInSeconds() - time1;
 
 			// Process the right laser results
-			goodResult = processScan(rightLaserResults, frame, rotation, rightLocMapper, Laser::RIGHT_LASER, m_firstRowRightLaserCol, timingStats);
+			goodResult = processScan(m_rightLaserResults, frame, rotation, rightLocMapper, Laser::RIGHT_LASER, m_firstRowRightLaserCol, timingStats);
 
 			// If it didn't succeed, take the first image again
 			if (!goodResult)
@@ -573,7 +618,7 @@ void Scanner::singleScan(std::vector<NeutralFileRecord> & leftLaserResults, std:
 			timingStats->laserTime += GetTimeInSeconds() - time1;
 
 			// Process the left laser results
-			goodResult = processScan(leftLaserResults, frame, rotation, leftLocMapper, Laser::LEFT_LASER, m_firstRowLeftLaserCol, timingStats);
+			goodResult = processScan(m_leftLaserResults, frame, rotation, leftLocMapper, Laser::LEFT_LASER, m_firstRowLeftLaserCol, timingStats);
 
 			// If it didn't succeed, take the first image again
 			if (!goodResult)
@@ -655,6 +700,7 @@ bool Scanner::processScan(std::vector<NeutralFileRecord> & results, int frame, f
 
 		// Write to the neutral file
 		time1 = GetTimeInSeconds();
+		m_results.enter();
 		for (int iLoc = 0; iLoc < numLocationsMapped; iLoc++)
 		{
 			NeutralFileRecord record;
@@ -665,6 +711,7 @@ bool Scanner::processScan(std::vector<NeutralFileRecord> & results, int frame, f
 			record.laserSide = (int) laserSide;
 			results.push_back(record);
 		}
+		m_results.leave();
 		timingStats->pointProcessingTime += GetTimeInSeconds() - time1;
 	}
 

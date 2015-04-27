@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
+ *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -17,34 +17,24 @@
  *   along with FreeLSS.  If not, see <http://www.gnu.org/licenses/>.       *
  ****************************************************************************
 */
-
-#pragma once
+#include "Main.h"
+#include "MemWriter.h"
 
 namespace freelss
 {
 
-enum PlyDataFormat { PLY_ASCII, PLY_BINARY };
-
-class IWriter;
-
-class PlyWriter
+void MemWriter::write(const char * inData, size_t len)
 {
-public:
-	PlyWriter();
+	const unsigned char * data = reinterpret_cast<const unsigned char *>(inData);
+	for (size_t i = 0; i < len; i++)
+	{
+		m_data.push_back(data[i]);
+	}
+}
 
-	void setDataFormat(PlyDataFormat dataRepresentation);
-	void setTotalNumPoints(int totalNumPoints);
-	void begin(IWriter * writer);
-	void writePoints(ColoredPoint * points, int numPoints);
-	void end();
-private:
-
-	void writeAsciiPoints(ColoredPoint * points, int numPoints);
-	void writeBinaryPoints(ColoredPoint * points, int numPoints);
-	IWriter * m_writer;
-	int m_totalNumPoints;
-	int m_numPointsWritten;
-	PlyDataFormat m_dataFormat;
-};
+const std::vector<unsigned char>& MemWriter::getData() const
+{
+	return  m_data;
+}
 
 }

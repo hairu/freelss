@@ -79,6 +79,19 @@ public:
 	/** Generate debugging images and information */
 	void generateDebugInfo(Laser::LaserSide laserSide);
 
+	/** The live data from the scanner */
+	struct LiveData
+	{
+		std::vector<NeutralFileRecord> * leftLaserResults;
+		std::vector<NeutralFileRecord> * rightLaserResults;
+	};
+
+	/** Returns the data being scanned and locks all other access to it */
+	Scanner::LiveData getLiveDataLock();
+
+	/** Releases the lock on the data */
+	void releaseLiveDataLock();
+
 private:
 	struct TimingStats
 	{
@@ -96,9 +109,7 @@ private:
 		int numFrames;
 	};
 
-	void singleScan(std::vector<NeutralFileRecord> & leftLaserResults,
-			        std::vector<NeutralFileRecord> & rightLaserResults,
-					int frame,
+	void singleScan(int frame,
 			        float rotation,
 			        float stepRotation,
 			        LocationMapper& leftLocMapper,
@@ -180,9 +191,6 @@ private:
 	/** Location of the first left laser line detected in the last image */
 	int m_firstRowLeftLaserCol;
 
-	/** Writes the results to a PLY file */
-	PlyWriter m_plyWriter;
-
 	/** Max number of pixel locations */
 	unsigned m_maxNumLocations;
 
@@ -215,6 +223,15 @@ private:
 
 	/** The task to perform */
 	Scanner::Task m_task;
+
+	/** Left laser results */
+	std::vector<NeutralFileRecord> m_leftLaserResults;
+
+	/** Right laser results */
+	std::vector<NeutralFileRecord> m_rightLaserResults;
+
+	/** Protection for the the 3D result data */
+	CriticalSection m_results;
 };
 
 }

@@ -15,7 +15,7 @@ OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	Camera.o MmalStillCamera.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
 	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
-	XyzWriter.o UpdateManager.o Progress.o
+	XyzWriter.o UpdateManager.o Progress.o FileWriter.o MemWriter.o
 
 all: freelss 
 
@@ -121,10 +121,18 @@ UpdateManager.o: UpdateManager.cpp UpdateManager.h Main.h
 Progress.o: Progress.cpp Progress.h Main.h
 	$(CC) -c $(CFLAGS) Progress.cpp
 
+FileWriter.o: FileWriter.cpp FileWriter.h Main.h
+	$(CC) -c $(CFLAGS) FileWriter.cpp
+
+MemWriter.o: MemWriter.cpp MemWriter.h Main.h
+	$(CC) -c $(CFLAGS) MemWriter.cpp
+
 github:
 	mkdir -p ../../github
 	mkdir -p ../../github/src
+	mkdir -p ../../github/contrib
 	cp -f *.h *.cpp Makefile ../../github/src
+	cp -f ../contrib/*.h ../contrib/*.hpp ../../github/contrib
 
 run: freelss
 	sudo ./freelss

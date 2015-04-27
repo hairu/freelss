@@ -30,6 +30,10 @@
 #include "Calibrator.h"
 #include "UpdateManager.h"
 #include "Progress.h"
+#include "MemWriter.h"
+#include <three.min.js.h>
+#include <OrbitControls.js.h>
+#include <PLYLoader.js.h>
 
 #define POSTBUFFERSIZE 2048
 #define MAX_PIN 7
@@ -241,7 +245,7 @@ static void SavePreset(RequestInfo * reqInfo)
 	std::string plyDataFormat = reqInfo->arguments[WebContent::PLY_DATA_FORMAT];
 	if (! plyDataFormat.empty())
 	{
-		preset->plyDataFormat = (PlyWriter::DataFormat) ToInt(plyDataFormat);
+		preset->plyDataFormat = (PlyDataFormat) ToInt(plyDataFormat);
 	}
 
 	preset->generateStl = !reqInfo->arguments[WebContent::GENERATE_STL].empty();
@@ -579,6 +583,75 @@ static int RetrieveFile(RequestInfo * reqInfo, const std::string& url)
 	return ret;
 }
 
+static int LivePly(RequestInfo * reqInfo)
+{
+	HttpServer * server = reqInfo->server;
+	Scanner * scanner = server->getScanner();
+	int ret = MHD_YES;
+	size_t fileSize = 0;
+	byte * fileData = NULL;
+
+	Scanner::LiveData liveData = scanner->getLiveDataLock();
+	try
+	{
+		size_t numPoints = liveData.leftLaserResults->size() + liveData.rightLaserResults->size();
+
+		PlyWriter plyWriter;
+		plyWriter.setTotalNumPoints((int)numPoints);
+		plyWriter.setDataFormat(PLY_BINARY);
+
+		MemWriter memWriter;
+		plyWriter.begin(&memWriter);
+
+		for (size_t iRec = 0; iRec < liveData.leftLaserResults->size(); iRec++)
+		{
+			plyWriter.writePoints(&liveData.leftLaserResults->at(iRec).point, 1);
+		}
+
+		for (size_t iRec = 0; iRec < liveData.rightLaserResults->size(); iRec++)
+		{
+			plyWriter.writePoints(&liveData.rightLaserResults->at(iRec).point, 1);
+		}
+
+		plyWriter.end();
+
+		fileSize = memWriter.getData().size();
+		fileData = (byte *) malloc(fileSize);
+		if (fileData != NULL)
+		{
+			memcpy(fileData, &memWriter.getData().front(), fileSize);
+		}
+	}
+	catch (...)
+	{
+		scanner->releaseLiveDataLock();
+		throw;
+	}
+
+	scanner->releaseLiveDataLock();
+
+	if (fileData != NULL)
+	{
+		MHD_Response *response = MHD_create_response_from_buffer (fileSize, (void *) fileData, MHD_RESPMEM_MUST_FREE);
+		MHD_add_response_header (response, "Content-Type", "application/octet-stream");
+		MHD_add_response_header (response, "Content-Disposition", "attachment; filename=\"live.ply\"");
+		MHD_add_response_header (response, "Cache-Control", "no-cache, no-store, must-revalidate");
+		MHD_add_response_header (response, "Pragma", "no-cache");
+		MHD_add_response_header (response, "Expires", "0");
+		MHD_add_response_header (response, "Pragma-directive", "no-cache");
+		MHD_add_response_header (response, "Cache-directive", "no-cache");
+		ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+		MHD_destroy_response (response);
+	}
+	else
+	{
+		std::string message = "Out of memory";
+		ret = BuildError(reqInfo->connection, message, MHD_HTTP_INTERNAL_SERVER_ERROR);
+	}
+
+	return ret;
+}
+
 static std::string AutoCalibrate(RequestInfo * reqInfo)
 {
 	Laser * laser = Laser::getInstance();
@@ -869,7 +942,7 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 		{
 			ret = RetrieveFile(reqInfo, reqInfo->url);
 		}
-		else if (reqInfo->url == "/")
+		else if (reqInfo->url == "/" || reqInfo->url == "/preview") // We check preview here in case the scan just ended
 		{
 			std::string cmd = reqInfo->arguments["cmd"];
 
@@ -995,6 +1068,39 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
 			MHD_destroy_response (response);
 		}
+		else if (reqInfo->url == "/three.min.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (three_min_js_len, (void *) three_min_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/PLYLoader.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (PLYLoader_js_len, (void *) PLYLoader_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/OrbitControls.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (OrbitControls_js_len, (void *) OrbitControls_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/view")
+		{
+			int id = ToInt(reqInfo->arguments["id"]);
+			std::stringstream filename;
+			filename << "/dl/" << id << ".ply";
+
+			std::string page = WebContent::viewScan(filename.str());
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
 		else
 		{
 			std::string message = std::string("Not Found: ") + reqInfo->url;
@@ -1002,6 +1108,47 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 		}
 	}
 
+	// Show the scan progress
+	if (scanner->isRunning())
+	{
+		if (reqInfo->url == "/livePly")
+		{
+			ret = LivePly(reqInfo);
+		}
+		else if (reqInfo->url == "/preview")
+		{
+			std::string page = WebContent::viewScan("/livePly");
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/three.min.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (three_min_js_len, (void *) three_min_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/PLYLoader.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (PLYLoader_js_len, (void *) PLYLoader_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/OrbitControls.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (OrbitControls_js_len, (void *) OrbitControls_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else
+		{
+			ret = ShowScanProgress(reqInfo);
+		}
+	}
 	return ret;
 }
 
@@ -1016,17 +1163,8 @@ static int ContinueRequest(RequestInfo * reqInfo)
 	}
 	else if (reqInfo->method == RequestInfo::GET || reqInfo->uploadDataSize == 0)
 	{
-		HttpServer * server = reqInfo->server;
-		Scanner * scanner = server->getScanner();
-
 		// Process the request
-		ProcessPageRequest(reqInfo);
-
-		// Show the scan progress
-		if (scanner->isRunning())
-		{
-			ShowScanProgress(reqInfo);
-		}
+		ret = ProcessPageRequest(reqInfo);
 	}
 	else
 	{

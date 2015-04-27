@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
+ *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -23,28 +23,11 @@
 namespace freelss
 {
 
-enum PlyDataFormat { PLY_ASCII, PLY_BINARY };
-
-class IWriter;
-
-class PlyWriter
+/** Interface for writing data */
+struct IWriter
 {
-public:
-	PlyWriter();
-
-	void setDataFormat(PlyDataFormat dataRepresentation);
-	void setTotalNumPoints(int totalNumPoints);
-	void begin(IWriter * writer);
-	void writePoints(ColoredPoint * points, int numPoints);
-	void end();
-private:
-
-	void writeAsciiPoints(ColoredPoint * points, int numPoints);
-	void writeBinaryPoints(ColoredPoint * points, int numPoints);
-	IWriter * m_writer;
-	int m_totalNumPoints;
-	int m_numPointsWritten;
-	PlyDataFormat m_dataFormat;
+	virtual ~IWriter() { }
+	virtual void write(const char * data, size_t len) = 0;
 };
 
 }

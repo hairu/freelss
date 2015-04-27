@@ -44,7 +44,7 @@ Preset::Preset() :
 	generatePly(true),
 	groundPlaneHeight(0),
 	laserMergeAction (LMA_PREFER_RIGHT_LASER),
-	plyDataFormat(PlyWriter::PLY_BINARY)
+	plyDataFormat(PLY_BINARY)
 {
 	// Do nothing
 }
@@ -158,7 +158,7 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 			}
 			else if (EndsWith(prop.name, name + ".plyDataFormat"))
 			{
-				plyDataFormat = (PlyWriter::DataFormat) ToInt(prop.value);
+				plyDataFormat = (PlyDataFormat) ToInt(prop.value);
 			}
 		}
 	}

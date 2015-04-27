@@ -70,7 +70,7 @@ public:
 	bool generatePly;
 	real groundPlaneHeight;
 	LaserMergeAction laserMergeAction;
-	PlyWriter::DataFormat plyDataFormat;
+	PlyDataFormat plyDataFormat;
 };
 
 }

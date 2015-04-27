@@ -43,6 +43,7 @@ public:
 	static std::string cal1(const std::string& message);
 	static std::string settings(const std::string& message);
 	static std::string setup(const std::string& message);
+	static std::string viewScan(const std::string& plyFilename);
 	static std::string showUpdate(SoftwareUpdate * update, const std::string& message);
 	static std::string updateApplied(SoftwareUpdate * update, const std::string& message, bool success);
 
@@ -83,6 +84,7 @@ public:
 	static const std::string VERSION_NAME;
 	static const std::string GROUND_PLANE_HEIGHT;
 	static const std::string PLY_DATA_FORMAT;
+	static const std::string FREE_DISK_SPACE;
 
 
 private:
@@ -98,6 +100,8 @@ private:
 	static std::string checkbox(const std::string& name, const std::string& label, bool checked, const std::string& description);
 
 	static std::string scanResult(size_t index, const ScanResult& result);
+
+	static const int LOW_DISK_SPACE_MB;
 
 	static const std::string CSS;
 	static const std::string JAVASCRIPT;

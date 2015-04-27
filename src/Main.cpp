@@ -413,6 +413,19 @@ double GetTimeInSeconds()
 	return sec;
 }
 
+int GetFreeSpaceMb()
+{
+	int freeSpaceMb = 0;
+	struct statvfs fileSystemInfo;
+	if (statvfs(SCAN_OUTPUT_DIR.c_str(), &fileSystemInfo) == 0)
+	{
+		real freeSpaceBytes = (real)fileSystemInfo.f_bsize * (real)fileSystemInfo.f_bfree;
+		freeSpaceMb = (int)(freeSpaceBytes / 1024.0f / 1024.0f);
+	}
+
+	return freeSpaceMb;
+}
+
 std::string ToString(UnitOfLength unit)
 {
 	std::string out;
