@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -32,6 +32,7 @@ CriticalSection::CriticalSection()
     }
 }
 
+
 CriticalSection::~CriticalSection()
 {
 	if (pthread_mutex_destroy(&m_handle) != 0)
@@ -39,6 +40,7 @@ CriticalSection::~CriticalSection()
 		throw Exception("Error destroying mutex");
 	}
 }
+
 
 void CriticalSection::enter()
 {

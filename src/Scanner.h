@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -23,8 +23,9 @@
 #include "ImageProcessor.h"
 #include "Thread.h"
 #include "CriticalSection.h"
-#include "ScanResultsWriter.h"
+#include "PlyWriter.h"
 #include "Laser.h"
+#include "Progress.h"
 
 namespace freelss
 {
@@ -70,16 +71,26 @@ public:
 	bool isRunning();
 
 	/** Returns the progress of the current scan from 0 to 1 */
-	real getProgress();
+	Progress& getProgress();
 
 	/** Get the remaining time for the scan in seconds */
 	real getRemainingTime();
 
-	/** Returns the name of the current operation taking place */
-	std::string getCurrentOperationName();
-
 	/** Generate debugging images and information */
 	void generateDebugInfo(Laser::LaserSide laserSide);
+
+	/** The live data from the scanner */
+	struct LiveData
+	{
+		std::vector<NeutralFileRecord> * leftLaserResults;
+		std::vector<NeutralFileRecord> * rightLaserResults;
+	};
+
+	/** Returns the data being scanned and locks all other access to it */
+	Scanner::LiveData getLiveDataLock();
+
+	/** Releases the lock on the data */
+	void releaseLiveDataLock();
 
 private:
 	struct TimingStats
@@ -90,17 +101,15 @@ private:
 		double rotationTime;
 		double startTime;
 		double pointProcessingTime;
-		double fileWritingTime;
-		double meshBuildTime;
+		double pointCloudWritingTime;
+		double meshWritingTime;
 		double laserTime;
 		double laserMergeTime;
 		int numFrameRetries;
 		int numFrames;
 	};
 
-	void singleScan(std::vector<NeutralFileRecord> & leftLaserResults,
-			        std::vector<NeutralFileRecord> & rightLaserResults,
-					int frame,
+	void singleScan(int frame,
 			        float rotation,
 			        float stepRotation,
 			        LocationMapper& leftLocMapper,
@@ -110,8 +119,6 @@ private:
 
 	/** Free the points data */
 	void clearPoints();
-
-	void finishWritingToOutput();
 
 	/**
 	 * Returns true if the scan was processed successfully and false if there was a problem and the frame needs to be again.
@@ -158,7 +165,7 @@ private:
 	std::string m_filename;
 
 	/** The progress of the current scan */
-	real m_progress;
+	Progress m_progress;
 
 	/** Protection for the running, progress, and any other status parameters */
 	CriticalSection m_status;
@@ -183,9 +190,6 @@ private:
 
 	/** Location of the first left laser line detected in the last image */
 	int m_firstRowLeftLaserCol;
-
-	/** Writes the results to a neutral file, PLY file, or other output file */
-	ScanResultsWriter m_scanResultsWriter;
 
 	/** Max number of pixel locations */
 	unsigned m_maxNumLocations;
@@ -217,11 +221,17 @@ private:
 	/** The laser to scan with */
 	Laser::LaserSide m_laserSelection;
 
-	/** The name of current operation taking place */
-	std::string m_currentOperationName;
-
 	/** The task to perform */
 	Scanner::Task m_task;
+
+	/** Left laser results */
+	std::vector<NeutralFileRecord> m_leftLaserResults;
+
+	/** Right laser results */
+	std::vector<NeutralFileRecord> m_rightLaserResults;
+
+	/** Protection for the the 3D result data */
+	CriticalSection m_results;
 };
 
 }

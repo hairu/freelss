@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -165,11 +165,11 @@ int ImageProcessor::process(const Image& before, const Image& after, Image * deb
 		for (unsigned iCol = 0; iCol < rowStep; iCol += components)
 		{
 			// Perform image subtraction
-#if 0
+#if 0 // Only consider the red channel
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int magSq = r * r;
 			real mag = 255.0f * (magSq * 0.000015379f);
-#else
+#else // Use general magnitude
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int g = (int)br[iCol + 1] - (int)ar[iCol + 1];
 			const int b = (int)br[iCol + 2] - (int)ar[iCol + 2];

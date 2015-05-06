@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -28,6 +28,8 @@
 #include "PresetManager.h"
 #include "PropertyReaderWriter.h"
 #include "Setup.h"
+#include "UpdateManager.h"
+#include <curl/curl.h>
 #include <algorithm>
 
 static bool SortRecordByRow(const freelss::NeutralFileRecord& a, const freelss::NeutralFileRecord& b)
@@ -35,12 +37,6 @@ static bool SortRecordByRow(const freelss::NeutralFileRecord& a, const freelss::
 	return a.pixel.y < b.pixel.y;
 }
 
-void ReleaseSingletons()
-{
-	freelss::HttpServer::release();
-	freelss::Laser::release();
-	freelss::Camera::release();
-}
 
 std::string GetPropertiesFile()
 {
@@ -53,8 +49,61 @@ std::string GetPropertiesFile()
 	}
 
 	return home + std::string("/.freelss.properties");
-
 }
+
+/** Initializes and destroys libcurl */
+struct InitCurl
+{
+	InitCurl()
+	{
+		curl_global_init(CURL_GLOBAL_ALL);
+	}
+
+	~InitCurl()
+	{
+		curl_global_cleanup();
+	}
+};
+
+/** Initializes and destroys the singletons */
+struct InitSingletons
+{
+	InitSingletons()
+	{
+		freelss::PresetManager::get();
+		freelss::A4988TurnTable::initialize();
+		freelss::RelayLaser::initialize();
+		freelss::UpdateManager::get();
+		freelss::Setup::get();
+		freelss::HttpServer::get();
+	}
+
+	~InitSingletons()
+	{
+		freelss::HttpServer::release();
+		freelss::Laser::release();
+		freelss::Camera::release();
+		freelss::TurnTable::release();
+		freelss::UpdateManager::release();
+		freelss::PresetManager::release();
+		freelss::Setup::release();
+	}
+};
+
+/** Initializes and destroys the Raspberry Pi subsystem */
+struct InitBcmHost
+{
+	InitBcmHost()
+	{
+		bcm_host_init();
+	}
+
+	~InitBcmHost()
+	{
+		bcm_host_deinit();
+	}
+};
+
 int main(int argc, char **argv)
 {
 	int retVal = 0;
@@ -71,18 +120,21 @@ int main(int argc, char **argv)
 	}
 
 	// Initialize the Raspberry Pi hardware
-	bcm_host_init();
-
-	std::cout << "Initialized BCM HOST" << std::endl;
+	InitBcmHost bcmHost;
 
 	try
 	{
 		// Setup wiring pi
 		wiringPiSetup();
 
+		// Initialize Curl
+		InitCurl curl();
+
+		// Load the properties
 		freelss::LoadProperties();
-		freelss::A4988TurnTable::initialize();
-		freelss::RelayLaser::initialize();
+
+		// Initialize the singletons
+		InitSingletons singletons;
 
 		int port = freelss::Setup::get()->httpPort;
 
@@ -93,28 +145,22 @@ int main(int argc, char **argv)
 		{
 			freelss::Thread::usleep(500000);  // Sleep 500ms
 		}
-
-		ReleaseSingletons();
 	}
 	catch (freelss::Exception& ex)
 	{
 		std::cerr << "Exception: " << ex << std::endl;
-		ReleaseSingletons();
 		retVal = -1;
 	}
 	catch (std::exception& ex)
 	{
 		std::cerr << "Exception: " << ex.what() << std::endl;
-		ReleaseSingletons();
 		retVal = -1;
 	}
 	catch (...)
 	{
 		std::cerr << "Unknown Exception Occurred" << std::endl;
-		ReleaseSingletons();
 		retVal = -1;
 	}
-
 
 	return retVal;
 }
@@ -296,6 +342,59 @@ void SaveProperties()
 	writer.writeProperties(properties, PROPERTIES_FILE);
 }
 
+real ConvertUnitOfLength(real value, UnitOfLength srcUnits, UnitOfLength dstUnits)
+{
+	// Shortcut
+	if (srcUnits == dstUnits)
+	{
+		return value;
+	}
+
+	//
+	// Convert to millimeters
+	//
+	real mmValue;
+	if (srcUnits == UL_MILLIMETERS)
+	{
+		mmValue = value;
+	}
+	else if (srcUnits == UL_CENTIMETERS)
+	{
+		mmValue = value * 10.0;
+	}
+	else if (srcUnits == UL_INCHES )
+	{
+		mmValue = value * 25.4;
+	}
+	else
+	{
+		throw Exception("Unsupported Unit of Length");
+	}
+
+	//
+	// Convert to destination units
+	//
+	real out;
+	if (dstUnits == UL_MILLIMETERS)
+	{
+		out = mmValue;
+	}
+	else if (dstUnits == UL_CENTIMETERS)
+	{
+		out = mmValue / 10.0;
+	}
+	else if (dstUnits == UL_INCHES)
+	{
+		out = mmValue / 25.4;
+	}
+	else
+	{
+		throw Exception("Unsupported Unit of Length");
+	}
+
+	return out;
+}
+
 double GetTimeInSeconds()
 {
 	struct timeval tv;
@@ -312,6 +411,44 @@ double GetTimeInSeconds()
 	}
 
 	return sec;
+}
+
+int GetFreeSpaceMb()
+{
+	int freeSpaceMb = 0;
+	struct statvfs fileSystemInfo;
+	if (statvfs(SCAN_OUTPUT_DIR.c_str(), &fileSystemInfo) == 0)
+	{
+		real freeSpaceBytes = (real)fileSystemInfo.f_bsize * (real)fileSystemInfo.f_bfree;
+		freeSpaceMb = (int)(freeSpaceBytes / 1024.0f / 1024.0f);
+	}
+
+	return freeSpaceMb;
+}
+
+std::string ToString(UnitOfLength unit)
+{
+	std::string out;
+
+	switch(unit)
+	{
+	case UL_MILLIMETERS:
+		out = "mm";
+		break;
+
+	case UL_CENTIMETERS:
+		out = "cm";
+		break;
+
+	case UL_INCHES:
+		out = "in";
+		break;
+
+	default:
+		throw Exception("Unsupported unit of measure");
+	}
+
+	return out;
 }
 
 std::string ToString(real value)

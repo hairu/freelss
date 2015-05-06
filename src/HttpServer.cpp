@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -28,6 +28,13 @@
 #include "Scanner.h"
 #include "Camera.h"
 #include "Calibrator.h"
+#include "UpdateManager.h"
+#include "Progress.h"
+#include "MemWriter.h"
+#include <three.min.js.h>
+#include <OrbitControls.js.h>
+#include <PLYLoader.js.h>
+#include <licenses.txt.h>
 
 #define POSTBUFFERSIZE 2048
 #define MAX_PIN 7
@@ -164,6 +171,10 @@ static void SavePreset(RequestInfo * reqInfo)
 {
 	PresetManager * profMgr = PresetManager::get();
 	Preset * preset = &profMgr->getActivePreset();
+	Setup * setup = Setup::get();
+
+	// Get the original units in case we need to convert
+	UnitOfLength srcUnits = setup->unitOfLength;
 
 	// If the name does not exist, create a new preset
 	std::string presetName = reqInfo->arguments[WebContent::PROFILE_NAME];
@@ -231,6 +242,13 @@ static void SavePreset(RequestInfo * reqInfo)
 	}
 
 	preset->generatePly = !reqInfo->arguments[WebContent::GENERATE_PLY].empty();
+
+	std::string plyDataFormat = reqInfo->arguments[WebContent::PLY_DATA_FORMAT];
+	if (! plyDataFormat.empty())
+	{
+		preset->plyDataFormat = (PlyDataFormat) ToInt(plyDataFormat);
+	}
+
 	preset->generateStl = !reqInfo->arguments[WebContent::GENERATE_STL].empty();
 	preset->generateXyz = !reqInfo->arguments[WebContent::GENERATE_XYZ].empty();
 
@@ -244,6 +262,12 @@ static void SavePreset(RequestInfo * reqInfo)
 		preset->generatePly = true;
 	}
 
+	std::string groundPlaneHeight = reqInfo->arguments[WebContent::GROUND_PLANE_HEIGHT];
+	if (!groundPlaneHeight.empty())
+	{
+		preset->groundPlaneHeight = ConvertUnitOfLength(ToReal(groundPlaneHeight), srcUnits, UL_MILLIMETERS);
+	}
+
 	/** Save the properties */
 	SaveProperties();
 }
@@ -252,38 +276,47 @@ static void SaveSetup(RequestInfo * reqInfo)
 {
 	Setup * setup = Setup::get();
 
+	// Get the original units in case we need to convert
+	UnitOfLength srcUnits = setup->unitOfLength;
+
+	std::string unitOfLength = reqInfo->arguments[WebContent::UNIT_OF_LENGTH];
+	if (!unitOfLength.empty())
+	{
+		setup->unitOfLength = (UnitOfLength) ToInt(unitOfLength);
+	}
+
 	std::string cameraY = reqInfo->arguments[WebContent::CAMERA_Y];
 	if (!cameraY.empty())
 	{
-		setup->cameraLocation.y = 25.4 * ToReal(cameraY.c_str());
-		setup->rightLaserLocation.y = 25.4 * ToReal(cameraY.c_str());
-		setup->leftLaserLocation.y = 25.4 * ToReal(cameraY.c_str());
+		setup->cameraLocation.y = ConvertUnitOfLength(ToReal(cameraY), srcUnits, UL_MILLIMETERS);
+		setup->rightLaserLocation.y = ConvertUnitOfLength(ToReal(cameraY), srcUnits, UL_MILLIMETERS);
+		setup->leftLaserLocation.y = ConvertUnitOfLength(ToReal(cameraY), srcUnits, UL_MILLIMETERS);
 	}
 
 	std::string cameraZ = reqInfo->arguments[WebContent::CAMERA_Z];
 	if (!cameraZ.empty())
 	{
-		setup->cameraLocation.z = 25.4 * ToReal(cameraZ.c_str());
-		setup->rightLaserLocation.z = 25.4 * ToReal(cameraZ.c_str());
-		setup->leftLaserLocation.z = 25.4 * ToReal(cameraZ.c_str());
+		setup->cameraLocation.z = ConvertUnitOfLength(ToReal(cameraZ), srcUnits, UL_MILLIMETERS);
+		setup->rightLaserLocation.z = ConvertUnitOfLength(ToReal(cameraZ), srcUnits, UL_MILLIMETERS);
+		setup->leftLaserLocation.z = ConvertUnitOfLength(ToReal(cameraZ), srcUnits, UL_MILLIMETERS);
 	}
 
 	std::string rightLaserX = reqInfo->arguments[WebContent::RIGHT_LASER_X];
 	if (!rightLaserX.empty())
 	{
-		setup->rightLaserLocation.x = 25.4 * ToReal(rightLaserX.c_str());
+		setup->rightLaserLocation.x = ConvertUnitOfLength(ToReal(rightLaserX), srcUnits, UL_MILLIMETERS);
 	}
 
 	std::string leftLaserX = reqInfo->arguments[WebContent::LEFT_LASER_X];
 	if (!leftLaserX.empty())
 	{
-		setup->leftLaserLocation.x = 25.4 * ToReal(leftLaserX.c_str());
+		setup->leftLaserLocation.x = ConvertUnitOfLength(ToReal(leftLaserX), srcUnits, UL_MILLIMETERS);
 	}
 
 	std::string rightLaserPin = reqInfo->arguments[WebContent::RIGHT_LASER_PIN];
 	if (!rightLaserPin.empty())
 	{
-		int pin = ToInt(rightLaserPin.c_str());
+		int pin = ToInt(rightLaserPin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Laser Pin Setting");
@@ -295,7 +328,7 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string leftLaserPin = reqInfo->arguments[WebContent::LEFT_LASER_PIN];
 	if (!leftLaserPin.empty())
 	{
-		int pin = ToInt(leftLaserPin.c_str());
+		int pin = ToInt(leftLaserPin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Laser Pin Setting");
@@ -307,19 +340,19 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string laserOnValue = reqInfo->arguments[WebContent::LASER_ON_VALUE];
 	if (!laserOnValue.empty())
 	{
-		setup->laserOnValue = ToInt(laserOnValue.c_str());
+		setup->laserOnValue = ToInt(laserOnValue);
 	}
 
 	std::string stepsPerRev = reqInfo->arguments[WebContent::STEPS_PER_REVOLUTION];
 	if (!stepsPerRev.empty())
 	{
-		setup->stepsPerRevolution = ToInt(stepsPerRev.c_str());
+		setup->stepsPerRevolution = ToInt(stepsPerRev);
 	}
 
 	std::string enablePin = reqInfo->arguments[WebContent::ENABLE_PIN];
 	if (!enablePin.empty())
 	{
-		int pin = ToInt(enablePin.c_str());
+		int pin = ToInt(enablePin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Enable Pin Setting");
@@ -331,7 +364,7 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string stepPin = reqInfo->arguments[WebContent::STEP_PIN];
 	if (!stepPin.empty())
 	{
-		int pin = ToInt(stepPin.c_str());
+		int pin = ToInt(stepPin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Step Pin Setting");
@@ -343,13 +376,13 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string stepDelay = reqInfo->arguments[WebContent::STEP_DELAY];
 	if (!stepDelay.empty())
 	{
-		setup->motorStepDelay = ToInt(stepDelay.c_str());
+		setup->motorStepDelay = ToInt(stepDelay);
 	}
 
 	std::string dirPin = reqInfo->arguments[WebContent::DIRECTION_PIN];
 	if (!dirPin.empty())
 	{
-		int pin = ToInt(dirPin.c_str());
+		int pin = ToInt(dirPin);
 		if (pin > MAX_PIN)
 		{
 			throw Exception("Invalid Direction Pin Setting");
@@ -361,13 +394,19 @@ static void SaveSetup(RequestInfo * reqInfo)
 	std::string dirPinValue = reqInfo->arguments[WebContent::DIRECTION_VALUE];
 	if (!dirPinValue.empty())
 	{
-		setup->motorDirPinValue = ToInt(dirPinValue.c_str());
+		setup->motorDirPinValue = ToInt(dirPinValue);
 	}
 
 	std::string responseDelay = reqInfo->arguments[WebContent::RESPONSE_DELAY];
 	if (!responseDelay.empty())
 	{
-		setup->motorResponseDelay = ToInt(responseDelay.c_str());
+		setup->motorResponseDelay = ToInt(responseDelay);
+	}
+
+	std::string serialNumber = reqInfo->arguments[WebContent::SERIAL_NUMBER];
+	if (!serialNumber.empty())
+	{
+		setup->serialNumber = serialNumber;
 	}
 
 	// Save the properties
@@ -393,7 +432,7 @@ static int ShowScanProgress(RequestInfo * reqInfo)
 	// Show the scan progress page
 	HttpServer * server = reqInfo->server;
 	Scanner * scanner = server->getScanner();
-	real progress = scanner->getProgress() * 100.0;
+	Progress& progress = scanner->getProgress();
 	real remainingTime = scanner->getRemainingTime();
 
 	std::string page = WebContent::scanRunning(progress, remainingTime);
@@ -540,6 +579,75 @@ static int RetrieveFile(RequestInfo * reqInfo, const std::string& url)
 	{
 		std::string message = "Invalid File Extension Requested";
 		ret = BuildError(reqInfo->connection, message, MHD_HTTP_BAD_REQUEST);
+	}
+
+	return ret;
+}
+
+static int LivePly(RequestInfo * reqInfo)
+{
+	HttpServer * server = reqInfo->server;
+	Scanner * scanner = server->getScanner();
+	int ret = MHD_YES;
+	size_t fileSize = 0;
+	byte * fileData = NULL;
+
+	Scanner::LiveData liveData = scanner->getLiveDataLock();
+	try
+	{
+		size_t numPoints = liveData.leftLaserResults->size() + liveData.rightLaserResults->size();
+
+		PlyWriter plyWriter;
+		plyWriter.setTotalNumPoints((int)numPoints);
+		plyWriter.setDataFormat(PLY_BINARY);
+
+		MemWriter memWriter;
+		plyWriter.begin(&memWriter);
+
+		for (size_t iRec = 0; iRec < liveData.leftLaserResults->size(); iRec++)
+		{
+			plyWriter.writePoints(&liveData.leftLaserResults->at(iRec).point, 1);
+		}
+
+		for (size_t iRec = 0; iRec < liveData.rightLaserResults->size(); iRec++)
+		{
+			plyWriter.writePoints(&liveData.rightLaserResults->at(iRec).point, 1);
+		}
+
+		plyWriter.end();
+
+		fileSize = memWriter.getData().size();
+		fileData = (byte *) malloc(fileSize);
+		if (fileData != NULL)
+		{
+			memcpy(fileData, &memWriter.getData().front(), fileSize);
+		}
+	}
+	catch (...)
+	{
+		scanner->releaseLiveDataLock();
+		throw;
+	}
+
+	scanner->releaseLiveDataLock();
+
+	if (fileData != NULL)
+	{
+		MHD_Response *response = MHD_create_response_from_buffer (fileSize, (void *) fileData, MHD_RESPMEM_MUST_FREE);
+		MHD_add_response_header (response, "Content-Type", "application/octet-stream");
+		MHD_add_response_header (response, "Content-Disposition", "attachment; filename=\"live.ply\"");
+		MHD_add_response_header (response, "Cache-Control", "no-cache, no-store, must-revalidate");
+		MHD_add_response_header (response, "Pragma", "no-cache");
+		MHD_add_response_header (response, "Expires", "0");
+		MHD_add_response_header (response, "Pragma-directive", "no-cache");
+		MHD_add_response_header (response, "Cache-directive", "no-cache");
+		ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+		MHD_destroy_response (response);
+	}
+	else
+	{
+		std::string message = "Out of memory";
+		ret = BuildError(reqInfo->connection, message, MHD_HTTP_INTERNAL_SERVER_ERROR);
 	}
 
 	return ret;
@@ -722,6 +830,9 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			}
 			else if (reqInfo->method == RequestInfo::POST && cmd == "shutdown")
 			{
+				// Turn on both lasers
+				Laser::getInstance()->turnOn(Laser::ALL_LASERS);
+
 				system("shutdown -h now&");
 				message = "Shutting down....";
 			}
@@ -832,7 +943,7 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 		{
 			ret = RetrieveFile(reqInfo, reqInfo->url);
 		}
-		else if (reqInfo->url == "/")
+		else if (reqInfo->url == "/" || reqInfo->url == "/preview") // We check preview here in case the scan just ended
 		{
 			std::string cmd = reqInfo->arguments["cmd"];
 
@@ -888,6 +999,116 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 				}
 			}
 		}
+		else if (reqInfo->url == "/checkUpdate")
+		{
+			std::string message = "";
+			SoftwareUpdate * update = NULL;
+			UpdateManager * updateMgr = UpdateManager::get();
+			try
+			{
+				updateMgr->checkForUpdates();
+				update = updateMgr->getLatestUpdate();
+			}
+			catch (Exception& ex)
+			{
+				message = ex;
+			}
+
+			std::string page = WebContent::showUpdate(update, message);
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/applyUpdate" && reqInfo->method == RequestInfo::POST)
+		{
+			int majorVersion = ToInt(reqInfo->arguments["majorVersion"]);
+			int minorVersion = ToInt(reqInfo->arguments["minorVersion"]);
+			std::string message;
+			bool success = true;
+
+			UpdateManager * updateMgr = UpdateManager::get();
+			SoftwareUpdate * update = updateMgr->getLatestUpdate();
+			if (update == NULL)
+			{
+				message = "Error retrieving update";
+				success = false;
+			}
+			else if (majorVersion != update->majorVersion || minorVersion != update->minorVersion)
+			{
+				message = "Mismatch error with update version";
+				success = false;
+			}
+			else
+			{
+				try
+				{
+					updateMgr->applyUpdate(update);
+					message = "Update Successful.  Restarting...";
+					success = true;
+				}
+				catch (Exception& ex)
+				{
+					message = ex;
+					success = false;
+				}
+			}
+
+			std::string page = WebContent::updateApplied(update, message, success);
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/reboot" && reqInfo->method == RequestInfo::POST)
+		{
+			system("reboot&");
+			std::string page = "Rebooting...";
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/licenses.txt")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (licenses_txt_len, (void *) licenses_txt, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/plain");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/three.min.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (three_min_js_len, (void *) three_min_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/PLYLoader.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (PLYLoader_js_len, (void *) PLYLoader_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/OrbitControls.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (OrbitControls_js_len, (void *) OrbitControls_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/view")
+		{
+			int id = ToInt(reqInfo->arguments["id"]);
+			std::stringstream filename;
+			filename << "/dl/" << id << ".ply";
+
+			std::string page = WebContent::viewScan(filename.str());
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
 		else
 		{
 			std::string message = std::string("Not Found: ") + reqInfo->url;
@@ -895,6 +1116,47 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 		}
 	}
 
+	// Show the scan progress
+	if (scanner->isRunning())
+	{
+		if (reqInfo->url == "/livePly")
+		{
+			ret = LivePly(reqInfo);
+		}
+		else if (reqInfo->url == "/preview")
+		{
+			std::string page = WebContent::viewScan("/livePly");
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/three.min.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (three_min_js_len, (void *) three_min_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/PLYLoader.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (PLYLoader_js_len, (void *) PLYLoader_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url == "/OrbitControls.js")
+		{
+			MHD_Response *response = MHD_create_response_from_buffer (OrbitControls_js_len, (void *) OrbitControls_js, MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "application/javascript");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else
+		{
+			ret = ShowScanProgress(reqInfo);
+		}
+	}
 	return ret;
 }
 
@@ -909,17 +1171,8 @@ static int ContinueRequest(RequestInfo * reqInfo)
 	}
 	else if (reqInfo->method == RequestInfo::GET || reqInfo->uploadDataSize == 0)
 	{
-		HttpServer * server = reqInfo->server;
-		Scanner * scanner = server->getScanner();
-
 		// Process the request
-		ProcessPageRequest(reqInfo);
-
-		// Show the scan progress
-		if (scanner->isRunning())
-		{
-			ShowScanProgress(reqInfo);
-		}
+		ret = ProcessPageRequest(reqInfo);
 	}
 	else
 	{

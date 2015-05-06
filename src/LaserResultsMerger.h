@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -21,6 +21,7 @@
 #pragma once
 
 #include "Preset.h"
+#include "Progress.h"
 
 namespace freelss
 {
@@ -42,7 +43,8 @@ public:
             int numFramesPerRevolution,
             int numFramesBetweenLaserPlanes,
             int maxPointY,
-            Preset::LaserMergeAction mergeAction);
+            Preset::LaserMergeAction mergeAction,
+            Progress& progress);
 
 private:
 

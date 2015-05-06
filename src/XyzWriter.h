@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -23,6 +23,8 @@
 namespace freelss
 {
 
+class Progress;
+
 /**
  * Writes the scan results as an XYZ file.
  */
@@ -30,7 +32,7 @@ class XyzWriter
 {
 public:
 
-	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results);
+	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results, Progress& progress);
 };
 
 }

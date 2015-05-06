@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -22,6 +22,7 @@
 
 #include "Laser.h"
 #include "Camera.h"
+#include "PlyWriter.h"
 
 namespace freelss
 {
@@ -36,6 +37,7 @@ public:
 
 	/** The action that should be taken to merge laser results */
 	enum LaserMergeAction {LMA_PREFER_RIGHT_LASER, LMA_SEPARATE_BY_COLOR };
+
 
 	Preset();
 
@@ -66,7 +68,9 @@ public:
 	bool generateXyz;
 	bool generateStl;
 	bool generatePly;
+	real groundPlaneHeight;
 	LaserMergeAction laserMergeAction;
+	PlyDataFormat plyDataFormat;
 };
 
 }

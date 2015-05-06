@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -32,6 +32,7 @@ public:
 
 	/** Returns the singleton instance */
 	static Setup * get();
+	static void release();
 
 	/** Encodes property information to the properties vector */
 	void encodeProperties(std::vector<Property>& properties);
@@ -53,6 +54,8 @@ public:
 	int motorResponseDelay;
 	int motorStepDelay;
 	int httpPort;
+	std::string serialNumber;
+	UnitOfLength unitOfLength;
 
 private:
 

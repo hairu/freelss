@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -35,22 +35,29 @@ Setup * Setup::get()
 	return Setup::m_instance;
 }
 
+void Setup::release()
+{
+	delete Setup::m_instance;
+	Setup::m_instance = NULL;
+}
 
 Setup::Setup() :
 	cameraLocation(),
 	leftLaserLocation(),
 	rightLaserLocation(),
-	rightLaserPin(0),
+	rightLaserPin(5),
 	leftLaserPin(4),
-	motorEnablePin(1),
-	motorStepPin(2),
-	motorDirPin(3),
+	motorEnablePin(0),
+	motorStepPin(7),
+	motorDirPin(1),
 	motorDirPinValue(0),
 	laserOnValue(1),
 	stepsPerRevolution(3200),
 	motorResponseDelay(2),
 	motorStepDelay(5000),
-	httpPort(80)
+	httpPort(80),
+	serialNumber(""),
+	unitOfLength(UL_INCHES)
 {
 	cameraLocation.x = 0;
 	cameraLocation.y = 82.55;
@@ -91,6 +98,9 @@ void Setup::encodeProperties(std::vector<Property>& properties)
 	properties.push_back(Property("setup.motorResponseDelay", ToString(motorResponseDelay)));
 	properties.push_back(Property("setup.motorStepDelay", ToString(motorStepDelay)));
 	properties.push_back(Property("setup.httpPort", ToString(httpPort)));
+	properties.push_back(Property("setup.serialNumber", serialNumber));
+
+	properties.push_back(Property("setup.unitOfLength", ToString((int)unitOfLength)));
 }
 
 void Setup::decodeProperties(const std::vector<Property>& properties)
@@ -178,6 +188,14 @@ void Setup::decodeProperties(const std::vector<Property>& properties)
 		else if (prop.name == "setup.httpPort")
 		{
 			httpPort = ToInt(prop.value);
+		}
+		else if (prop.name == "setup.serialNumber")
+		{
+			serialNumber = prop.value;
+		}
+		else if (prop.name == "setup.unitOfLength")
+		{
+			unitOfLength = (UnitOfLength) ToInt(prop.value);
 		}
 	}
 }

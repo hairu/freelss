@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -52,8 +52,12 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 		                       int numFramesPerRevolution,
 		                       int numFramesBetweenLaserPlanes,
 		                       int maxPointY,
-		                       Preset::LaserMergeAction mergeAction)
+		                       Preset::LaserMergeAction mergeAction,
+		                       Progress& progress)
 {
+	progress.setLabel("Merging laser results");
+	progress.setPercent(0);
+
 	// Sanity check
 	if (mergeAction != Preset::LMA_PREFER_RIGHT_LASER && mergeAction != Preset::LMA_SEPARATE_BY_COLOR)
 	{
@@ -109,6 +113,7 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 			}
 		}
 
+		progress.setPercent(10);
 		for (size_t iLeft = 0; iLeft < leftLaserResults.size(); iLeft++)
 		{
 			NeutralFileRecord& left = leftLaserResults[iLeft];
@@ -131,6 +136,7 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 			}
 		}
 
+		progress.setPercent(20);
 		int numCulledPoints = 0;
 
 		//
@@ -143,6 +149,8 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 
 			mask[getIndex(right)] = 1;
 		}
+
+		progress.setPercent(50);
 
 		//
 		// Only add left lasers that don't map to a cube by the right laser
@@ -172,6 +180,8 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 
 		std::cout << "Culled " << numCulledPoints << ", " << (100 * (real)numCulledPoints / leftLaserResults.size()) << "% of the left laser points." << std::endl;
 	}
+
+	progress.setPercent(100);
 }
 
 } // ns

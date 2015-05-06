@@ -16,7 +16,7 @@ $ sudo apt-get update
 
 Install the dependencies that are managed by the package manager.
 ```
-$ sudo apt-get install libpng-dev libjpeg-dev cmake vlc git-core gcc build-essential unzip sqlite3 libsqlite3-dev libmicrohttpd-dev
+$ sudo apt-get install libpng-dev libjpeg-dev cmake vlc git-core gcc build-essential unzip sqlite3 libsqlite3-dev libmicrohttpd-dev libcurl4-openssl-dev
 ```
 
 Download and install wiringPi
@@ -28,9 +28,9 @@ $ ./build
 
 Download and install Raspicam
 ```
-$ wget http://downloads.sourceforge.net/project/raspicam/raspicam-0.1.1.zip
-$ unzip raspicam-0.1.1.zip
-$ cd raspicam-0.1.1
+$ wget http://downloads.sourceforge.net/project/raspicam/raspicam-0.1.3.zip
+$ unzip raspicam-0.1.3.zip
+$ cd raspicam-0.1.3
 $ mkdir build
 $ cd build
 $ cmake ..

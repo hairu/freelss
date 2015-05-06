@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -70,6 +70,7 @@ private:
 	real m_sensorWidth;
 	real m_sensorHeight;
 	real m_maxObjectSize;
+	real m_groundPlaneHeight;
 };
 
 }

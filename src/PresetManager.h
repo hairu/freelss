@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2015 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -33,6 +33,7 @@ class PresetManager
 public:
 
 	static PresetManager * get();
+	static void release();
 
 	/** Returns the preset that is currently active */
 	Preset& getActivePreset();

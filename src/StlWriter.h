@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -23,13 +23,14 @@
 namespace freelss
 {
 
+class Progress;
 
 class StlWriter
 {
 public:
 	StlWriter();
 
-	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst);
+	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst, Progress& progress);
 
 private:
 	void writeHeader(std::ofstream& fout);

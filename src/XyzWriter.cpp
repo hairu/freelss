@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -21,12 +21,22 @@
 #include "Main.h"
 #include "XyzWriter.h"
 #include "Camera.h"
+#include "Progress.h"
 
 namespace freelss
 {
 
-void XyzWriter::write(const std::string& baseFilename, const std::vector<NeutralFileRecord>& results)
+void XyzWriter::write(const std::string& baseFilename, const std::vector<NeutralFileRecord>& results, Progress& progress)
 {
+	// Sanity check
+	if (results.empty())
+	{
+		return;
+	}
+
+	progress.setLabel("Generating XYZ file");
+	progress.setPercent(0);
+
 	std::string xyzFilename = baseFilename + ".xyz";
 	std::ofstream xyz (xyzFilename.c_str());
 	if (!xyz.is_open())
@@ -39,14 +49,20 @@ void XyzWriter::write(const std::string& baseFilename, const std::vector<Neutral
 
 	try
 	{
-		int iFrame = 0;
-
 		std::vector<NeutralFileRecord> frameA;
 		std::vector<NeutralFileRecord> currentFrame;
 
 		size_t resultIndex = 0;
+		real percent = 0;
 		while (NeutralFileRecord::readNextFrame(frameA, results, resultIndex))
 		{
+			real newPct = 100.0f * resultIndex / results.size();
+			if (newPct - percent > 0.1)
+			{
+				progress.setPercent(newPct);
+				percent = newPct;
+			}
+
 			// Reduce the number of result rows and filter out some of the noise
 			NeutralFileRecord::lowpassFilter(currentFrame, frameA, maxNumRows, numRowBins);
 

@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -57,6 +57,7 @@ The origin is the center of the turn table.
 #include <iostream>
 #include <fstream>
 #include <exception>
+#include <memory>
 #include <math.h>
 #include <pthread.h>
 #include <list>
@@ -78,8 +79,13 @@ The origin is the center of the turn table.
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 
 // Non-configurable settings
+#define FREELSS_VERSION_MAJOR 1
+#define FREELSS_VERSION_MINOR 4
+#define FREELSS_VERSION_NAME "FreeLSS 1.4"
+
 #define PI 3.14159265359
 
 #define RADIANS_TO_DEGREES(r) ((r / (2 * PI)) * 360)
@@ -242,9 +248,27 @@ struct ScanResult
 	std::vector<ScanResultFile> files;
 };
 
+struct SoftwareUpdate
+{
+	std::string name;
+	std::string description;
+	std::string url;
+	std::string releaseDate;
+	int majorVersion;
+	int minorVersion;
+};
+
+/** Units of length */
+enum UnitOfLength { UL_UNKNOWN, UL_MILLIMETERS, UL_INCHES, UL_CENTIMETERS };
+
 /** Returns the current point in time in ms */
 double GetTimeInSeconds();
 
+/** Returns the amount of space free on the filesystem in megabytes */
+int GetFreeSpaceMb();
+
+real ConvertUnitOfLength(real value, UnitOfLength valueUnits, UnitOfLength destinationUnits);
+std::string ToString(UnitOfLength unit);
 std::string ToString(real value);
 std::string ToString(int value);
 std::string ToString(bool value);

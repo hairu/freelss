@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -22,19 +22,29 @@
 
 namespace freelss
 {
+
+enum PlyDataFormat { PLY_ASCII, PLY_BINARY };
+
+class IWriter;
+
 class PlyWriter
 {
 public:
 	PlyWriter();
-	~PlyWriter();
-	
-	void begin(const char * filename);
+
+	void setDataFormat(PlyDataFormat dataRepresentation);
+	void setTotalNumPoints(int totalNumPoints);
+	void begin(IWriter * writer);
 	void writePoints(ColoredPoint * points, int numPoints);
 	void end();
 private:
-	std::ofstream m_fout;
-	std::string m_filename;
+
+	void writeAsciiPoints(ColoredPoint * points, int numPoints);
+	void writeBinaryPoints(ColoredPoint * points, int numPoints);
+	IWriter * m_writer;
 	int m_totalNumPoints;
+	int m_numPointsWritten;
+	PlyDataFormat m_dataFormat;
 };
 
 }

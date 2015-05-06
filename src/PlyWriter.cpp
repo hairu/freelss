@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2014 Uriah Liggett <hairu526@gmail.com>                   *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -20,86 +20,156 @@
 
 #include "Main.h"
 #include "PlyWriter.h"
+#include "Preset.h"
+#include "IWriter.h"
 
 namespace freelss
 {
 
 PlyWriter::PlyWriter() :
-		m_filename(),
-		m_totalNumPoints(0)
+		m_writer(NULL),
+		m_totalNumPoints(0),
+		m_numPointsWritten(0),
+		m_dataFormat(PLY_BINARY)
 {
 	// Do nothing
 }
 
-PlyWriter::~PlyWriter()
+void PlyWriter::setTotalNumPoints(int totalNumPoints)
 {
-	if (m_fout.is_open())
-	{
-		m_fout.close();
-	}
+	m_totalNumPoints = totalNumPoints;
 }
 
-void PlyWriter::begin(const char * filename)
+void PlyWriter::setDataFormat(PlyDataFormat dataRepresentation)
 {
-	m_filename = filename;
-	m_totalNumPoints = 0;
-	m_fout.open(filename);
-	if (!m_fout.is_open())
+	m_dataFormat = dataRepresentation;
+}
+
+void PlyWriter::begin(IWriter * writer)
+{
+	m_writer = writer;
+
+	std::cout << "Writing to PLY file..." << std::endl;
+
+	std::stringstream sstr;
+
+	sstr << "ply" << std::endl;
+	sstr << "format ";
+
+	if (m_dataFormat == PLY_ASCII)
 	{
-		throw Exception(std::string("Error opening points file, ") + filename);
+		sstr << "ascii";
 	}
-	
-	m_fout << "ply" << std::endl;
-	m_fout << "format ascii 1.0" << std::endl;
-	m_fout << "element vertex             " << std::endl;  // Leave space for updating the vertex count
-	m_fout << "property float x" << std::endl;
-	m_fout << "property float y" << std::endl;
-	m_fout << "property float z" << std::endl;
-	m_fout << "property float nx" << std::endl;
-	m_fout << "property float ny" << std::endl;
-	m_fout << "property float nz" << std::endl;
-	m_fout << "property uchar red" << std::endl;
-	m_fout << "property uchar green" << std::endl;
-	m_fout << "property uchar blue" << std::endl;
-	m_fout << "element face 0" << std::endl;
-	m_fout << "property list uchar int vertex_indices" << std::endl;
-	m_fout << "end_header" << std::endl;
+	else if (m_dataFormat == PLY_BINARY)
+	{
+		sstr << "binary_little_endian";
+	}
+	else
+	{
+		throw Exception("Unsupported PLY data format");
+	}
+
+	sstr << " 1.0" << std::endl;
+	sstr << "element vertex " << m_totalNumPoints << std::endl;  // Leave space for updating the vertex count
+	sstr << "property float x" << std::endl;
+	sstr << "property float y" << std::endl;
+	sstr << "property float z" << std::endl;
+	sstr << "property float nx" << std::endl;
+	sstr << "property float ny" << std::endl;
+	sstr << "property float nz" << std::endl;
+	sstr << "property uchar red" << std::endl;
+	sstr << "property uchar green" << std::endl;
+	sstr << "property uchar blue" << std::endl;
+	sstr << "element face 0" << std::endl;
+	sstr << "property list uchar int vertex_indices" << std::endl;
+	sstr << "end_header" << std::endl;
+
+	std::string header = sstr.str();
+	m_writer->write(header.c_str(), header.size());
 }
 
 void PlyWriter::writePoints(ColoredPoint * points, int numPoints)
 {
-	m_totalNumPoints += numPoints;
+	// Check the number of points
+	if (m_numPointsWritten + numPoints > m_totalNumPoints)
+	{
+		throw Exception("Attempt to write more PLY points than the indicated max");
+	}
+
+	if (m_dataFormat == PLY_ASCII)
+	{
+		writeAsciiPoints(points, numPoints);
+	}
+	else if (m_dataFormat == PLY_BINARY)
+	{
+		writeBinaryPoints(points, numPoints);
+	}
+	else
+	{
+		throw Exception("Unsupported PLY data format");
+	}
+
+	m_numPointsWritten += numPoints;
+}
+
+void PlyWriter::writeAsciiPoints(ColoredPoint * points, int numPoints)
+{
 	for (int iPt = 0; iPt < numPoints; iPt++)
 	{
 		const ColoredPoint & point = points[iPt];
-		m_fout << point.x << " " << point.y << " " << point.z << " "
-			   << point.normal.x << " " << point.normal.y << " " << point.normal.z << " "
-			   << (int)point.r << " " << (int)point.g << " " << (int)point.b << std::endl;
+
+		std::stringstream sstr;
+		sstr << point.x << " " << point.y << " " << point.z << " "
+			 << point.normal.x << " " << point.normal.y << " " << point.normal.z << " "
+			 << (int)point.r << " " << (int)point.g << " " << (int)point.b << std::endl;
+
+		std::string data = sstr.str();
+		m_writer->write(data.c_str(), data.size());
+	}
+}
+
+void PlyWriter::writeBinaryPoints(ColoredPoint * points, int numPoints)
+{
+	for (int iPt = 0; iPt < numPoints; iPt++)
+	{
+		const ColoredPoint & point = points[iPt];
+
+		//
+		// Make sure we have the proper data types/sizes
+		//
+		real32 x = point.x;
+		real32 y = point.y;
+		real32 z = point.z;
+		real32 nx = point.normal.x;
+		real32 ny = point.normal.y;
+		real32 nz = point.normal.z;
+		unsigned char r = point.r;
+		unsigned char g = point.g;
+		unsigned char b = point.b;
+
+		//
+		// Write the record
+		//
+		m_writer->write((const char *)&x, sizeof(x));
+		m_writer->write((const char *)&y, sizeof(y));
+		m_writer->write((const char *)&z, sizeof(z));
+		m_writer->write((const char *)&nx, sizeof(nx));
+		m_writer->write((const char *)&ny, sizeof(ny));
+		m_writer->write((const char *)&nz, sizeof(nz));
+		m_writer->write((const char *)&r, sizeof(r));
+		m_writer->write((const char *)&g, sizeof(g));
+		m_writer->write((const char *)&b, sizeof(b));
 	}
 }
 
 void PlyWriter::end()
 {
-	// Close the file
-	m_fout.close();
-
-	// Re-open the file and update the point count
-	if (m_totalNumPoints > 0)
+	// Ensure that all of the points were written
+	if (m_totalNumPoints != m_numPointsWritten)
 	{
-		int filePos = 36;  // The file position where we should write the point count
-		std::fstream fout (m_filename.c_str());
-		if (!fout.is_open())
-		{
-			throw Exception(std::string("Error updating vertex count in PLY file: ") + m_filename);
-		}
-
-		fout.seekp(filePos, std::ios_base::beg);
 		std::stringstream sstr;
-		sstr << m_totalNumPoints;
-
-		std::string countStr = sstr.str();
-		fout.write(countStr.c_str(), countStr.size());
-		fout.close();
+		sstr << "Only " << m_numPointsWritten << " of the " << m_totalNumPoints << " expected PLY points were written.";
+		throw Exception(sstr.str());
 	}
 }
 
