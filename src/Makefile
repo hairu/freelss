@@ -11,11 +11,12 @@ OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	HttpServer.o CriticalSection.o Scanner.o Image.o ImageProcessor.o \
 	Thread.o A4988TurnTable.o RelayLaser.o LocationMapper.o \
 	PlyWriter.o Calibrator.o RaspistillCamera.o \
-	NeutralFileWriter.o NeutralFileReader.o RaspicamCamera.o \
+	RaspicamCamera.o \
 	Camera.o MmalStillCamera.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
 	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
-	XyzWriter.o UpdateManager.o Progress.o FileWriter.o MemWriter.o
+	XyzWriter.o UpdateManager.o Progress.o FileWriter.o MemWriter.o \
+	Facetizer.o
 
 all: freelss 
 
@@ -82,12 +83,6 @@ WebContent.o: WebContent.cpp WebContent.h Main.h
 Calibrator.o: Calibrator.cpp Calibrator.h Main.h
 	$(CC) -c $(CFLAGS) Calibrator.cpp
 
-NeutralFileWriter.o: NeutralFileWriter.cpp NeutralFileWriter.h Main.h
-	$(CC) -c $(CFLAGS) NeutralFileWriter.cpp
-
-NeutralFileReader.o: NeutralFileReader.cpp NeutralFileReader.h Main.h
-	$(CC) -c $(CFLAGS) NeutralFileReader.cpp
-
 Camera.o: Camera.cpp Camera.h Main.h
 	$(CC) -c $(CFLAGS) Camera.cpp
 
@@ -126,6 +121,9 @@ FileWriter.o: FileWriter.cpp FileWriter.h Main.h
 
 MemWriter.o: MemWriter.cpp MemWriter.h Main.h
 	$(CC) -c $(CFLAGS) MemWriter.cpp
+
+Facetizer.o: Facetizer.cpp Facetizer.h Main.h
+	$(CC) -c $(CFLAGS) Facetizer.cpp
 
 github:
 	mkdir -p ../../github

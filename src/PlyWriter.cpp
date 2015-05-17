@@ -29,6 +29,7 @@ namespace freelss
 PlyWriter::PlyWriter() :
 		m_writer(NULL),
 		m_totalNumPoints(0),
+		m_totalNumFaces(0),
 		m_numPointsWritten(0),
 		m_dataFormat(PLY_BINARY)
 {
@@ -38,6 +39,11 @@ PlyWriter::PlyWriter() :
 void PlyWriter::setTotalNumPoints(int totalNumPoints)
 {
 	m_totalNumPoints = totalNumPoints;
+}
+
+void PlyWriter::setTotalNumFacesFromFaceMap(const FaceMap& faces)
+{
+	m_totalNumFaces = faces.triangles.size() / 3;
 }
 
 void PlyWriter::setDataFormat(PlyDataFormat dataRepresentation)
@@ -80,12 +86,60 @@ void PlyWriter::begin(IWriter * writer)
 	sstr << "property uchar red" << std::endl;
 	sstr << "property uchar green" << std::endl;
 	sstr << "property uchar blue" << std::endl;
-	sstr << "element face 0" << std::endl;
+	sstr << "element face " << m_totalNumFaces << std::endl;
 	sstr << "property list uchar int vertex_indices" << std::endl;
 	sstr << "end_header" << std::endl;
 
 	std::string header = sstr.str();
 	m_writer->write(header.c_str(), header.size());
+}
+
+void PlyWriter::writeFaces(const FaceMap& faces)
+{
+	if (m_dataFormat == PLY_ASCII)
+	{
+		writeAsciiFaces(faces);
+	}
+	else if (m_dataFormat == PLY_BINARY)
+	{
+		writeBinaryFaces(faces);
+	}
+	else
+	{
+		throw Exception("Unsupported PLY data format");
+	}
+}
+
+void PlyWriter::writeAsciiFaces(const FaceMap& faces)
+{
+	const std::vector<unsigned>& triangles = faces.triangles;
+
+	for (size_t idx = 0; idx < triangles.size(); idx += 3)
+	{
+		std::stringstream sstr;
+		sstr << "3 " << triangles[idx] << " " << triangles[idx + 1] << " " << triangles[idx + 2] << std::endl;
+
+		std::string data = sstr.str();
+		m_writer->write(data.c_str(), data.size());
+	}
+}
+
+void PlyWriter::writeBinaryFaces(const FaceMap& faces)
+{
+	const std::vector<unsigned>& triangles = faces.triangles;
+
+	for (size_t idx = 0; idx < triangles.size(); idx += 3)
+	{
+		uint8 numVert = 3;
+		uint32 v1 = triangles[idx];
+		uint32 v2 = triangles[idx + 1];
+		uint32 v3 = triangles[idx + 2];
+
+		m_writer->write((const char *)&numVert, sizeof(numVert));
+		m_writer->write((const char *)&v1, sizeof(v1));
+		m_writer->write((const char *)&v2, sizeof(v2));
+		m_writer->write((const char *)&v3, sizeof(v3));
+	}
 }
 
 void PlyWriter::writePoints(ColoredPoint * points, int numPoints)

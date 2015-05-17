@@ -35,7 +35,7 @@ LaserResultsMerger::LaserResultsMerger() :
 	// Do nothing
 }
 
-int LaserResultsMerger::getIndex(const NeutralFileRecord& record)
+int LaserResultsMerger::getIndex(const DataPoint& record)
 {
 	real pct1 = record.pseudoFrame / m_numFramesPerRevolution;
 	real pct2 = record.point.y / m_maxPointY;
@@ -46,9 +46,9 @@ int LaserResultsMerger::getIndex(const NeutralFileRecord& record)
 	return dim1 * MASK_DIM_2 + dim2;
 }
 
-void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
-		                       std::vector<NeutralFileRecord> & leftLaserResults,
-		                       std::vector<NeutralFileRecord> & rightLaserResults,
+void LaserResultsMerger::merge(std::vector<DataPoint> & out,
+		                       std::vector<DataPoint> & leftLaserResults,
+		                       std::vector<DataPoint> & rightLaserResults,
 		                       int numFramesPerRevolution,
 		                       int numFramesBetweenLaserPlanes,
 		                       int maxPointY,
@@ -101,7 +101,7 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 
 		for (size_t iRight = 0; iRight < rightLaserResults.size(); iRight++)
 		{
-			NeutralFileRecord& right = rightLaserResults[iRight];
+			DataPoint& right = rightLaserResults[iRight];
 			right.pseudoFrame = right.frame;
 
 			// Make the Right laser black
@@ -116,7 +116,7 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 		progress.setPercent(10);
 		for (size_t iLeft = 0; iLeft < leftLaserResults.size(); iLeft++)
 		{
-			NeutralFileRecord& left = leftLaserResults[iLeft];
+			DataPoint& left = leftLaserResults[iLeft];
 
 			// Align the frames of the left and right lasers
 			left.pseudoFrame = left.frame + m_numFramesBetweenLaserPlanes;
@@ -145,7 +145,7 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 		out = rightLaserResults;
 		for (size_t iRight = 0; iRight < rightLaserResults.size(); iRight++)
 		{
-			NeutralFileRecord& right = rightLaserResults[iRight];
+			DataPoint& right = rightLaserResults[iRight];
 
 			mask[getIndex(right)] = 1;
 		}
@@ -157,7 +157,7 @@ void LaserResultsMerger::merge(std::vector<NeutralFileRecord> & out,
 		//
 		for (size_t iLeft = 0; iLeft < leftLaserResults.size(); iLeft++)
 		{
-			NeutralFileRecord& left = leftLaserResults[iLeft];
+			DataPoint& left = leftLaserResults[iLeft];
 
 			if (mask[getIndex(left)] == 0)
 			{

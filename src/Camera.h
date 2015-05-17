@@ -96,6 +96,9 @@ private:
 
 	/** The requested image height */
 	static int m_reqImageHeight;
+
+	/** The requested frame rate */
+	static int m_reqFrameRate;
 };
 
 }

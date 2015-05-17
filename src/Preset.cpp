@@ -81,85 +81,88 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 	isActivePreset = false;
 
 	this->name = name;
+	if (name.empty())
+	{
+		return;
+	}
+
+	const std::string prefix = "presets.";
 
 	for (size_t iProp = 0; iProp < properties.size(); iProp++)
 	{
 		const Property& prop = properties[iProp];
 
-		if (!name.empty())
+		if (prop.name == prefix + name + ".laserSide")
 		{
-			if (EndsWith(prop.name, name + ".laserSide"))
-			{
-				laserSide = (Laser::LaserSide) ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".cameraMode"))
-			{
-				cameraMode = (Camera::CameraMode) ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".laserThreshold"))
-			{
-				laserThreshold = ToReal(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".minLaserWidth"))
-			{
-				minLaserWidth = ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".maxLaserWidth"))
-			{
-				maxLaserWidth = ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".maxObjectSize"))
-			{
-				maxObjectSize = ToReal(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".maxTriangleEdgeLength"))
-			{
-				maxTriangleEdgeLength = ToReal(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".numLaserRowBins"))
-			{
-				numLaserRowBins = ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".laserDelay"))
-			{
-				laserDelay = ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".stabilityDelay"))
-			{
-				stabilityDelay = ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".active"))
-			{
-				isActivePreset = ToInt(prop.value) == 1;
-			}
-			else if (EndsWith(prop.name, name + ".framesPerRevolution"))
-			{
-				framesPerRevolution = ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".generateXyz"))
-			{
-				generateXyz = ToBool(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".generateStl"))
-			{
-				generateStl = ToBool(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".generatePly"))
-			{
-				generatePly = ToBool(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".groundPlaneHeight"))
-			{
-				groundPlaneHeight = ToReal(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".laserMergeAction"))
-			{
-				laserMergeAction = (LaserMergeAction) ToInt(prop.value);
-			}
-			else if (EndsWith(prop.name, name + ".plyDataFormat"))
-			{
-				plyDataFormat = (PlyDataFormat) ToInt(prop.value);
-			}
+			laserSide = (Laser::LaserSide) ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".cameraMode")
+		{
+			cameraMode = (Camera::CameraMode) ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name +  ".laserThreshold")
+		{
+			laserThreshold = ToReal(prop.value);
+		}
+		else if (prop.name == prefix + name +  ".minLaserWidth")
+		{
+			minLaserWidth = ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name +  ".maxLaserWidth")
+		{
+			maxLaserWidth = ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".maxObjectSize")
+		{
+			maxObjectSize = ToReal(prop.value);
+		}
+		else if (prop.name == prefix + name + ".maxTriangleEdgeLength")
+		{
+			maxTriangleEdgeLength = ToReal(prop.value);
+		}
+		else if (prop.name == prefix + name + ".numLaserRowBins")
+		{
+			numLaserRowBins = ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".laserDelay")
+		{
+			laserDelay = ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".stabilityDelay")
+		{
+			stabilityDelay = ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".active")
+		{
+			isActivePreset = ToInt(prop.value) == 1;
+		}
+		else if (prop.name == prefix + name + ".framesPerRevolution")
+		{
+			framesPerRevolution = ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".generateXyz")
+		{
+			generateXyz = ToBool(prop.value);
+		}
+		else if (prop.name == prefix + name + ".generateStl")
+		{
+			generateStl = ToBool(prop.value);
+		}
+		else if (prop.name == prefix + name + ".generatePly")
+		{
+			generatePly = ToBool(prop.value);
+		}
+		else if (prop.name == prefix + name + ".groundPlaneHeight")
+		{
+			groundPlaneHeight = ToReal(prop.value);
+		}
+		else if (prop.name == prefix + name + ".laserMergeAction")
+		{
+			laserMergeAction = (LaserMergeAction) ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".plyDataFormat")
+		{
+			plyDataFormat = (PlyDataFormat) ToInt(prop.value);
 		}
 	}
 }

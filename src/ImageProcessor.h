@@ -42,7 +42,7 @@ public:
 	 * @return Returns the number of locations written to @p laserLocations.
 	 */
 	int process(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations, int maxNumLocations,
-			    int& firstRowLaserCol, real & percentPixelsOverThreshold, const char * debuggingCsvFile);
+			    int& firstRowLaserCol, int& numRowsBadFromColor, int& numRowsBadFromNumRanges, const char * debuggingCsvFile);
 
 private:
 
@@ -54,12 +54,17 @@ private:
 		int centerCol;
 	};
 
+	/**  Removes the ranges that on closer inspection don't appear to be caused by the laser */
+	int removeInvalidLaserRanges(ImageProcessor::LaserRange * ranges, int imageWidth, int numRanges, unsigned char * laserOnPixels);
+
 	int detectBestLaserRange(ImageProcessor::LaserRange * ranges, int numRanges, int prevLaserCol);
 
 	real detectLaserRangeCenter(const ImageProcessor::LaserRange& range, unsigned char * ar, unsigned char * br);
 
+	real computeMeanAverage(unsigned char * br, int numSteps, int stepSize);
+
 	/** Converts the RGB color to HSV */
-	static void toHsv(unsigned char r, unsigned char g, unsigned char b, Hsv * hsv);
+	static void toHsv(real r, real g, real b, Hsv * hsv);
 	static const real RED_HUE_LOWER_THRESHOLD;
 	static const real RED_HUE_UPPER_THRESHOLD;
 	static const unsigned RANGE_DISTANCE_THRESHOLD;

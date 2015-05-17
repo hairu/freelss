@@ -293,6 +293,9 @@ const std::string WebContent::PLY_DATA_FORMAT_DESCR = "Whether to generate binar
 
 std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 {
+	const Preset& preset = PresetManager::get()->getActivePreset();
+	std::string presetName = preset.name;
+
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
 		 << CSS
@@ -309,6 +312,7 @@ std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 </div>\
 <p>Click the button to start the scan </p>\
 <form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
+<div><div class=\"settingsText\">Preset</div><input class=\"settingsInput\" readonly=\"true\" value=\"" << presetName << "\"></div>\
 <div><div class=\"settingsText\">Degrees</div><input name=\"degrees\" class=\"settingsInput\" value=\"360\"> degrees</div>\
 	<input type=\"hidden\" name=\"cmd\" value=\"startScan\">\
 	<input class=\"submit\" type=\"submit\" value=\"Start Scan\">\
@@ -421,7 +425,7 @@ std::string WebContent::scanRunning(Progress& progress, real remainingTime)
 		 << JAVASCRIPT
 		 << std::endl
 		 << "</head>"
-	     << "<body><p>"
+	     << "<body><p><div style=\"float: left\">"
 	     << progress.getLabel()
 	     << " is "
 	     << progress.getPercent()
@@ -434,7 +438,9 @@ std::string WebContent::scanRunning(Progress& progress, real remainingTime)
 				  << " minutes remaining";
 		}
 
-	sstr << ". <a href=\"/preview\">Preview</a></p>"
+	sstr << ".&nbsp;</div><div style=\"padding-left: 50px\"><form action=\"/preview\" method=\"GET\" enctype=\"application/x-www-form-urlencoded\">"
+		 << "<input type=\"submit\" value=\"Preview\">"
+		 << "</form></div><br><br>"
 	     << "<form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
 	     << "<input type=\"hidden\" name=\"cmd\" value=\"stopScan\">"
 	     << "<input type=\"submit\" value=\"Stop Scan\">"

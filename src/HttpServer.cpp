@@ -917,14 +917,8 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 				scanner->setTask(Scanner::GENERATE_DEBUG);
 
 				Preset& preset = PresetManager::get()->getActivePreset();
-				Laser::LaserSide laserSide = preset.laserSide;
-				if (laserSide != Laser::LEFT_LASER && laserSide != Laser::RIGHT_LASER)
-				{
-					laserSide = Laser::RIGHT_LASER;
-					std::cout <<"Defaulting laser side to right laser." << std::endl;
-				}
 
-				scanner->generateDebugInfo(laserSide);
+				scanner->generateDebugInfo(preset.laserSide);
 				ret = RetrieveFile(reqInfo, "/dbg/5.png");
 
 				responded = true;

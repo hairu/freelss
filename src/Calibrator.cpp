@@ -85,7 +85,7 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 	bool detected = false;
 	ImageProcessor imageProcessor;
 	int firstRowLaserCol = 0;
-	real percentPixelsOverThreshold = 0;
+	int numBad1, numBad2;
 	int numLocations = 0;
 	int maxNumLocations = camera->getImageHeight();
 	PixelLocation * laserLocations = new PixelLocation[maxNumLocations];
@@ -98,7 +98,8 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 				laserLocations,
 				maxNumLocations,
 				firstRowLaserCol,
-				percentPixelsOverThreshold,
+				numBad1,
+				numBad2,
 				NULL);
 
 		//

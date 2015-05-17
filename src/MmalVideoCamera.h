@@ -38,7 +38,7 @@ struct Mmal_CallbackData;
 class MmalVideoCamera : public Camera
 {
 public:
-	MmalVideoCamera();
+	MmalVideoCamera(int imageWidth, int imageHeight, int frameRate);
 	~MmalVideoCamera();
 
 	void acquireImage(Image * image);
@@ -63,27 +63,23 @@ public:
 	real getFocalLength() const;
 
 private:
-	void createPreview();
-	void createResizer();
 	void createCameraComponent();
 	void createBufferPool();
-	void createSplitter();
+	void sendBuffers();
 private:
 
+	int m_imageWidth;
+	int m_imageHeight;
+	int m_frameRate;
+	int m_imagePreviewWidth;
+	int m_imagePreviewHeight;
 	Mmal_CallbackData * m_callbackData;
-
 	CriticalSection m_cs;
 	MMAL_COMPONENT_T * m_camera;
-	MMAL_COMPONENT_T * m_preview;
-	MMAL_COMPONENT_T * m_resizer;
-	MMAL_COMPONENT_T * m_splitter;
 	MMAL_POOL_T * m_pool;
-	MMAL_PORT_T * m_previewPort;
 	MMAL_PORT_T * m_videoPort;
 	MMAL_PORT_T * m_stillPort;
-	MMAL_PORT_T * m_resizerPort;
 	MMAL_PORT_T * m_targetPort;
-	MMAL_PORT_T * m_splitterPort;
 	MMAL_QUEUE_T * m_outputQueue;
 
 	bool m_targetPortEnabled;

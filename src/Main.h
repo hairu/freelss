@@ -83,8 +83,8 @@ The origin is the center of the turn table.
 
 // Non-configurable settings
 #define FREELSS_VERSION_MAJOR 1
-#define FREELSS_VERSION_MINOR 4
-#define FREELSS_VERSION_NAME "FreeLSS 1.4"
+#define FREELSS_VERSION_MINOR 5
+#define FREELSS_VERSION_NAME "FreeLSS 1.5"
 
 #define PI 3.14159265359
 
@@ -107,7 +107,7 @@ The origin is the center of the turn table.
 #endif
 
 #ifndef MAX3
-#define MAX3(a, b, c) (MAX(MIN(a, b), c))
+#define MAX3(a, b, c) (MAX(MAX(a, b), c))
 #endif
 
 namespace freelss
@@ -117,6 +117,7 @@ typedef std::string Exception;
 typedef unsigned char byte;
 typedef unsigned int uint32;
 typedef unsigned short uint16;
+typedef unsigned char uint8;
 typedef float real32;
 typedef double real64;
 typedef float real;
@@ -156,6 +157,9 @@ struct PixelLocation
 /** 3D Real Location */
 struct Vector3
 {
+	Vector3() : x(0), y(0), z(0){ }
+	Vector3(real x, real y, real z) : x(x), y(y), z(z) { }
+
 	void normalize()
 	{
 		real len = sqrt(x * x + y * y + z * z);
@@ -169,6 +173,13 @@ struct Vector3
 		return x * a.x + y * a.y + z * a.z;
 	}
 
+	void cross (Vector3& out, const Vector3& v) const
+	{
+	    out.x = y * v.z - z * v.y;
+	    out.y = z * v.x - x * v.z;
+	    out.z = x * v.y - y * v.x;
+	}
+
 	real x;
 	real y;
 	real z;
@@ -176,9 +187,9 @@ struct Vector3
 
 struct ColoredPoint
 {
-	real x;
-	real y;
-	real z;
+	real32 x;
+	real32 y;
+	real32 z;
 
 	Vector3 normal;
 
@@ -204,35 +215,42 @@ struct Plane
 	Vector3 point;
 };
 
+struct FaceMap
+{
+	/** The triangles */
+	std::vector<unsigned> triangles;
+};
+
 struct Ray
 {
 	Vector3 origin;
 	Vector3 direction;
 };
 
-struct NeutralFileRecord
+struct DataPoint
 {
 	/** Populates frameC with the next frame from the results vector starting at index resultIndex */
-	static bool readNextFrame(std::vector<NeutralFileRecord>& out, const std::vector<NeutralFileRecord>& results, size_t & resultIndex);
+	static bool readNextFrame(std::vector<DataPoint>& out, const std::vector<DataPoint>& results, size_t & resultIndex);
 
 	/**
 	 * Reduce the number of result rows and filter out some of the noise
 	 * @param maxNumRows - The number of rows in the image the produced the frame.
 	 * @param numRowBins - The total number of row bins in the entire image, not necessarily what is returned by this function.
 	 */
-	static void lowpassFilter(std::vector<NeutralFileRecord>& output, std::vector<NeutralFileRecord>& frame, unsigned maxNumRows, unsigned numRowBins);
+	static void lowpassFilter(std::vector<DataPoint>& output, std::vector<DataPoint>& frame, unsigned maxNumRows, unsigned numRowBins);
 
 	/**
 	 * Computes the average of all the records in the bin.
 	 */
-	static void computeAverage(const std::vector<NeutralFileRecord>& bin, NeutralFileRecord& out);
+	static void computeAverage(const std::vector<DataPoint>& bin, DataPoint& out);
 
 	PixelLocation pixel;
 	ColoredPoint point;
 	real rotation;
-	int frame;
-	int laserSide;
-	int pseudoFrame;
+	uint16 frame;
+	uint8 laserSide;
+	uint16 pseudoFrame;
+	uint32 index;
 };
 
 struct ScanResultFile

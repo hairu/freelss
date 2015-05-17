@@ -37,8 +37,6 @@
 #define FULL_FOV_PREVIEW_4x3_X 1296
 #define FULL_FOV_PREVIEW_4x3_Y 972
 
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
 
 
 namespace freelss

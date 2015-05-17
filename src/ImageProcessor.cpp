@@ -29,6 +29,8 @@
 #define PEAK_FILTER       0
 #define INV_SQRT_2PI      0.3989422804014327
 
+#define MAX_NUM_LASER_RANGES 3 // TODO: Place this in the settings
+
 #if GUASS_FILTER
 #include <mpfit.h>
 #endif
@@ -115,7 +117,7 @@ ImageProcessor::~ImageProcessor()
 }
 
 int ImageProcessor::process(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations,
-		int maxNumLocations, int& firstRowLaserCol, real & percentPixelsOverThreshold, const char * debuggingCsvFile)
+		int maxNumLocations, int& firstRowLaserCol, int& numRowsBadFromColor, int& numRowsBadFromNumRanges, const char * debuggingCsvFile)
 {	
 	const real MAX_MAGNITUDE_SQ = 255 * 255 * 3; // The maximum pixel magnitude sq we can see
 	const real INV_MAX_MAGNITUDE_SQ = 1.0f / MAX_MAGNITUDE_SQ;
@@ -143,9 +145,7 @@ int ImageProcessor::process(const Image& before, const Image& after, Image * deb
 	unsigned rowStep = width * components;
 
 	int numLocations = 0;
-
 	int numMerged = 0;
-	int numPixelsOverThreshold = 0;
 
 	// The location that we last detected a laser line
 	int prevLaserCol = firstRowLaserCol;
@@ -165,17 +165,14 @@ int ImageProcessor::process(const Image& before, const Image& after, Image * deb
 		for (unsigned iCol = 0; iCol < rowStep; iCol += components)
 		{
 			// Perform image subtraction
-#if 0 // Only consider the red channel
-			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
-			const int magSq = r * r;
-			real mag = 255.0f * (magSq * 0.000015379f);
-#else // Use general magnitude
+
+			// Use general magnitude
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int g = (int)br[iCol + 1] - (int)ar[iCol + 1];
 			const int b = (int)br[iCol + 2] - (int)ar[iCol + 2];
 			const int magSq = r * r + g * g + b * b;
 			real mag = 255.0f * (magSq * INV_MAX_MAGNITUDE_SQ);
-#endif
+
 			if (writeDebugImage)
 			{
 				if (mag > m_laserMagnitudeThreshold)
@@ -195,9 +192,6 @@ int ImageProcessor::process(const Image& before, const Image& after, Image * deb
 			// Compare it against the threshold
 			if (mag > m_laserMagnitudeThreshold)
 			{
-				// Flag that this pixel was over the threshold value
-				numPixelsOverThreshold++;
-
 				// The start of pixels with laser in them
 				if (m_laserRanges[numLaserRanges].startCol == -1)
 				{
@@ -261,25 +255,41 @@ int ImageProcessor::process(const Image& before, const Image& after, Image * deb
 			rowOut << std::endl;
 		}
 
-		// If we have a valid laser region
-		if (numLaserRanges > 0)
+		// Removes the ranges that on closer inspection don't appear to be caused by the laser
+		if (numLaserRanges < MAX_NUM_LASER_RANGES)
 		{
-			int rangeChoice = detectBestLaserRange(m_laserRanges, numLaserRanges, prevLaserCol);
-			prevLaserCol = m_laserRanges[rangeChoice].centerCol;
-
-			real centerCol = detectLaserRangeCenter(m_laserRanges[rangeChoice], ar, br);
-
-			laserLocations[numLocations].x = centerCol;
-			laserLocations[numLocations].y = iRow;
-
-			// If this is the first row that a laser is detected in, set the firstRowLaserCol member
-			if (numLocations == 0)
+			if (numLaserRanges > 0)
 			{
-				firstRowLaserCol = m_laserRanges[rangeChoice].startCol;
+				//numLaserRanges = removeInvalidLaserRanges(m_laserRanges, width, numLaserRanges, br);
+
+				// If we have a valid laser region
+				if (numLaserRanges > 0)
+				{
+					int rangeChoice = detectBestLaserRange(m_laserRanges, numLaserRanges, prevLaserCol);
+					prevLaserCol = m_laserRanges[rangeChoice].centerCol;
+
+					real centerCol = detectLaserRangeCenter(m_laserRanges[rangeChoice], ar, br);
+
+					laserLocations[numLocations].x = centerCol;
+					laserLocations[numLocations].y = iRow;
+
+					// If this is the first row that a laser is detected in, set the firstRowLaserCol member
+					if (numLocations == 0)
+					{
+						firstRowLaserCol = m_laserRanges[rangeChoice].startCol;
+					}
+
+					numLocations++;
+				}
+				else
+				{
+					numRowsBadFromColor++;
+				}
 			}
-
-			numLocations++;
-
+		}
+		else
+		{
+			numRowsBadFromNumRanges++;
 		}
 
 		// Increment to the next row
@@ -297,15 +307,112 @@ int ImageProcessor::process(const Image& before, const Image& after, Image * deb
 		std::cout << "Merged " << numMerged << " laser ranges." << std::endl;
 	}
 
+	if (numRowsBadFromColor > 0)
+	{
+		std::cout << "Dropped " << numRowsBadFromColor << " laser rows because the color wasn't red enough. " << std::endl;
+	}
+
+	if (numRowsBadFromNumRanges > 0)
+	{
+		std::cout << numRowsBadFromNumRanges << " laser rows contained too many ranges. " << std::endl;
+	}
+
 	if (debuggingCsvFile != NULL)
 	{
 		rowOut.close();
 	}
 
-	// Compute the number of pixels over the threshold
-	percentPixelsOverThreshold = 100.0f * numPixelsOverThreshold / (width * height);
-
 	return numLocations;
+}
+
+int ImageProcessor::removeInvalidLaserRanges(ImageProcessor::LaserRange * ranges, int imageWidth, int numLaserRanges, unsigned char * br)
+{
+	// Look for a ramp up and ramp down of the red component centered around the laser range to differentiate
+	// a laser from things moving in the background
+	const real MIN_RED_VALUE = 255.0f * 0.85f;
+
+	int components = 3;
+	std::vector<ImageProcessor::LaserRange> goodRanges;  // TODO: Check if this is a bottleneck
+
+	for (int iRng = 0; iRng < numLaserRanges; iRng++)
+	{
+		const ImageProcessor::LaserRange& range = ranges[iRng];
+		int startCol = range.startCol;
+		int endCol = range.endCol;
+		int rangeWidth = endCol - startCol + 1;
+
+		/*
+		int rampWidth = rangeWidth;
+
+		// Determine where to start computing the median of the "pre" portion of the laser line
+		int preStart = MAX(0, startCol - rampWidth);
+		int preWidth = MAX(0, startCol - preStart);
+
+		// Determine where to start computing the median of the "post" portion of the laser line
+		int postStart = MIN(imageWidth, endCol + rampWidth);
+		int postWidth = rampWidth;
+
+		if (postStart + postWidth >= imageWidth)
+		{
+			postWidth = imageWidth - postStart;
+		}
+
+		real preAvg = computeMeanAverage(br + preStart * components, preWidth, components);
+		real postAvg = computeMeanAverage(br + postStart * components, postWidth, components);
+		*/
+
+		real rangeAvg = computeMeanAverage(br + components * startCol, rangeWidth, components);
+
+
+		//std::cout << (int)preAvg << "  " << (int)rangeAvg << "  " << (int)postAvg << std::endl;
+
+		// If there is a ramp up and ramp down then include this range
+		if (rangeAvg > MIN_RED_VALUE)
+		{
+			goodRanges.push_back(range);
+		}
+	}
+
+	// Update the ranges
+	if ((int)goodRanges.size() != numLaserRanges)
+	{
+		for (size_t iRng = 0; iRng < goodRanges.size(); iRng++)
+		{
+			ranges[iRng] = goodRanges[iRng];
+		}
+	}
+
+	return (int) goodRanges.size();
+}
+
+real ImageProcessor::computeMeanAverage(unsigned char * br, int numSteps, int stepSize)
+{
+	real avg = 0;
+	real invStep = 255.0f / numSteps;
+
+	Hsv hsv;
+
+	// Red is the first component of an RGB triplet so we can use br directly
+	for (int iStep = 0; iStep < numSteps; iStep++)
+	{
+		float r = br[iStep * stepSize];
+		float g = br[iStep * stepSize + 1];
+		float b = br[iStep * stepSize + 2];
+
+		toHsv(r, g, b, &hsv);
+
+		 // Red wraps HSV colorspace so check both sides
+		real red = hsv.h <= 180 ? hsv.h : 360 - hsv.h;
+
+		//std::cout << r << "," << g << "," << b << " " << h << " " << red << std::endl;
+
+		// The smaller the value "red" then the closer to the color red it is
+
+		// normalize 0-1 and scale to 0-255
+		avg += ((180 - red) / 180) * invStep;
+	}
+
+	return avg;
 }
 
 real ImageProcessor::detectLaserRangeCenter(const ImageProcessor::LaserRange& range, unsigned char * ar, unsigned char * br)
@@ -454,43 +561,58 @@ int ImageProcessor::detectBestLaserRange(ImageProcessor::LaserRange * ranges, in
 	return bestRange;
 }
 
-void ImageProcessor::toHsv(unsigned char r, unsigned char g, unsigned char b, Hsv * hsv)
+void ImageProcessor::toHsv(real r, real g, real b, Hsv * hsv)
 {
-	// Compute the Value
-	unsigned char max = MAX3(r, g, b);
-	hsv->v = static_cast<float>(max);
-	if (max == 0)
+	r /= 255;
+	g /= 255;
+	b /= 255;
+	real h;
+
+	real M = MAX3(r,g,b);
+	real m = MIN3(r,g,b);
+	real C = M - m;
+
+	if (C == 0)
 	{
-		hsv->h = 0;
-		hsv->s = 0;
-		return;
+		h = 0;
 	}
-
-	// Compute saturation
-	unsigned char min = MIN3(r, g, b);
-	hsv->s = (max - min) / (real)max;
-
-	float delta = max - min;
-
-	// Compute Hue
-	if(r == max)
+	else if (M == r)
 	{
-		hsv->h = (g - b) / delta;
+		h = fmodf ((g - b) / C, 6);
 	}
-	else if(g == max)
+	else if(M == g)
 	{
-		hsv->h = 2 + (b - r) / delta;
+		h = (b - r) / C + 2;
 	}
 	else
 	{
-		hsv->h = 4 + (r - g) / delta;
-		hsv->h *= 60;
-
-		if(hsv->h < 0 )
-		{
-			hsv->h += 360;
-		}
+		h = (r - g) / C + 4;
 	}
+
+	h *= 60;
+
+	if (h < 0)
+	{
+		h += 360;
+	}
+
+	real s;
+	real v = M;
+	if(v == 0)
+	{
+		s = 0;
+	}
+	else
+	{
+		s = C / v;
+	}
+
+	s *= 100;
+	v *= 100;
+	hsv->h = h;
+	hsv->s = s;
+	hsv->v = v;
+
 }
 
 } // ns scanner

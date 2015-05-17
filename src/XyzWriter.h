@@ -32,7 +32,7 @@ class XyzWriter
 {
 public:
 
-	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results, Progress& progress);
+	void write(const std::string& filename, const std::vector<DataPoint>& results, Progress& progress);
 };
 
 }

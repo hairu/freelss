@@ -30,32 +30,14 @@ class StlWriter
 public:
 	StlWriter();
 
-	void write(const std::string& filename, const std::vector<NeutralFileRecord>& results, bool connectLastFrameToFirst, Progress& progress);
+	void write(const std::string& filename, const std::vector<DataPoint>& results, const FaceMap& faces, Progress& progress);
 
 private:
-	void writeHeader(std::ofstream& fout);
-	void populateBuffer(NeutralFileRecord * records, int numRecords, NeutralFileRecord ** buffer, int maxNumRecords);
-	void writeTrianglesForColumn(const std::vector<NeutralFileRecord>& currentFrame, const std::vector<NeutralFileRecord>& lastFrame, std::ofstream& fout, uint32& numTriangles);
-	void writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, bool flipNormal, std::ofstream& fout);
-
-	bool isValidTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3);
-
-	/**
-	 * Indicates if the face is oriented point into the model and the normal needs to get flipped.
-	 * This method assumes that the camera is looking straight down -z and x = 0.  The y doesn't matter.
-	 * This method assumes that all points were taken from the same laser.
-	 */
-	bool isInwardFacingFace(const NeutralFileRecord& p1, const NeutralFileRecord& p2, const NeutralFileRecord& p3);
-
-
-	/** The max triangle edge distance in mm sq */
-	real32 m_maxEdgeDistMmSq;
+	void writeHeader(std::ofstream& fout, const FaceMap& faces);
+	void writeTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3, std::ofstream& fout);
 
 	real32 m_normal[3];
 	uint16 m_attribute;
-
-	/** The image width of the current camera */
-	int m_imageWidth;
 };
 
 }

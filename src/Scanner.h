@@ -82,8 +82,8 @@ public:
 	/** The live data from the scanner */
 	struct LiveData
 	{
-		std::vector<NeutralFileRecord> * leftLaserResults;
-		std::vector<NeutralFileRecord> * rightLaserResults;
+		std::vector<DataPoint> * leftLaserResults;
+		std::vector<DataPoint> * rightLaserResults;
 	};
 
 	/** Returns the data being scanned and locks all other access to it */
@@ -101,8 +101,10 @@ private:
 		double rotationTime;
 		double startTime;
 		double pointProcessingTime;
-		double pointCloudWritingTime;
-		double meshWritingTime;
+		double plyWritingTime;
+		double stlWritingTime;
+		double xyzWritingTime;
+		double facetizationTime;
 		double laserTime;
 		double laserMergeTime;
 		int numFrameRetries;
@@ -123,16 +125,11 @@ private:
 	/**
 	 * Returns true if the scan was processed successfully and false if there was a problem and the frame needs to be again.
 	 */
-	bool processScan(std::vector<NeutralFileRecord> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
+	bool processScan(std::vector<DataPoint> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
 
 	void writeRangePoints(ColoredPoint * points, int numLocationsMapped,Laser::LaserSide laserSide);
 
-private:
-	/** Unowned objects */
-	Laser * m_laser;
-	Camera * m_camera;
-	TurnTable * m_turnTable;
-private:
+	void mergeDebuggingImages(Image& outImage, const Image& leftDebuggingImage, const Image& rightDebuggingImage, Laser::LaserSide laserSide);
 
 	/**
 	 *  Prepares the object for scanning.
@@ -143,6 +140,13 @@ private:
 	 * Acquires an image from the camera.
 	 */
 	void acquireImage(Image * image);
+private:
+	/** Unowned objects */
+	Laser * m_laser;
+	Camera * m_camera;
+	TurnTable * m_turnTable;
+
+private:
 
 	/** Array of laser locations */
 	PixelLocation * m_laserLocations;
@@ -173,8 +177,8 @@ private:
 	/** The maximum number of times to try a frame (at a particular rotation) before giving up */
 	const int m_maxNumFrameRetries;
 
-	/** The threshold for percentage of pixels over the threshold */
-	const real m_maxPercentPixelsOverThreshold;
+	/** The maximum number of failed laser detection rows before */
+	const real m_maxNumFailedRows;
 
 	/** The image points for every column */
 	ColoredPoint * m_columnPoints;
@@ -193,6 +197,9 @@ private:
 
 	/** Max number of pixel locations */
 	unsigned m_maxNumLocations;
+
+	/** The max number of frames per revolution */
+	int m_maxFramesPerRevolution;
 
 	/** The angle between the left and right laser planes */
 	real m_radiansBetweenLaserPlanes;
@@ -225,10 +232,10 @@ private:
 	Scanner::Task m_task;
 
 	/** Left laser results */
-	std::vector<NeutralFileRecord> m_leftLaserResults;
+	std::vector<DataPoint> m_leftLaserResults;
 
 	/** Right laser results */
-	std::vector<NeutralFileRecord> m_rightLaserResults;
+	std::vector<DataPoint> m_rightLaserResults;
 
 	/** Protection for the the 3D result data */
 	CriticalSection m_results;

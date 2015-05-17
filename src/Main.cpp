@@ -32,7 +32,7 @@
 #include <curl/curl.h>
 #include <algorithm>
 
-static bool SortRecordByRow(const freelss::NeutralFileRecord& a, const freelss::NeutralFileRecord& b)
+static bool SortRecordByRow(const freelss::DataPoint& a, const freelss::DataPoint& b)
 {
 	return a.pixel.y < b.pixel.y;
 }
@@ -182,7 +182,7 @@ time_t ScanResult::getScanDate() const
 	return files.front().creationTime;
 }
 
-bool NeutralFileRecord::readNextFrame(std::vector<NeutralFileRecord>& out, const std::vector<NeutralFileRecord>& results, size_t & resultIndex)
+bool DataPoint::readNextFrame(std::vector<DataPoint>& out, const std::vector<DataPoint>& results, size_t & resultIndex)
 {
 	out.clear();
 
@@ -201,7 +201,7 @@ bool NeutralFileRecord::readNextFrame(std::vector<NeutralFileRecord>& out, const
 	return true;
 }
 
-void NeutralFileRecord::computeAverage(const std::vector<NeutralFileRecord>& bin, NeutralFileRecord& out)
+void DataPoint::computeAverage(const std::vector<DataPoint>& bin, DataPoint& out)
 {
 	out = bin.front();
 
@@ -219,7 +219,7 @@ void NeutralFileRecord::computeAverage(const std::vector<NeutralFileRecord>& bin
 
 	for (size_t iBin = 0; iBin < bin.size(); iBin++)
 	{
-		const NeutralFileRecord& br = bin[iBin];
+		const DataPoint& br = bin[iBin];
 
 		rotation += invSize * br.rotation;
 		pixelLocationX += invSize * br.pixel.x;
@@ -243,13 +243,18 @@ void NeutralFileRecord::computeAverage(const std::vector<NeutralFileRecord>& bin
 	out.point.b = ptB;
 }
 
-void NeutralFileRecord::lowpassFilter(std::vector<NeutralFileRecord>& output, std::vector<NeutralFileRecord>& frame, unsigned maxNumRows, unsigned numRowBins)
+void DataPoint::lowpassFilter(std::vector<DataPoint>& output, std::vector<DataPoint>& frame, unsigned maxNumRows, unsigned numRowBins)
 {
-	output.clear();
-
 	// Sanity check
 	if (frame.empty())
 	{
+		return;
+	}
+
+	// No binning can occur, so copy
+	if (numRowBins >= maxNumRows)
+	{
+		output.insert(output.end(), frame.begin(), frame.end());
 		return;
 	}
 
@@ -259,13 +264,13 @@ void NeutralFileRecord::lowpassFilter(std::vector<NeutralFileRecord>& output, st
 	unsigned binSize = maxNumRows / numRowBins;
 
 	// Holds the current contents of the bin
-	std::vector<NeutralFileRecord> bin;
+	std::vector<DataPoint> bin;
 	unsigned nextBinY = frame.front().pixel.y + binSize;
 
 	// unsigned bin = frame.front().pixel.y / numRowBins;
 	for (size_t iFr = 0; iFr < frame.size(); iFr++)
 	{
-		NeutralFileRecord& record = frame[iFr];
+		DataPoint& record = frame[iFr];
 
 		if (record.pixel.y < nextBinY)
 		{
@@ -276,7 +281,7 @@ void NeutralFileRecord::lowpassFilter(std::vector<NeutralFileRecord>& output, st
 			// Average the bin results and add it to the output
 			if (!bin.empty())
 			{
-				NeutralFileRecord out;
+				DataPoint out;
 				computeAverage(bin, out);
 
 				output.push_back(out);
@@ -291,7 +296,7 @@ void NeutralFileRecord::lowpassFilter(std::vector<NeutralFileRecord>& output, st
 	// Process any results still left in the bin
 	if (!bin.empty())
 	{
-		NeutralFileRecord out;
+		DataPoint out;
 		computeAverage(bin, out);
 
 		output.push_back(out);

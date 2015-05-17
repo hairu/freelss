@@ -66,6 +66,7 @@ void Progress::setPercent(real percent)
 void Progress::setLabel(const std::string& label)
 {
 	m_cs.enter();
+	std::cout << label << "..." << std::endl;
 	m_label = label;
 	m_cs.leave();
 }

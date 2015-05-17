@@ -20,32 +20,35 @@
 
 #pragma once
 
+#include "Laser.h"
+#include "Progress.h"
+
 namespace freelss
 {
 
-class NeutralFileWriter
+class Facetizer
 {
 public:
-	NeutralFileWriter();
-	~NeutralFileWriter();
+	Facetizer();
 
-	void beginBatch();
-	void commit();
-	void open(const std::string& filename);
-	void close();
-	void write(const NeutralFileRecord& record);
+	void facetize(FaceMap & outFaces, std::vector<DataPoint>& results, bool connectLastFrameToFirst, Progress& progress, bool updateVertexNormals);
+
 private:
+	/**
+	 * Indicates if the face is oriented point into the model and the normal needs to get flipped.
+	 * This method assumes that the camera is looking straight down -z and x = 0.  The y doesn't matter.
+	 * This method assumes that all points were taken from the same laser.
+	 */
+	bool isInwardFacingFace(const DataPoint& p1, const DataPoint& p2, const DataPoint& p3);
+	bool isValidTriangle(const ColoredPoint& pt1, const ColoredPoint& pt2, const ColoredPoint& pt3);
+	void addFacesForColumn(const std::vector<DataPoint>& currentFrame, const std::vector<DataPoint>& lastFrame, FaceMap& fout, uint32& numTriangles);
+	void addTriangle(const DataPoint& pt1, const DataPoint& pt2, const DataPoint& pt3, bool flipNormal, FaceMap& fout);
 
-	void prepareStatement();
+	/** The max triangle edge distance in mm sq */
+	real32 m_maxEdgeDistMmSq;
 
-	/** The SQL for creating the database */
-	static const char * CREATE_DATABASE_SQL;
-
-	/** The Sqlite database */
-	sqlite3 * m_db;
-
-	/** The prepared statement */
-	sqlite3_stmt * m_stmt;
+	/** The image width of the current camera */
+	int m_imageWidth;
 };
 
 }

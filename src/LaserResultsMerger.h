@@ -37,9 +37,9 @@ class LaserResultsMerger
 public:
 	LaserResultsMerger();
 
-	void merge(std::vector<NeutralFileRecord> & out,
-            std::vector<NeutralFileRecord> & leftLaserResults,
-            std::vector<NeutralFileRecord> & rightLaserResults,
+	void merge(std::vector<DataPoint> & out,
+            std::vector<DataPoint> & leftLaserResults,
+            std::vector<DataPoint> & rightLaserResults,
             int numFramesPerRevolution,
             int numFramesBetweenLaserPlanes,
             int maxPointY,
@@ -48,7 +48,7 @@ public:
 
 private:
 
-	int getIndex(const NeutralFileRecord& record);
+	int getIndex(const DataPoint& record);
 
 	int m_numFramesBetweenLaserPlanes;
 	real m_numFramesPerRevolution;
