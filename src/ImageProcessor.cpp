@@ -116,7 +116,7 @@ ImageProcessor::~ImageProcessor()
 	delete [] m_laserRanges;
 }
 
-int ImageProcessor::process(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations,
+int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage, PixelLocation * laserLocations,
 		int maxNumLocations, int& firstRowLaserCol, int& numRowsBadFromColor, int& numRowsBadFromNumRanges, const char * debuggingCsvFile)
 {	
 	const real MAX_MAGNITUDE_SQ = 255 * 255 * 3; // The maximum pixel magnitude sq we can see

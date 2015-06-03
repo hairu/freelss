@@ -18,133 +18,129 @@
  ****************************************************************************
 */
 
-#ifndef BUILD_TESTS
-
 #include "Main.h"
 #include "MmalVideoCamera.h"
 #include "Thread.h"
+#include "MmalImageStore.h"
 
 #define MMAL_CAMERA_PREVIEW_PORT 0
 #define MMAL_CAMERA_VIDEO_PORT   1
 #define MMAL_CAMERA_CAPTURE_PORT 2
+#define MMAL_VIDEO_SENSOR_MODE   2    // no-binning mode: https://www.raspberrypi.org/documentation/raspbian/applications/camera.md
 #define VIDEO_OUTPUT_BUFFERS_NUM 3
 
 #define FULL_RES_VIDEO_FRAME_RATE_DEN 1
 
+#define NUM_IMAGE_BUFFERS 3 // The number of images available for acquisition before calling release
+
+#define MMAL_CHECK(cmd) {\
+	int status = cmd;\
+	if (status != MMAL_SUCCESS)\
+	{\
+		std::stringstream sstr;\
+		sstr << "Error calling " << #cmd << ", error=" << status;\
+		throw Exception(sstr.str());\
+	}\
+}
+
 namespace freelss
 {
 
-struct Mmal_CallbackData
+struct MmalVideoCallbackData
 {
-	Mmal_CallbackData() :
+	MmalVideoCallbackData(unsigned width, unsigned height, unsigned numComponents) :
 		acquire(false),
-		buffer(NULL),
-		bufferSize(0),
-		bytesWritten(0),
 		pool(NULL),
-		outputQueue(NULL)
+		camera(NULL),
+		outputQueue(NULL),
+		mmalBuffer(NULL),
+		image(NULL),
+		imageStore(NUM_IMAGE_BUFFERS, width, height, numComponents)
 	{
 		vcos_assert(vcos_semaphore_create(&complete_semaphore, "Scanner-Video-sem", 0) == VCOS_SUCCESS);
 	}
 
-	~Mmal_CallbackData()
+	~MmalVideoCallbackData()
 	{
 		vcos_semaphore_delete(&complete_semaphore);
 	}
 
-	bool acquire;
-	byte * buffer;
-	size_t bufferSize;
-	size_t bytesWritten;
-	CriticalSection cs;
 	VCOS_SEMAPHORE_T complete_semaphore;
+	bool acquire;
+	CriticalSection cs;
 	MMAL_POOL_T * pool;
+	MMAL_COMPONENT_T * camera;
 	MMAL_QUEUE_T * outputQueue;
+	MMAL_BUFFER_HEADER_T * mmalBuffer;
+	Image * image;
+	MmalImageStore imageStore;
 };
-
 
 static void EncoderBufferCallback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 {
-   // We pass our file handle and other stuff in via the userdata field.
+   //std::cout << "EncoderBufferCallback: " << pthread_self() << std::endl;
 
-   Mmal_CallbackData *pData = (Mmal_CallbackData *)port->userdata;
+   MmalVideoCallbackData *pData = (MmalVideoCallbackData *)port->userdata;
 
-   bool imageTaken = false;
-
-   //std::cout << "EncoderBufferCallback" << std::endl;
+   bool mappedBuffer = false;
 
    if (pData)
    {
-      if (buffer->length)
-      {
+	   if (buffer->length)
+	   {
          // Copy the image data
-         pData->cs.enter();
-
-         if (pData->acquire)
+         pData->cs.enter("EncoderBufferCallback");
+         try
          {
-			 //std::cout << "EncoderBufferCallback - Locking buffer" << std::endl;
-			 mmal_buffer_header_mem_lock(buffer);
-
-			 if (pData->buffer != NULL  && pData->bytesWritten == 0)
+			 if (pData->acquire)
 			 {
-				 int writeSize = buffer->length;
-
-				 // Copy to our image buffer and move the pointer forward
-				 if (writeSize > 0)
+				 MmalImageStoreItem * item = pData->imageStore.reserve(buffer);
+				 if (item == NULL)
 				 {
-					 memcpy(pData->buffer, buffer->data, MIN(writeSize, pData->bufferSize));
-
-					 pData->bytesWritten += writeSize;
-					 imageTaken = true;
-
-					 //std::cerr << "SRC Buffer Length: " << buffer->length << std::endl;
-					 //std::cerr << "SRC Buffer Offset: " << buffer->offset << std::endl;
-					 //std::cerr << "DST Buffer Size: " << pData->bufferSize << std::endl;
-					 //std::cerr << "TOT Bytes Written: " << pData->bytesWritten << std::endl;
-					 //std::cerr << "Write Size: " << writeSize << std::endl;
+					 throw Exception("No images available in the MmalImageStore");
 				 }
+
+				 pData->image = &item->image;
+
+				 pData->acquire = false;
+				 mappedBuffer = true;
 			 }
-
-			 //std::cout << "EncoderBufferCallback - Unlocking buffer" << std::endl;
-			 mmal_buffer_header_mem_unlock(buffer);
-
-			 pData->acquire = false;
+         }
+         catch (Exception& e)
+         {
+        	 std::cerr << "!! Exception thrown in EncoderBufferCallback: " << e << std::endl;
+         }
+         catch (...)
+         {
+        	 std::cerr << "!! Exception thrown in EncoderBufferCallback" << std::endl;
          }
          pData->cs.leave();
-      }
+	   }
    }
    else
    {
-      std::cerr << "Received a encoder buffer callback with no state" << std::endl;
-   }
-
-   // Notify the user that the image is ready
-   if (imageTaken)
-   {
-	   //std::cout << "EncoderBufferCallback - Posting semaphore" << std::endl << std::endl;
-	   vcos_semaphore_post(&(pData->complete_semaphore));
+	   std::cerr << "!! Received a encoder buffer callback with no state" << std::endl;
    }
 
    // release buffer back to the pool
-   mmal_buffer_header_release(buffer);
+   if (mappedBuffer)
+   {
+	   vcos_semaphore_post(&(pData->complete_semaphore));
+   }
+   else
+   {
+	   mmal_buffer_header_release(buffer);
+   }
 
    // and send one back to the port (if still open)
-   if (port->is_enabled && pData->pool && pData->pool->queue)
+   if (port->is_enabled)
    {
-	  //std::cout << "EncoderBufferCallback - Requeing buffer" << std::endl;
-      MMAL_BUFFER_HEADER_T *new_buffer = NULL;
-
-      if (pData->pool && pData->pool->queue)
-      {
-    	  new_buffer = mmal_queue_get(pData->pool->queue);
-      }
+      MMAL_BUFFER_HEADER_T *new_buffer = mmal_queue_get(pData->pool->queue);
 
       if (new_buffer)
       {
           mmal_port_send_buffer(port, new_buffer);
       }
-
-      //std::cout << "EncoderBufferCallback - Buffer Returned" << std::endl;
    }
 }
 
@@ -155,46 +151,44 @@ MmalVideoCamera::MmalVideoCamera(int imageWidth, int imageHeight, int frameRate)
 	m_imagePreviewWidth(VCOS_ALIGN_UP(imageWidth, 32)),
 	m_imagePreviewHeight(VCOS_ALIGN_UP(imageHeight, 16)),
 	m_callbackData(NULL),
+	m_cs(),
 	m_camera(NULL),
 	m_pool(NULL),
 	m_videoPort(NULL),
 	m_stillPort(NULL),
-	m_targetPort(NULL),
-	m_targetPortEnabled(false)
+	m_previewPort(NULL),
+	m_videoPortEnabled(false)
 {
-	m_callbackData = new Mmal_CallbackData();
+	std::cout << "Creating callback data..." << std::endl;
+
+	m_callbackData = new MmalVideoCallbackData(m_imageWidth, m_imageHeight, 3);
+
+	std::cout << "Creating camera..." << std::endl;
 
 	createCameraComponent();
-	std::cout << "Created camera" << std::endl;
 
-	//std::cout << "Target Image Width: " << VCOS_ALIGN_UP(m_imageWidth, 32) << std::endl;
-	//std::cout << "Target Image Height: " << VCOS_ALIGN_UP(m_imageHeight, 16) << std::endl;
+	std::cout << "Created camera" << std::endl;
 
 	std::cout << "Target Image Width: " << m_imageWidth << std::endl;
 	std::cout << "Target Image Height: " << m_imageHeight << std::endl;
 
-	m_targetPort = m_videoPort;
-
 	createBufferPool();
-
-	double startTime = GetTimeInSeconds();
-	do
-	{
-		sendBuffers();
-		Thread::usleep(10000);
-	} while ((GetTimeInSeconds() - startTime) < 1);
 
 	std::cout << "Initialized camera" << std::endl;
 }
 
 MmalVideoCamera::~MmalVideoCamera()
 {
-	// Disable the process
-	if (m_targetPort != NULL && m_targetPortEnabled)
+	// Disable the video port
+	if (m_videoPort != NULL && m_videoPort->is_enabled)
 	{
-		if (mmal_port_disable(m_targetPort) != MMAL_SUCCESS)
+		if (mmal_port_disable(m_videoPort) != MMAL_SUCCESS)
 		{
-			std::cerr << "Error disabling the encoder port" << std::endl;
+			std::cerr << "Error disabling the video port" << std::endl;
+		}
+		else
+		{
+			std::cout << "Disabled the video port" << std::endl;
 		}
 	}
 
@@ -205,7 +199,7 @@ MmalVideoCamera::~MmalVideoCamera()
 
 	if (m_pool != NULL)
 	{
-		mmal_port_pool_destroy(m_targetPort, m_pool);
+		mmal_port_pool_destroy(m_videoPort, m_pool);
 	}
 
 	if (m_camera != NULL)
@@ -214,36 +208,40 @@ MmalVideoCamera::~MmalVideoCamera()
 	}
 
 	delete m_callbackData;
+	m_callbackData = NULL;
 }
 
 
 void MmalVideoCamera::createBufferPool()
 {
-	if (m_targetPort == NULL)
+	if (m_videoPort == NULL)
 	{
 		throw Exception("Target port is not set.");
 	}
 
 	// Create pool of buffer headers for the output port to consume
-	m_targetPort->buffer_num = 3;
-	m_targetPort->buffer_size = m_targetPort->buffer_size_recommended;
-	m_pool = mmal_port_pool_create(m_targetPort, m_targetPort->buffer_num, m_targetPort->buffer_size);
+	m_videoPort->buffer_num = VIDEO_OUTPUT_BUFFERS_NUM;
+	m_videoPort->buffer_size = m_videoPort->buffer_size_recommended;
+	m_pool = mmal_port_pool_create(m_videoPort, MAX(m_videoPort->buffer_num, NUM_IMAGE_BUFFERS), m_videoPort->buffer_size);
+
 	if (m_pool == NULL)
 	{
 		throw Exception("Failed to create buffer header pool for encoder output port");
 	}
 
 	// Set the userdata
-	m_targetPort->userdata = (struct MMAL_PORT_USERDATA_T *) m_callbackData;
+	m_callbackData->pool = m_pool;
+	m_callbackData->acquire = false;
+	m_videoPort->userdata = (struct MMAL_PORT_USERDATA_T *) m_callbackData;
 
 	// Enable the encoder output port and tell it its callback function
-	if (mmal_port_enable(m_targetPort, EncoderBufferCallback) != MMAL_SUCCESS)
+	if (mmal_port_enable(m_videoPort, EncoderBufferCallback) != MMAL_SUCCESS)
 	{
 		throw Exception("Error enabling the encoder buffer callback");
 	}
 	else
 	{
-		m_targetPortEnabled = true;
+		m_videoPortEnabled = true;
 	}
 
 	// Send all the buffers to the encoder output port
@@ -255,7 +253,6 @@ void MmalVideoCamera::createBufferPool()
 		throw Exception("Error starting the camera capture");
 	}
 }
-
 
 void MmalVideoCamera::createCameraComponent()
 {
@@ -278,6 +275,8 @@ void MmalVideoCamera::createCameraComponent()
 			throw Exception("Camera doesn't have output ports");
 		}
 
+		MMAL_CHECK(mmal_port_parameter_set_uint32(camera->control, MMAL_PARAMETER_CAMERA_CUSTOM_SENSOR_CONFIG, MMAL_VIDEO_SENSOR_MODE));
+
 		preview_port = camera->output[MMAL_CAMERA_PREVIEW_PORT];
 		video_port = camera->output[MMAL_CAMERA_VIDEO_PORT];
 		still_port = camera->output[MMAL_CAMERA_CAPTURE_PORT];
@@ -290,15 +289,12 @@ void MmalVideoCamera::createCameraComponent()
 		cameraConfig.max_stills_h = m_imageHeight;
 		cameraConfig.stills_yuv422 = 0;
 		cameraConfig.one_shot_stills = 0;
-		//cameraConfig.max_preview_video_w = VCOS_ALIGN_UP(m_imagePreviewWidth, 32);
-		//cameraConfig.max_preview_video_h = VCOS_ALIGN_UP(m_imagePreviewHeight, 16);
 		cameraConfig.max_preview_video_w = m_imagePreviewWidth;
 		cameraConfig.max_preview_video_h = m_imagePreviewHeight;
 		cameraConfig.num_preview_video_frames = 3;
 		cameraConfig.stills_capture_circular_buffer_height = 0;
 		cameraConfig.fast_preview_resume = 0;
 		cameraConfig.use_stc_timestamp = MMAL_PARAM_TIMESTAMP_MODE_RESET_STC;
-
 
 		if (mmal_port_parameter_set(camera->control, &cameraConfig.hdr) != MMAL_SUCCESS)
 		{
@@ -314,8 +310,6 @@ void MmalVideoCamera::createCameraComponent()
 
 		format->es->video.width = VCOS_ALIGN_UP(m_imageWidth, 32);
 		format->es->video.height = VCOS_ALIGN_UP(m_imageHeight, 16);
-		//format->es->video.width = m_imageWidth;
-		//format->es->video.height = m_imageHeight;
 		format->es->video.crop.x = 0;
 		format->es->video.crop.y = 0;
 		format->es->video.crop.width = m_imageWidth;
@@ -349,6 +343,13 @@ void MmalVideoCamera::createCameraComponent()
 			throw Exception("camera component couldn't be enabled");
 		}
 
+		//int iso = 100;
+		//MMAL_CHECK(mmal_port_parameter_set_uint32(camera->control, MMAL_PARAMETER_ISO, iso));
+
+		// MMAL_PARAM_EXPOSUREMODE_OFF
+		//MMAL_PARAMETER_EXPOSUREMODE_T exp_mode = {{MMAL_PARAMETER_EXPOSURE_MODE, sizeof(exp_mode)}, MMAL_PARAM_EXPOSUREMODE_AUTO};
+		//MMAL_CHECK(mmal_port_parameter_set(camera->control, &exp_mode.hdr));
+
 		std::cout << "Camera Enabled..." << std::endl;
 	}
 	catch (...)
@@ -362,10 +363,11 @@ void MmalVideoCamera::createCameraComponent()
 	}
 
 	m_camera = camera;
-	//m_previewPort = preview_port;
 	m_videoPort = video_port;
 	m_stillPort = still_port;
+	m_previewPort = preview_port;
 }
+
 void MmalVideoCamera::sendBuffers()
 {
 	// Send all the buffers to the encoder output port
@@ -382,60 +384,49 @@ void MmalVideoCamera::sendBuffers()
 
 		if (mmal_port_send_buffer(m_videoPort, new_buffer)!= MMAL_SUCCESS)
 		{
-			std::cerr << "Unable to send a buffer " << q << " to encoder output port " << std::endl;
+			std::cerr << "Unable to send buffer " << (q + 1) << " to encoder output port " << std::endl;
 		}
 	}
 }
 
-void MmalVideoCamera::acquireImage(Image * image)
+Image * MmalVideoCamera::acquireImage()
 {
+	// Wait for the camera to be ready
+	handleAcquisitionDelay();
+
+	if (m_callbackData == NULL)
+	{
+		throw Exception("NULL callback data");
+	}
+
 	// Enable the encoder output port
-	m_targetPort->userdata = (struct MMAL_PORT_USERDATA_T *) m_callbackData;
+	m_videoPort->userdata = (struct MMAL_PORT_USERDATA_T *) m_callbackData;
 
 	m_callbackData->cs.enter();
-	m_callbackData->buffer = image->getPixels();
 	m_callbackData->pool = m_pool;
-	m_callbackData->bufferSize = image->getPixelBufferSize();
-	m_callbackData->bytesWritten = 0;
 	m_callbackData->acquire = true;
+	m_callbackData->camera = m_camera;
+	m_callbackData->image = NULL;
 	m_callbackData->cs.leave();
 
-	sendBuffers();
+	// Wait for the capture to end
+	vcos_semaphore_wait(&m_callbackData->complete_semaphore);
 
-	bool waiting = true;
-	while (waiting)
-	{
-		m_callbackData->cs.enter();
-		if (!m_callbackData->acquire)
-		{
-			waiting = false;
-		}
-		else
-		{
-			//Thread::usleep(10000);
-			Thread::usleep(10000);
-		}
-		m_callbackData->cs.leave();
-	}
+	// Grab the image
+	Image * image = NULL;
+	m_callbackData->cs.enter();
+	image = m_callbackData->image;
+	m_callbackData->cs.leave();
+
+	return image;
 }
 
-bool MmalVideoCamera::acquireJpeg(byte* buffer, unsigned * size)
+void MmalVideoCamera::releaseImage(Image * image)
 {
-	// Make sure the buffer is big enough
-	Image image;
-	if (* size < image.getPixelBufferSize())
+	if (image != NULL)
 	{
-		* size = image.getPixelBufferSize();
-		return false;
+		m_callbackData->imageStore.release(image);
 	}
-
-	// Acquire an image
-	acquireImage(&image);
-
-	// Convert the image to a JPEG
-	Image::convertToJpeg(image, buffer, size);
-
-	return true;
 }
 
 int MmalVideoCamera::getImageHeight() const
@@ -468,5 +459,3 @@ real MmalVideoCamera::getFocalLength() const
 	return 3.6;
 }
 } // end ns scanner
-
-#endif

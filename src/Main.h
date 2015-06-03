@@ -31,8 +31,8 @@ The origin is the center of the turn table.
 
 // MMAL/BCM
 // This mmal is from the RaspiCam package and was copied to /usr/local/include
-#include "bcm_host.h"
-#include "interface/vcos/vcos.h"
+#include <bcm_host.h>
+#include <interface/vcos/vcos.h>
 #include <mmal/mmal.h>
 #include <mmal/mmal_buffer.h>
 #include <mmal_util.h>
@@ -83,8 +83,8 @@ The origin is the center of the turn table.
 
 // Non-configurable settings
 #define FREELSS_VERSION_MAJOR 1
-#define FREELSS_VERSION_MINOR 5
-#define FREELSS_VERSION_NAME "FreeLSS 1.5"
+#define FREELSS_VERSION_MINOR 6
+#define FREELSS_VERSION_NAME "FreeLSS 1.6"
 
 #define PI 3.14159265359
 
@@ -297,6 +297,7 @@ bool EndsWith(const std::string& str, const std::string& ending);
 void HtmlEncode(std::string& data);
 void LoadProperties();
 void SaveProperties();
+void ExitProgram();
 }
 
 // Forward declaration

@@ -211,12 +211,6 @@ static void SavePreset(RequestInfo * reqInfo)
 		preset->laserThreshold = ToReal(laserThreshold.c_str());
 	}
 
-	std::string laserDelay = reqInfo->arguments[WebContent::LASER_DELAY];
-	if (!laserDelay.empty())
-	{
-		preset->laserDelay = ToInt(laserDelay.c_str());
-	}
-
 	std::string stabilityDelay = reqInfo->arguments[WebContent::STABILITY_DELAY];
 	if (!stabilityDelay.empty())
 	{
@@ -251,6 +245,7 @@ static void SavePreset(RequestInfo * reqInfo)
 
 	preset->generateStl = !reqInfo->arguments[WebContent::GENERATE_STL].empty();
 	preset->generateXyz = !reqInfo->arguments[WebContent::GENERATE_XYZ].empty();
+	preset->enableBurstModeForStillImages = !reqInfo->arguments[WebContent::ENABLE_BURST_MODE].empty();
 
 	if (reqInfo->arguments[WebContent::SEPARATE_LASERS_BY_COLOR].empty())
 	{
@@ -742,28 +737,26 @@ static std::string AutoCalibrate(RequestInfo * reqInfo)
 static int ProcessPageRequest(RequestInfo * reqInfo)
 {
 	HttpServer * server = reqInfo->server;
-	Scanner * scanner = server->getScanner();
-	Camera * camera = Camera::getInstance();
 	int ret = MHD_YES;
 
 	MHD_get_connection_values (reqInfo->connection, MHD_GET_ARGUMENT_KIND, &StoreToMap, (void *) reqInfo);
 
-	if (scanner->isRunning())
+	if (server->getScanner()->isRunning())
 	{
 		std::string cmd = reqInfo->arguments["cmd"];
 		if (reqInfo->url == "/" && cmd == "stopScan")
 		{
 			std::cout << "Stopping scan..." << std::endl;
-			scanner->stop();
+			server->getScanner()->stop();
 
 			// Wait for the scanner to stop
-			scanner->join();
+			server->getScanner()->join();
 
 			std::cout << "Scan stopped" << std::endl;
 		}
 	}
 
-	if (!scanner->isRunning())
+	if (!server->getScanner()->isRunning())
 	{
 		if (reqInfo->url.find("/camImage") == 0)
 		{
@@ -773,7 +766,7 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 
 			try
 			{
-				while (camera->acquireJpeg(imageData, &imageSize) == false)
+				while (Camera::getInstance()->acquireJpeg(imageData, &imageSize) == false)
 				{
 					free(imageData);
 					imageData = (byte *) malloc(imageSize);
@@ -913,12 +906,11 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			}
 			else if (reqInfo->method == RequestInfo::POST && cmd == "generateDebug")
 			{
-				std::cout << "Generating debug info..." << std::endl;
-				scanner->setTask(Scanner::GENERATE_DEBUG);
+				server->getScanner()->setTask(Scanner::GENERATE_DEBUG);
 
 				Preset& preset = PresetManager::get()->getActivePreset();
 
-				scanner->generateDebugInfo(preset.laserSide);
+				server->getScanner()->generateDebugInfo(preset.laserSide);
 				ret = RetrieveFile(reqInfo, "/dbg/5.png");
 
 				responded = true;
@@ -951,9 +943,9 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 					throw Exception("Missing required input parameters");
 				}
 
-				scanner->setRange(ToReal(degrees.c_str()));
-				scanner->setTask(Scanner::GENERATE_SCAN);
-				scanner->execute();
+				server->getScanner()->setRange(ToReal(degrees.c_str()));
+				server->getScanner()->setTask(Scanner::GENERATE_SCAN);
+				server->getScanner()->execute();
 				std::cout << "Starting scan..." << std::endl;
 
 				// Give the scanner time to start
@@ -961,7 +953,7 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			}
 			else
 			{
-				std::string page = WebContent::scan(scanner->getPastScanResults());
+				std::string page = WebContent::scan(server->getScanner()->getPastScanResults());
 				MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
 				MHD_add_response_header (response, "Content-Type", "text/html");
 				ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
@@ -980,7 +972,7 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 				// Execute the command
 				if (system(cmd.str().c_str()) != -1)
 				{
-					std::string page = WebContent::scan(scanner->getPastScanResults());
+					std::string page = WebContent::scan(server->getScanner()->getPastScanResults());
 					MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
 					MHD_add_response_header (response, "Content-Type", "text/html");
 					ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
@@ -1111,7 +1103,7 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 	}
 
 	// Show the scan progress
-	if (scanner->isRunning())
+	if (server->getScanner()->isRunning())
 	{
 		if (reqInfo->url == "/livePly")
 		{
@@ -1151,6 +1143,7 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			ret = ShowScanProgress(reqInfo);
 		}
 	}
+
 	return ret;
 }
 
@@ -1221,10 +1214,12 @@ static int ConnectionHandler (void *cls, struct MHD_Connection *connection,
 	}
 	catch (Exception & ex)
 	{
+		std::cerr << "!! " << ex << std::endl;
 		ret = BuildError(connection, ex.c_str());
 	}
 	catch (...)
 	{
+		std::cerr << "!! Unknown Error" << std::endl;
 		ret = BuildError(connection, "Unknown Error");
 	}
 

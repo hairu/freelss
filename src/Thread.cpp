@@ -47,7 +47,7 @@ static void * G_Thread_ThreadFunc ( void *ptr )
 
 Thread::Thread() : 	
 	m_stopRequested(false),
-	m_handle()	
+	m_handle(0)
 {
 	// Do nothing
 }

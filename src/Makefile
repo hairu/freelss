@@ -1,3 +1,4 @@
+VERSION=freelss-1-6
 CC=g++
 CFLAGS=-O3 -Wall -Winvalid-pch -fexceptions -I/usr/local/include -I/opt/vc/include \
 	-I/opt/vc/include/interface/vcos/pthreads \
@@ -6,17 +7,16 @@ CFLAGS=-O3 -Wall -Winvalid-pch -fexceptions -I/usr/local/include -I/opt/vc/inclu
 	-I/opt/vc/include/interface/mmal/util\
 	-I../contrib
 
-LFLAGS=-lcurl -lraspicam -lmmal -lmmal_core -lmmal_util -lvcos -lpthread -lpng -ljpeg -lsqlite3 -lwiringPi -lmicrohttpd -lbcm_host -L/usr/local/lib -L/opt/vc/lib
+LFLAGS=-lcurl -lmmal -lmmal_core -lmmal_util -lvcos -lpthread -lpng -ljpeg -lsqlite3 -lwiringPi -lmicrohttpd -lbcm_host -L/usr/local/lib -L/opt/vc/lib
 OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	HttpServer.o CriticalSection.o Scanner.o Image.o ImageProcessor.o \
 	Thread.o A4988TurnTable.o RelayLaser.o LocationMapper.o \
-	PlyWriter.o Calibrator.o RaspistillCamera.o \
-	RaspicamCamera.o \
+	PlyWriter.o Calibrator.o \
 	Camera.o MmalStillCamera.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
 	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
 	XyzWriter.o UpdateManager.o Progress.o FileWriter.o MemWriter.o \
-	Facetizer.o
+	Facetizer.o MmalImageStore.o
 
 all: freelss 
 
@@ -52,12 +52,6 @@ MmalStillCamera.o: MmalStillCamera.cpp MmalStillCamera.h Main.h
 	
 MmalVideoCamera.o: MmalVideoCamera.cpp MmalVideoCamera.h Main.h
 	$(CC) -c $(CFLAGS) MmalVideoCamera.cpp
-
-RaspistillCamera.o: RaspistillCamera.cpp RaspistillCamera.h Main.h
-	$(CC) -c $(CFLAGS) RaspistillCamera.cpp
-
-RaspicamCamera.o: RaspicamCamera.cpp RaspicamCamera.h Main.h
-	$(CC) -c $(CFLAGS) RaspicamCamera.cpp
 
 A4988TurnTable.o: A4988TurnTable.cpp A4988TurnTable.h TurnTable.h Main.h
 	$(CC) -c $(CFLAGS) A4988TurnTable.cpp
@@ -125,6 +119,9 @@ MemWriter.o: MemWriter.cpp MemWriter.h Main.h
 Facetizer.o: Facetizer.cpp Facetizer.h Main.h
 	$(CC) -c $(CFLAGS) Facetizer.cpp
 
+MmalImageStore.o: MmalImageStore.cpp MmalImageStore.h Main.h
+	$(CC) -c $(CFLAGS) MmalImageStore.cpp
+
 github:
 	mkdir -p ../../github
 	mkdir -p ../../github/src
@@ -135,8 +132,14 @@ github:
 run: freelss
 	sudo ./freelss
 
-dist: clean
-	tar -cvzf freelss.tar.gz ../../Scanner --exclude=".svn"
+dist: freelss 
+	mkdir -p ../releases/$(VERSION)
+	cp -f freelss ../releases/$(VERSION)
+	echo "#!/bin/sh\nVERSION=/updates/$(VERSION)\n" > ../releases/$(VERSION)/update.sh
+	cat ../releases/update.in >> ../releases/$(VERSION)/update.sh
+	chmod +x ../releases/$(VERSION)/update.sh
+	chmod +x ../releases/$(VERSION)/freelss
+	tar cvzf ../releases/$(VERSION).tar.gz -C ../releases $(VERSION)
 
 install: freelss
 	sudo cp -f freelss /usr/local/bin/freelss

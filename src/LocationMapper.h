@@ -33,7 +33,7 @@ public:
 	
 	/** Lookup the 3D points for each pixel location */
 	void mapPoints(PixelLocation * laserLocations,
-			       const Image * image,
+			       Image * image,
 			       ColoredPoint * points,
 			       int numLocations,
 			       int & outNumLocations);

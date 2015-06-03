@@ -49,7 +49,7 @@ LocationMapper::LocationMapper(const Vector3& laserLoc, const Vector3& cameraLoc
 }
 
 void LocationMapper::mapPoints(PixelLocation * laserLocations,
-		                       const Image * image,
+		                       Image * image,
 		                       ColoredPoint * points,
 		                       int numLocations,
 	                           int & outNumLocations)

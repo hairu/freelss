@@ -37,7 +37,6 @@ static bool SortRecordByRow(const freelss::DataPoint& a, const freelss::DataPoin
 	return a.pixel.y < b.pixel.y;
 }
 
-
 std::string GetPropertiesFile()
 {
 	// Get the users home directory
@@ -107,7 +106,7 @@ struct InitBcmHost
 int main(int argc, char **argv)
 {
 	int retVal = 0;
-	
+
 	pid_t pid = fork();
 	if (pid < 0)
 	{
@@ -521,6 +520,11 @@ void HtmlEncode(std::string& str)
     }
 
     str.swap(buffer);
+}
+
+void ExitProgram()
+{
+	//G_running = false;
 }
 
 } // ns scanner

@@ -66,34 +66,39 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 {
 	Camera * camera = Camera::getInstance();
 
+	bool detected = false;
+	PixelLocation * laserLocations = NULL;
+
 	// Turn the lasers off and take a picture
 	laser->turnOff(Laser::ALL_LASERS);
-	Image baseImage;
-	camera->acquireImage(&baseImage);
-
-	// Take a picture with this laser on
-	laser->turnOn(side);
-	Image laserImage;
-	camera->acquireImage(&laserImage);
-
-	// Turn the laser back off
-	laser->turnOff(side);
-
-	//
-	// Detect the laser from the image pixels
-	//
-	bool detected = false;
-	ImageProcessor imageProcessor;
-	int firstRowLaserCol = 0;
-	int numBad1, numBad2;
-	int numLocations = 0;
-	int maxNumLocations = camera->getImageHeight();
-	PixelLocation * laserLocations = new PixelLocation[maxNumLocations];
+	Image * baseImage = NULL;
+	Image * laserImage = NULL;
 
 	try
 	{
-		numLocations = imageProcessor.process(baseImage,
-				laserImage,
+		baseImage = camera->acquireImage();
+
+		// Take a picture with this laser on
+		laser->turnOn(side);
+
+		laserImage = camera->acquireImage();
+
+		// Turn the laser back off
+		laser->turnOff(side);
+
+		//
+		// Detect the laser from the image pixels
+		//
+
+		ImageProcessor imageProcessor;
+		int firstRowLaserCol = 0;
+		int numBad1, numBad2;
+		int numLocations = 0;
+		int maxNumLocations = camera->getImageHeight();
+		laserLocations = new PixelLocation[maxNumLocations];
+
+		numLocations = imageProcessor.process(* baseImage,
+				* laserImage,
 				NULL,
 				laserLocations,
 				maxNumLocations,
@@ -101,6 +106,9 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 				numBad1,
 				numBad2,
 				NULL);
+
+		camera->releaseImage(baseImage);
+		camera->releaseImage(laserImage);
 
 		//
 		// Find the laser location closest to the bottom of the image
@@ -145,7 +153,9 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 	catch (...)
 	{
 		std::cerr << "Error detecting laser location" << std::endl;
-		// Catch all
+
+		camera->releaseImage(baseImage);
+		camera->releaseImage(laserImage);
 	}
 
 	delete [] laserLocations;

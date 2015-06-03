@@ -31,9 +31,13 @@ public:
 	~CriticalSection();
 
 	void enter();
+	void enter(const std::string& name);
 	void leave();
 	
 private:
+	std::string errorToString(int error);
+	CriticalSection(const CriticalSection& ) { /* NO COPYING */ }
+	CriticalSection& operator = (const CriticalSection& ) { return * this; /* NO ASSIGNMENT */ }
 	pthread_mutex_t m_handle;
 };
 

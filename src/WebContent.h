@@ -62,7 +62,6 @@ public:
 	static const std::string LEFT_LASER_Z;
 	static const std::string LEFT_LASER_PIN;
 	static const std::string LASER_MAGNITUDE_THRESHOLD;
-	static const std::string LASER_DELAY;
 	static const std::string LASER_ON_VALUE;
 	static const std::string LASER_SELECTION;
 	static const std::string STABILITY_DELAY;
@@ -85,7 +84,7 @@ public:
 	static const std::string GROUND_PLANE_HEIGHT;
 	static const std::string PLY_DATA_FORMAT;
 	static const std::string FREE_DISK_SPACE;
-
+	static const std::string ENABLE_BURST_MODE;
 
 private:
 	static std::string setting(const std::string& name, const std::string& label,
@@ -116,7 +115,6 @@ private:
 	static const std::string LEFT_LASER_Y_DESCR;
 	static const std::string LEFT_LASER_Z_DESCR;
 	static const std::string LASER_MAGNITUDE_THRESHOLD_DESCR;
-	static const std::string LASER_DELAY_DESCR;
 	static const std::string RIGHT_LASER_PIN_DESCR;
 	static const std::string LEFT_LASER_PIN_DESCR;
 	static const std::string LASER_ON_VALUE_DESCR;
@@ -136,6 +134,7 @@ private:
 	static const std::string SEPARATE_LASERS_BY_COLOR_DESCR;
 	static const std::string GROUND_PLANE_HEIGHT_DESCR;
 	static const std::string PLY_DATA_FORMAT_DESCR;
+	static const std::string ENABLE_BURST_MODE_DESCR;
 };
 
 }

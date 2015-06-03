@@ -39,7 +39,6 @@ public:
 private:
 	int m_rightLaserPin;
 	int m_leftLaserPin;
-	int m_laserDelay;
 	int m_laserOnValue;
 	int m_laserOffValue;
 	bool m_rightLaserOn;

@@ -68,7 +68,6 @@ Scanner::Scanner() :
 	m_maxNumFrameRetries(5),                    // TODO: Place this in Database
 	m_maxNumFailedRows(10),                      // TODO: Place this in Database
 	m_columnPoints(NULL),
-	m_startTimeSec(0),
 	m_remainingTime(0),
 	m_firstRowRightLaserCol(0),
 	m_firstRowLeftLaserCol(0),
@@ -84,7 +83,8 @@ Scanner::Scanner() :
 	m_numFramesBetweenLaserPlanes(0),
 	m_laserSelection(Laser::ALL_LASERS),
 	m_task(GENERATE_SCAN),
-	m_results()
+	m_results(),
+	m_laserDelaySec(0)
 {
 	// Do nothing
 }
@@ -155,7 +155,6 @@ void Scanner::prepareScan()
 	m_running = true;
 	m_progress.setPercent(0);
 
-	m_startTimeSec = GetTimeInSeconds();
 	m_remainingTime = 0;
 
 	if (m_task == Scanner::GENERATE_SCAN)
@@ -185,6 +184,54 @@ void Scanner::prepareScan()
 	delete [] m_columnPoints;
 	m_columnPoints = new ColoredPoint[m_camera->getImageWidth()];
 
+	// Set the base output file
+	std::stringstream sstr;
+	sstr << SCAN_OUTPUT_DIR << std::string("/") << time(NULL);
+
+	m_filename = sstr.str();
+
+	m_firstRowRightLaserCol = m_camera->getImageWidth() * 0.5;
+	m_firstRowLeftLaserCol = m_camera->getImageWidth() * 0.5;
+
+	Setup * setup = Setup::get();
+	Preset& preset = PresetManager::get()->getActivePreset();
+
+	// Set the laser delay
+	switch (preset.cameraMode)
+	{
+	case Camera::CM_STILL_5MP:
+		m_laserDelaySec = 0.09;
+		break;
+
+	case Camera::CM_VIDEO_5MP:
+		m_laserDelaySec = 0.36;
+		break;
+
+	case Camera::CM_VIDEO_HD:
+		m_laserDelaySec = 0.09;
+		break;
+
+	case Camera::CM_VIDEO_1P2MP:
+		m_laserDelaySec = 0.09;
+		break;
+
+	case Camera::CM_VIDEO_VGA:
+		m_laserDelaySec = 0.09;
+		break;
+
+	default:
+		m_laserDelaySec = 0.09;
+		break;
+	}
+
+	// Read the laser selection
+	m_laserSelection = preset.laserSide;
+
+	// Read the location of the lasers and camera
+	m_rightLaserLoc = setup->rightLaserLocation;
+	m_leftLaserLoc = setup->leftLaserLocation;
+	m_cameraLoc = setup->cameraLocation;
+
 	m_status.leave();
 }
 
@@ -209,30 +256,13 @@ void Scanner::run()
 	// Prepare to scan
 	prepareScan();
 
-	// Set the base output file
-	std::stringstream sstr;
-	sstr << SCAN_OUTPUT_DIR << std::string("/") << time(NULL);
-
-	m_filename = sstr.str();
-
-	m_firstRowRightLaserCol = m_camera->getImageWidth() * 0.5;
-	m_firstRowLeftLaserCol = m_camera->getImageWidth() * 0.5;
+	Setup * setup = Setup::get();
+	Preset preset = PresetManager::get()->getActivePreset();
 
 	Scanner::TimingStats timingStats;
 	memset(&timingStats, 0, sizeof(Scanner::TimingStats));
 	timingStats.startTime = GetTimeInSeconds();
 	double time1 = 0;
-
-	Setup * setup = Setup::get();
-	Preset preset = PresetManager::get()->getActivePreset();
-
-	// Read the laser selection
-	m_laserSelection = preset.laserSide;
-
-	// Read the location of the lasers and camera
-	m_rightLaserLoc = setup->rightLaserLocation;
-	m_leftLaserLoc = setup->leftLaserLocation;
-	m_cameraLoc = setup->cameraLocation;
 
 	LocationMapper leftLocMapper(m_leftLaserLoc, m_cameraLoc);
 	LocationMapper rightLocMapper(m_rightLaserLoc, m_cameraLoc);
@@ -294,6 +324,10 @@ void Scanner::run()
 
 	try
 	{
+		// Make sure the lasers are off
+		m_laser->turnOff(Laser::ALL_LASERS);
+		delayAcquisitionForLaser();
+
 		// Enable the turn table motor
 		m_turnTable->setMotorEnabled(true);
 
@@ -357,10 +391,9 @@ void Scanner::run()
 
 			// Update the progress
 			double progress = (iFrame + 1.0) / numFrames;
-			double timeElapsed = GetTimeInSeconds() - m_startTimeSec;
+			double timeElapsed = GetTimeInSeconds() - timingStats.startTime;
 			double percentComplete = 100.0 * progress;
-			double percentPerSecond = percentComplete / timeElapsed;
-			double fullTimeSec = 100.0 / percentPerSecond;
+			double fullTimeSec = timeElapsed / progress;
 			double remainingSec = fullTimeSec - timeElapsed;
 
 			m_progress.setPercent(progress * 100);
@@ -520,94 +553,130 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 
 	std::string debuggingCsv = std::string(DEBUG_OUTPUT_DIR) + "/0.csv";
 
-	m_laser->turnOff(Laser::ALL_LASERS);
-	acquireImage(&m_image1);
-
-	Image leftDebuggingImage;
-	std::vector<PixelLocation> leftLocations (m_maxNumLocations);
-	int numLeftLocations = 0;
-
-	if (laserSide == Laser::LEFT_LASER  || laserSide == Laser::ALL_LASERS)
+	// Make sure the lasers are off
+	if (m_laser->isOn(Laser::LEFT_LASER) || m_laser->isOn(Laser::RIGHT_LASER))
 	{
-		m_laser->turnOn(Laser::LEFT_LASER);
-		acquireImage(&m_image2);
-
-		m_laser->turnOff(Laser::LEFT_LASER);
-
-		int firstRowLaserCol = m_camera->getImageWidth() * 0.5;
-		int numRowsBadFromColor = 0;
-		int numRowsBadFromNumRanges = 0;
-
-		numLeftLocations = m_imageProcessor.process(m_image1,
-													m_image2,
-													&leftDebuggingImage,
-													&leftLocations.front(),
-													m_maxNumLocations,
-													firstRowLaserCol,
-													numRowsBadFromColor,
-													numRowsBadFromNumRanges,
-													debuggingCsv.c_str());
-
-		// If we had major problems with this frame, try it again
-		std::cout << "numRowsBadFromColor: " << numRowsBadFromColor << std::endl;
-		std::cout << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << std::endl;
-
-		// Map the points so that points below the ground plane and outside the max object size are omitted
-		int numLocationsMapped = 0;
-		LocationMapper locMapper(setup->leftLaserLocation, setup->cameraLocation);
-		locMapper.mapPoints(&leftLocations.front(), &m_image1, m_columnPoints, numLeftLocations, numLocationsMapped);
-		numLeftLocations = numLocationsMapped;
+		m_laser->turnOff(Laser::ALL_LASERS);
+		delayAcquisitionForLaser();
 	}
 
-	Image rightDebuggingImage;
-	std::vector<PixelLocation> rightLocations(m_maxNumLocations);
-	int numRightLocations = 0;
-	if (laserSide == Laser::RIGHT_LASER  || laserSide == Laser::ALL_LASERS)
+	bool useLeftLaser = m_laserSelection == Laser::LEFT_LASER || m_laserSelection == Laser::ALL_LASERS;
+	bool useRightLaser = m_laserSelection == Laser::RIGHT_LASER || m_laserSelection == Laser::ALL_LASERS;
+
+	// Ensure that the camera images get released
+	Image * image1 = NULL;
+	Image * image2 = NULL;
+	try
 	{
-		m_laser->turnOn(Laser::RIGHT_LASER);
-		acquireImage(&m_image2);
+		image1 = acquireImage();
 
-		m_laser->turnOff(Laser::RIGHT_LASER);
+		Image rightDebuggingImage;
+		std::vector<PixelLocation> rightLocations(m_maxNumLocations);
+		int numRightLocations = 0;
+		if (useRightLaser)
+		{
+			m_laser->turnOn(Laser::RIGHT_LASER);
+			delayAcquisitionForLaser();
+			image2 = acquireImage();
 
-		int firstRowLaserCol = m_camera->getImageWidth() * 0.5;
-		int numRowsBadFromColor = 0;
-		int numRowsBadFromNumRanges = 0;
+			m_laser->turnOff(Laser::RIGHT_LASER);
+			if (useLeftLaser)
+			{
+				m_laser->turnOn(Laser::LEFT_LASER);
+			}
+			delayAcquisitionForLaser();
 
-		numRightLocations = m_imageProcessor.process(m_image1,
-													 m_image2,
-													 &rightDebuggingImage,
-													 &rightLocations.front(),
-													 m_maxNumLocations,
-													 firstRowLaserCol,
-													 numRowsBadFromColor,
-													 numRowsBadFromNumRanges,
-													 debuggingCsv.c_str());
+			int firstRowLaserCol = m_camera->getImageWidth() * 0.5;
+			int numRowsBadFromColor = 0;
+			int numRowsBadFromNumRanges = 0;
 
-		// If we had major problems with this frame, try it again
-		std::cout << "numRowsBadFromColor: " << numRowsBadFromColor << std::endl;
-		std::cout << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << std::endl;
+			numRightLocations = m_imageProcessor.process(* image1,
+														 * image2,
+														 &rightDebuggingImage,
+														 &rightLocations.front(),
+														 m_maxNumLocations,
+														 firstRowLaserCol,
+														 numRowsBadFromColor,
+														 numRowsBadFromNumRanges,
+														 debuggingCsv.c_str());
 
+			releaseImage(image2);
 
-		// Map the points so that points below the ground plane and outside the max object size are omitted
-		int numLocationsMapped = 0;
-		LocationMapper locMapper(setup->rightLaserLocation, setup->cameraLocation);
-		locMapper.mapPoints(&rightLocations.front(), &m_image1, m_columnPoints, numRightLocations, numLocationsMapped);
-		numRightLocations = numLocationsMapped;
+			// If we had major problems with this frame, try it again
+			std::cout << "numRowsBadFromColor: " << numRowsBadFromColor << std::endl;
+			std::cout << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << std::endl;
+
+			// Map the points so that points below the ground plane and outside the max object size are omitted
+			int numLocationsMapped = 0;
+			LocationMapper locMapper(setup->rightLaserLocation, setup->cameraLocation);
+			locMapper.mapPoints(&rightLocations.front(), image1, m_columnPoints, numRightLocations, numLocationsMapped);
+			numRightLocations = numLocationsMapped;
+		}
+
+		std::vector<PixelLocation> leftLocations (m_maxNumLocations);
+		int numLeftLocations = 0;
+		Image leftDebuggingImage;
+		if (useLeftLaser)
+		{
+			if (!m_laser->isOn(Laser::LEFT_LASER))
+			{
+				m_laser->turnOn(Laser::LEFT_LASER);
+				delayAcquisitionForLaser();
+			}
+			image2 = acquireImage();
+
+			m_laser->turnOff(Laser::LEFT_LASER);
+			delayAcquisitionForLaser();
+
+			int firstRowLaserCol = m_camera->getImageWidth() * 0.5;
+			int numRowsBadFromColor = 0;
+			int numRowsBadFromNumRanges = 0;
+
+			numLeftLocations = m_imageProcessor.process(* image1,
+														* image2,
+														&leftDebuggingImage,
+														&leftLocations.front(),
+														m_maxNumLocations,
+														firstRowLaserCol,
+														numRowsBadFromColor,
+														numRowsBadFromNumRanges,
+														debuggingCsv.c_str());
+
+			releaseImage(image2);
+
+			// If we had major problems with this frame, try it again
+			std::cout << "numRowsBadFromColor: " << numRowsBadFromColor << std::endl;
+			std::cout << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << std::endl;
+
+			// Map the points so that points below the ground plane and outside the max object size are omitted
+			int numLocationsMapped = 0;
+			LocationMapper locMapper(setup->leftLaserLocation, setup->cameraLocation);
+			locMapper.mapPoints(&leftLocations.front(), image1, m_columnPoints, numLeftLocations, numLocationsMapped);
+			numLeftLocations = numLocationsMapped;
+		}
+
+		releaseImage(image1);
+
+		//
+		// Merge the two debugging images
+		//
+		Image debuggingImage;
+		mergeDebuggingImages(debuggingImage, leftDebuggingImage, rightDebuggingImage, laserSide);
+
+		std::string baseFilename = std::string(DEBUG_OUTPUT_DIR) + "/";
+
+		// Overlay the pixels onto the debug image and write that as a new image
+		PixelLocationWriter locWriter;
+		Image::overlayPixels(debuggingImage, &rightLocations.front(), numRightLocations);
+		Image::overlayPixels(debuggingImage, &leftLocations.front(), numLeftLocations);
+		locWriter.writeImage(debuggingImage, debuggingImage.getWidth(), debuggingImage.getHeight(), baseFilename + "5.png");
 	}
-
-	//
-	// Merge the two debugging images
-	//
-	Image debuggingImage;
-	mergeDebuggingImages(debuggingImage, leftDebuggingImage, rightDebuggingImage, laserSide);
-
-	std::string baseFilename = std::string(DEBUG_OUTPUT_DIR) + "/";
-
-	// Overlay the pixels onto the debug image and write that as a new image
-	PixelLocationWriter locWriter;
-	Image::overlayPixels(debuggingImage, &rightLocations.front(), numRightLocations);
-	Image::overlayPixels(debuggingImage, &leftLocations.front(), numLeftLocations);
-	locWriter.writeImage(debuggingImage, debuggingImage.getWidth(), debuggingImage.getHeight(), baseFilename + "5.png");
+	catch (...)
+	{
+		releaseImage(image1);
+		releaseImage(image2);
+		throw;
+	}
 
 	m_progress.setPercent(100);
 
@@ -617,7 +686,7 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 	std::cout << "Done." << std::endl;
 }
 
-void Scanner::mergeDebuggingImages(Image& outImage, const Image& leftDebuggingImage, const Image& rightDebuggingImage, Laser::LaserSide laserSide)
+void Scanner::mergeDebuggingImages(Image& outImage, Image& leftDebuggingImage, Image& rightDebuggingImage, Laser::LaserSide laserSide)
 {
 
 	if (laserSide == Laser::RIGHT_LASER)
@@ -679,100 +748,103 @@ void Scanner::singleScan(int frame, float rotation, float frameRotation,
 	m_turnTable->rotate(frameRotation);
 	timingStats->rotationTime += GetTimeInSeconds() - time1;
 
-	// Make sure the laser is off
-	m_laser->turnOff(Laser::ALL_LASERS);
+	Image * image1 = NULL;
+	Image * image2 = NULL;
 
-	// Take a picture with the laser off
-	time1 = GetTimeInSeconds();
-	acquireImage(&m_image1);
-	timingStats->imageAcquisitionTime += GetTimeInSeconds() - time1;
+	bool useLeftLaser = m_laserSelection == Laser::LEFT_LASER || m_laserSelection == Laser::ALL_LASERS;
+	bool useRightLaser = m_laserSelection == Laser::RIGHT_LASER || m_laserSelection == Laser::ALL_LASERS;
 
-	// If this is the first image, save it as a thumbnail
-	if (frame == 0)
+	// Ensure that the images get released back to the camera
+	try
 	{
-		std::string thumbnail = m_filename + ".png";
+		// Take a picture with the laser off
+		time1 = GetTimeInSeconds();
+		image1 = acquireImage();
+		timingStats->imageAcquisitionTime += GetTimeInSeconds() - time1;
 
-		PixelLocationWriter imageWriter;
-		imageWriter.writeImage(m_image1, 128, 96, thumbnail.c_str());
-	}
+		// If this is the first image, save it as a thumbnail
+		if (frame == 0)
+		{
+			std::string thumbnail = m_filename + ".png";
 
-	// Scan with the Right laser
-	if (m_laserSelection == Laser::RIGHT_LASER || m_laserSelection == Laser::ALL_LASERS)
-	{
-		bool goodResult = false;
+			PixelLocationWriter imageWriter;
+			imageWriter.writeImage(* image1, 128, 96, thumbnail.c_str());
+		}
 
-		for (int iTry = 0; iTry < m_maxNumFrameRetries && ! goodResult; iTry++)
+		// Scan with the Right laser
+		if (useRightLaser)
 		{
 			// Turn on the right laser
 			time1 = GetTimeInSeconds();
 			m_laser->turnOn(Laser::RIGHT_LASER);
+			delayAcquisitionForLaser();
 			timingStats->laserTime += GetTimeInSeconds() - time1;
 
 			// Take a picture with the right laser on
 			time1 = GetTimeInSeconds();
-			acquireImage(&m_image2);
+			image2 = acquireImage();
 			timingStats->imageAcquisitionTime += GetTimeInSeconds() - time1;
 
 			// Turn off the right laser
 			time1 = GetTimeInSeconds();
 			m_laser->turnOff(Laser::RIGHT_LASER);
+
+			// Turn the left laser on now if it is a dual laser scan to save time later
+			if (useLeftLaser)
+			{
+				m_laser->turnOn(Laser::LEFT_LASER);
+			}
+
+			delayAcquisitionForLaser();
 			timingStats->laserTime += GetTimeInSeconds() - time1;
 
 			// Process the right laser results
-			goodResult = processScan(m_rightLaserResults, frame, rotation, rightLocMapper, Laser::RIGHT_LASER, m_firstRowRightLaserCol, timingStats);
+			processScan(image1, image2, m_rightLaserResults, frame, rotation, rightLocMapper, Laser::RIGHT_LASER, m_firstRowRightLaserCol, timingStats);
 
-			// If it didn't succeed, take the first image again
-			if (!goodResult)
-			{
-				// Wait some period of time for the cause of the disruption to go away
-				Thread::usleep(1000000);
-
-				// Take a picture with the laser off
-				time1 = GetTimeInSeconds();
-				acquireImage(&m_image1);
-				timingStats->imageAcquisitionTime += GetTimeInSeconds() - time1;
-			}
+			releaseImage(image2);
 		}
-	}
 
-	// Scan with the Left laser
-	if (m_laserSelection == Laser::LEFT_LASER || m_laserSelection == Laser::ALL_LASERS)
-	{
-		bool goodResult = false;
-
-		for (int iTry = 0; iTry < m_maxNumFrameRetries && ! goodResult; iTry++)
+		// Scan with the Left laser
+		if (useLeftLaser)
 		{
 			// Turn on the left laser
 			time1 = GetTimeInSeconds();
-			m_laser->turnOn(Laser::LEFT_LASER);
+			if (!m_laser->isOn(Laser::LEFT_LASER))
+			{
+				m_laser->turnOn(Laser::LEFT_LASER);
+				delayAcquisitionForLaser();
+			}
 			timingStats->laserTime += GetTimeInSeconds() - time1;
 
 			// Take a picture with the left laser on
 			time1 = GetTimeInSeconds();
-			acquireImage(&m_image2);
+			image2 = acquireImage();
 			timingStats->imageAcquisitionTime += GetTimeInSeconds() - time1;
 
 			// Turn off the left laser
 			time1 = GetTimeInSeconds();
 			m_laser->turnOff(Laser::LEFT_LASER);
+			delayAcquisitionForLaser();
 			timingStats->laserTime += GetTimeInSeconds() - time1;
 
 			// Process the left laser results
-			goodResult = processScan(m_leftLaserResults, frame, rotation, leftLocMapper, Laser::LEFT_LASER, m_firstRowLeftLaserCol, timingStats);
+			processScan(image1, image2, m_leftLaserResults, frame, rotation, leftLocMapper, Laser::LEFT_LASER, m_firstRowLeftLaserCol, timingStats);
 
-			// If it didn't succeed, take the first image again
-			if (!goodResult)
-			{
-				// Take a picture with the laser off
-				time1 = GetTimeInSeconds();
-				acquireImage(&m_image1);
-				timingStats->imageAcquisitionTime += GetTimeInSeconds() - time1;
-			}
+			releaseImage(image2);
 		}
+
+		// Release image 1 back to the camera
+		releaseImage(image1);
+	}
+	catch (...)
+	{
+		releaseImage(image1);
+		releaseImage(image2);
+		throw;
 	}
 }
 
-bool Scanner::processScan(std::vector<DataPoint> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats)
+bool Scanner::processScan(Image * image1, Image * image2, std::vector<DataPoint> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats)
 {
 	int numLocationsMapped = 0;
 	int numRowsBadFromColor = 0;
@@ -780,8 +852,8 @@ bool Scanner::processScan(std::vector<DataPoint> & results, int frame, float rot
 
 	// Send the pictures off for processing
 	double time1 = GetTimeInSeconds();
-	int numLocations = m_imageProcessor.process(m_image1,
-												m_image2,
+	int numLocations = m_imageProcessor.process(* image1,
+												* image2,
 												NULL,
 												m_laserLocations,
 												m_maxNumLocations,
@@ -801,9 +873,7 @@ bool Scanner::processScan(std::vector<DataPoint> & results, int frame, float rot
 		std::cout << "!! Too many bad laser locations suspected"
 				  << ", numRowsBadFromColor=" << numRowsBadFromColor
 				  << ", numRowsBadFromNumRanges=" << numRowsBadFromNumRanges
-				  << ", rescanning..." << std::endl;
-
-		timingStats->numFrameRetries++;
+				  << std::endl;
 
 		return false;
 	}
@@ -816,7 +886,7 @@ bool Scanner::processScan(std::vector<DataPoint> & results, int frame, float rot
 	if (numLocations > 0)
 	{
 		time1 = GetTimeInSeconds();
-		locMapper.mapPoints(m_laserLocations, &m_image1, m_columnPoints, numLocations, numLocationsMapped);
+		locMapper.mapPoints(m_laserLocations, image1, m_columnPoints, numLocations, numLocationsMapped);
 		timingStats->pointMappingTime += GetTimeInSeconds() - time1;
 
 		if (numLocations != numLocationsMapped)
@@ -966,7 +1036,7 @@ void Scanner::logTimingStats(const Scanner::TimingStats& stats)
 	std::cout << "Image Processing:\t" << (100.0 * stats.imageProcessingTime / totalTime) << "%, " << (stats.imageProcessingTime / stats.numFrames) << " seconds per frame." << std::endl;
 	std::cout << "Laser Time:\t" << (100.0 * stats.laserTime / totalTime) << "%, " << (stats.laserTime / stats.numFrames) << " seconds per frame." << std::endl;
 	std::cout << "Point Mapping:\t" << (100.0 * stats.pointMappingTime / totalTime) << "%" << std::endl;
-	std::cout << "Point Rotating:\t" << (100.0 * stats.pointProcessingTime / totalTime) << "%" << std::endl;
+	std::cout << "Point Processing:\t" << (100.0 * stats.pointProcessingTime / totalTime) << "%" << std::endl;
 	std::cout << "Table Rotation:\t" << (100.0 * stats.rotationTime / totalTime) << "%" << std::endl;
 	std::cout << "Laser Merging:\t" << (100.0 * stats.laserMergeTime / totalTime) << "%" << std::endl;
 	std::cout << "PLY Writing:\t" << (100.0 * stats.plyWritingTime / totalTime) << "%" << std::endl;
@@ -1042,9 +1112,28 @@ std::vector<ScanResult> Scanner::getPastScanResults()
 }
 
 
-void Scanner::acquireImage(Image * image)
+Image * Scanner::acquireImage()
 {
-	m_camera->acquireImage(image);
+	Image * image = m_camera->acquireImage();
+	if (image == NULL)
+	{
+		throw Exception("Camera returned NULL image");
+	}
+
+	return image;
+}
+
+void Scanner::releaseImage(Image * image)
+{
+	if (image != NULL)
+	{
+		m_camera->releaseImage(image);
+	}
+}
+
+void Scanner::delayAcquisitionForLaser()
+{
+	m_camera->setAcquisitionDelay(m_laserDelaySec);
 }
 
 } // ns sdl

@@ -20,26 +20,29 @@
 
 #include "Main.h"
 #include "Camera.h"
-#include "RaspistillCamera.h"
-#include "RaspicamCamera.h"
 #include "MmalStillCamera.h"
 #include "MmalVideoCamera.h"
 #include "PresetManager.h"
+#include "Thread.h"
 
 namespace freelss
 {
 
-#define VIDEO_CAMERA_TYPE  Camera::CT_MMALVIDEO
-//#define VIDEO_CAMERA_TYPE Camera::CT_RASPICAM
-
-CriticalSection Camera::m_cs = CriticalSection();
+CriticalSection Camera::m_cs;
 Camera * Camera::m_instance = NULL;
-Camera::CameraType Camera::m_cameraType = VIDEO_CAMERA_TYPE;
+Camera::CameraType Camera::m_cameraType = Camera::CT_MMALVIDEO;
 int Camera::m_reqImageWidth = 0;
 int Camera::m_reqImageHeight = 0;
 int Camera::m_reqFrameRate = 0;
 
-Camera::Camera()
+// 5MP Video - 360000 laser delay
+// 5MP Still -  90000 laser delay
+// 1.9MP     -  90000 laser delay
+// 1.2MP     -  90000 laser delay
+// 0.3MP     -  90000 laser delay
+
+Camera::Camera() :
+	m_nextAcquisitionTimeSec(0)
 {
 	// Do nothing
 }
@@ -56,19 +59,11 @@ Camera * Camera::getInstance()
 	{
 		if (m_instance == NULL)
 		{
-			if (m_cameraType == Camera::CT_RASPISTILL)
+			if (m_cameraType == Camera::CT_MMALSTILL)
 			{
-				m_instance = new RaspistillCamera();
-			}
-			else if (m_cameraType == Camera::CT_RASPICAM)
-			{
-				std::cout << "Creating Raspicam video mode camera resolution=" << m_reqImageWidth << "x" << m_reqImageHeight << std::endl;
-				m_instance = new RaspicamCamera(m_reqImageWidth, m_reqImageHeight);
-			}
-			else if (m_cameraType == Camera::CT_MMALSTILL)
-			{
+				Preset& preset = PresetManager::get()->getActivePreset();
 				std::cout << "Creating still mode camera resolution=" << m_reqImageWidth << "x" << m_reqImageHeight << std::endl;
-				m_instance = new MmalStillCamera(m_reqImageWidth, m_reqImageHeight);
+				m_instance = new MmalStillCamera(m_reqImageWidth, m_reqImageHeight, preset.enableBurstModeForStillImages);
 			}
 			else if (m_cameraType == Camera::CT_MMALVIDEO)
 			{
@@ -93,6 +88,7 @@ Camera * Camera::getInstance()
 
 void Camera::release()
 {
+
 	m_cs.enter();
 	try
 	{
@@ -126,63 +122,48 @@ void Camera::reinitialize()
 		break;
 
 	case CM_VIDEO_5MP:
-		type = VIDEO_CAMERA_TYPE;
+		type = CT_MMALVIDEO;
 		reqImageWidth = 2592;
 		reqImageHeight = 1944;
 		reqFrameRate = 15;
-		//reqImageHeight = 1944;
-		//reqImageWidth = 2560;
-		//reqImageHeight = 1920;
 		break;
 
 	case CM_VIDEO_HD:
-		type = VIDEO_CAMERA_TYPE;
+		type = CT_MMALVIDEO;
 		reqImageWidth = 1600;
 		reqImageHeight = 1200;
-		reqFrameRate = 30;
+		reqFrameRate = 15;
 		break;
 
 	case CM_VIDEO_1P2MP:
-		type = VIDEO_CAMERA_TYPE;
-		//reqImageWidth = 1296;
-		//reqImageHeight = 972;
+		type = CT_MMALVIDEO;
 		reqImageWidth = 1280;
 		reqImageHeight = 960;
-		//reqImageWidth = 1312;
-		//reqImageHeight = 984;
-		//reqImageWidth = 1324;
-		//reqImageHeight = 993;
-		//reqImageWidth = 1288;
-		//reqImageHeight = 966;
-		reqFrameRate = 42;
+		reqFrameRate = 15;
 		break;
 
 	case CM_VIDEO_VGA:
-		type = VIDEO_CAMERA_TYPE;
+		type = CT_MMALVIDEO;
 		reqImageWidth = 640;
 		reqImageHeight = 480;
-		reqFrameRate = 60;
+		reqFrameRate = 15;
 		break;
 
 	default:
 		throw Exception("Unsupported camera mode");
 	}
 
+
 	m_cs.enter();
 	try
 	{
 		// Set the new type
-		if (m_cameraType != type ||
-			m_reqImageWidth != reqImageWidth ||
-			m_reqImageHeight != reqImageHeight)
-		{
-			delete m_instance;
-			m_instance = NULL;
-			m_cameraType = type;
-			m_reqImageWidth = reqImageWidth;
-			m_reqImageHeight = reqImageHeight;
-			m_reqFrameRate = reqFrameRate;
-		}
+		delete m_instance;
+		m_instance = NULL;
+		m_cameraType = type;
+		m_reqImageWidth = reqImageWidth;
+		m_reqImageHeight = reqImageHeight;
+		m_reqFrameRate = reqFrameRate;
 	}
 	catch (...)
 	{
@@ -195,5 +176,60 @@ void Camera::reinitialize()
 	getInstance();
 }
 
+bool Camera::acquireJpeg(byte* buffer, unsigned * size)
+{
+	// Acquire an image
+	Image * image = NULL;
+	bool retVal = false;
+
+	try
+	{
+		image = acquireImage();
+
+		if (image == NULL)
+		{
+			throw Exception("NULL image in Camera::acquireJpeg");
+		}
+
+		// Make sure the buffer is big enough
+		if (* size >= image->getPixelBufferSize())
+		{
+			// Convert the image to a JPEG
+			Image::convertToJpeg(* image, buffer, size);
+			retVal = true;
+		}
+		else
+		{
+			* size = image->getPixelBufferSize();
+			retVal = false;
+		}
+
+		releaseImage(image);
+	}
+	catch (...)
+	{
+		releaseImage(image);
+		throw;
+	}
+
+	return retVal;
+}
+
+void Camera::setAcquisitionDelay(double acquisitionDelaySec)
+{
+	double seconds = GetTimeInSeconds() + acquisitionDelaySec;
+	m_nextAcquisitionTimeSec = MAX(m_nextAcquisitionTimeSec, seconds);
+}
+
+void Camera::handleAcquisitionDelay()
+{
+	double sleepTime = m_nextAcquisitionTimeSec - GetTimeInSeconds();
+	if (sleepTime > 0)
+	{
+		//std::cout << "Camera::handleAcquisitionDelay() - Sleeping for " << sleepTime << " seconds" << std::endl;
+		Thread::usleep((unsigned long) (sleepTime * 1000000.0));
+		m_nextAcquisitionTimeSec = 0;
+	}
+}
 
 }

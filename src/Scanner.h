@@ -125,11 +125,11 @@ private:
 	/**
 	 * Returns true if the scan was processed successfully and false if there was a problem and the frame needs to be again.
 	 */
-	bool processScan(std::vector<DataPoint> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
+	bool processScan(Image * image1, Image * image2, std::vector<DataPoint> & results, int frame, float rotation, LocationMapper& locMapper, Laser::LaserSide laserSide, int & firstRowLaserCol, TimingStats * timingStats);
 
 	void writeRangePoints(ColoredPoint * points, int numLocationsMapped,Laser::LaserSide laserSide);
 
-	void mergeDebuggingImages(Image& outImage, const Image& leftDebuggingImage, const Image& rightDebuggingImage, Laser::LaserSide laserSide);
+	void mergeDebuggingImages(Image& outImage, Image& leftDebuggingImage, Image& rightDebuggingImage, Laser::LaserSide laserSide);
 
 	/**
 	 *  Prepares the object for scanning.
@@ -139,7 +139,19 @@ private:
 	/**
 	 * Acquires an image from the camera.
 	 */
-	void acquireImage(Image * image);
+	Image * acquireImage();
+
+	/**
+	 *  Releases an image back to the camera.
+	 */
+	void releaseImage(Image * image);
+
+	/**
+	 * Ensures that the "laser delay" amount of time has passed before the next
+	 * picture will be taken.
+	 */
+	void delayAcquisitionForLaser();
+
 private:
 	/** Unowned objects */
 	Laser * m_laser;
@@ -152,12 +164,6 @@ private:
 	PixelLocation * m_laserLocations;
 
 	ImageProcessor m_imageProcessor;
-	
-	/** The image with the laser off */
-	Image m_image1;
-	
-	/** The image with the laser on */
-	Image m_image2;
 
 	/** Indicates if a scan is running or not */
 	bool m_running;
@@ -182,9 +188,6 @@ private:
 
 	/** The image points for every column */
 	ColoredPoint * m_columnPoints;
-
-	/** The start time in seconds */
-	real m_startTimeSec;
 
 	/** The amount of time remaining in the scan */
 	real m_remainingTime;
@@ -239,6 +242,9 @@ private:
 
 	/** Protection for the the 3D result data */
 	CriticalSection m_results;
+
+	/** The laser delay from the preset */
+	double m_laserDelaySec;
 };
 
 }

@@ -34,18 +34,47 @@ Image::Image() :
 	m_pixels(NULL),
 	m_numComponents(0),
 	m_width(0),
-	m_height(0)
+	m_height(0),
+	m_owner(true)
 {
 	Camera * camera = Camera::getInstance();
-	m_pixels = new unsigned char [camera->getImageComponents() * camera->getImageHeight() * camera->getImageWidth()];
 	m_height = camera->getImageHeight();
 	m_width = camera->getImageWidth();
 	m_numComponents = camera->getImageComponents();
 }
 
+Image::Image(unsigned width, unsigned height, unsigned numComponents):
+	m_pixels(NULL),
+	m_numComponents(numComponents),
+	m_width(width),
+	m_height(height),
+	m_owner(true)
+{
+	// Do nothing
+}
+
 Image::~Image()
 {
-	delete [] m_pixels;
+	if (m_owner)
+	{
+		delete [] m_pixels;
+	}
+}
+
+void Image::assignPixels(unsigned char * newPixels)
+{
+	if (m_owner)
+	{
+		delete [] m_pixels;
+		m_owner = false;
+	}
+
+	m_pixels = newPixels;
+}
+
+bool Image::isOwner() const
+{
+	return m_owner;
 }
 
 unsigned Image::getHeight() const
@@ -58,8 +87,14 @@ unsigned Image::getWidth() const
 	return m_width;
 }
 
-unsigned char * Image::getPixels() const
+unsigned char * Image::getPixels()
 {
+	if (m_pixels == NULL)
+	{
+		m_pixels = new unsigned char [m_numComponents * m_height * m_width];
+		m_owner = true;
+	}
+
 	return m_pixels;
 }
 
@@ -73,7 +108,7 @@ unsigned Image::getPixelBufferSize() const
 	return m_width * m_height * m_numComponents;
 }
 
-void Image::convertToJpeg(const Image& image, byte* buffer, unsigned * size)
+void Image::convertToJpeg(Image& image, byte* buffer, unsigned * size)
 {
 	size_t bufferSize = * size;
 
@@ -118,7 +153,7 @@ void Image::convertToJpeg(const Image& image, byte* buffer, unsigned * size)
 }
 
 
-void Image::writeJpeg(const Image& image, const std::string& filename)
+void Image::writeJpeg(Image& image, const std::string& filename)
 {
 	std::cout << "Writing " << filename << "..." << std::endl;
 

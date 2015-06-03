@@ -23,25 +23,23 @@
 #include "CriticalSection.h"
 #include "Camera.h"
 
-struct MMAL_COMPONENT_T;
-struct MMAL_PORT_T;
-struct MMAL_POOL_T;
 
 namespace freelss
 {
 
 // Forward declaration
-struct Mmal_CallbackData;
+struct MmalStillCallbackData;
 
 /** Reads an image use the raspberry pi's MMAL interfaces */
 class MmalStillCamera : public Camera
 {
 public:
-	MmalStillCamera(int imageWidth = 2592, int imageHeight = 1944);
+	MmalStillCamera(int imageWidth, int imageHeight, bool enableBurstMode);
 	~MmalStillCamera();
 
-	void acquireImage(Image * image);
-	bool acquireJpeg(byte* buffer, unsigned * size);
+	Image * acquireImage();
+
+	void releaseImage(Image * image);
 
 	/** Returns the height of the image that this camera takes. */
 	int getImageHeight() const;
@@ -70,7 +68,7 @@ private:
 
 	int m_imageWidth;
 	int m_imageHeight;
-	Mmal_CallbackData * m_callbackData;
+	MmalStillCallbackData * m_callbackData;
 
 	CriticalSection m_cs;
 	MMAL_COMPONENT_T * m_camera;
@@ -82,5 +80,7 @@ private:
 	MMAL_PORT_T * m_stillPort;
 	MMAL_PORT_T * m_targetPort;
 };
+
+
 
 }

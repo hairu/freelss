@@ -81,7 +81,7 @@ void PixelLocationWriter::writePixels(const PixelLocation * pixels,
 	fclose(fp);
 }
 
-void PixelLocationWriter::writeImage(const Image& image, int dstWidth, int dstHeight, const std::string& pngFilename)
+void PixelLocationWriter::writeImage(Image& image, int dstWidth, int dstHeight, const std::string& pngFilename)
 {
 	std::cout << "Writing " << pngFilename << "..." << std::endl;
 	FILE *fp = fopen(pngFilename.c_str(), "wb");

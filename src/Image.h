@@ -23,26 +23,35 @@
 namespace freelss
 {
 
+class Camera;
+
 /** RGB Image with the same dimensions that the camera takes */
 class Image
 {
 public:
 	Image();
+	Image(unsigned width, unsigned height, unsigned numComponents);
 	~Image();
 	
 	unsigned getHeight() const;
 	unsigned getWidth() const;
 	unsigned getNumComponents() const;
-	unsigned char * getPixels() const;
+	unsigned char * getPixels();
 	
+	/** Sets the image to use pixels from a different source.  The image does not own the data in this case */
+	void assignPixels(unsigned char * newPixels);
+
+	/** Returns true if this object owns the underlying buffer */
+	bool isOwner() const;
+
 	/** The size of the allocated pixel buffer */
 	unsigned getPixelBufferSize() const;
 
 	/** Converts the image to a JPEG */
-	static void convertToJpeg(const Image& image, byte* buffer, unsigned * size);
+	static void convertToJpeg(Image& image, byte* buffer, unsigned * size);
 
 	/** Writes the image as a JPEG */
-	static void writeJpeg(const Image& image, const std::string& filename);
+	static void writeJpeg(Image& image, const std::string& filename);
 
 	/** Overlay the given pixels as full red on top of the given image */
 	static void overlayPixels(Image& image, PixelLocation * locations, int numLocations);
@@ -51,6 +60,7 @@ private:
 	unsigned m_numComponents;
 	unsigned m_width;
 	unsigned m_height;
+	bool m_owner;
 };
 
 }

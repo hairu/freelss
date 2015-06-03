@@ -17,60 +17,46 @@
  *   along with FreeLSS.  If not, see <http://www.gnu.org/licenses/>.       *
  ****************************************************************************
 */
-
 #pragma once
 
-#include "Laser.h"
-#include "Camera.h"
-#include "PlyWriter.h"
+#include "Image.h"
 
 namespace freelss
 {
 
+/** Represents a single image in the store */
+struct MmalImageStoreItem
+{
+	MmalImageStoreItem(unsigned width, unsigned height, unsigned numComponents);
+	Image image;
+	bool available;
+	MMAL_BUFFER_HEADER_T * buffer;
+};
+
 /**
- * Holds camera settings, image processing settings, delay settings,
- * and other related settings for scanning.
+ * Manages the availability and memory of images for a Camera object.
  */
-class Preset
+class MmalImageStore
 {
 public:
+	MmalImageStore(int numImages, unsigned width, unsigned height, unsigned numComponents);
+	~MmalImageStore();
 
-	/** The action that should be taken to merge laser results */
-	enum LaserMergeAction {LMA_PREFER_RIGHT_LASER, LMA_SEPARATE_BY_COLOR };
+	/** Returns the first available image and makes it unavailable */
+	MmalImageStoreItem * reserve();
 
+	/** Returns the first available image for the given buffer and makes it unavailable */
+	MmalImageStoreItem * reserve(MMAL_BUFFER_HEADER_T * buffer);
 
-	Preset();
+	/** Unlocks any releases any buffers associated with the image and makes it available  */
+	void release(Image * image);
 
-	/** Encodes property information to the properties vector */
-	void encodeProperties(std::vector<Property>& properties, bool isActivePreset);
+private:
 
-	/**
-	 * Decodes property information from the given vector.
-	 */
-	void decodeProperties(const std::vector<Property>& properties, const std::string& name, bool &isActivePreset);
+	/** Unlocks any releases any buffers associated with the item and makes it available  */
+	void release(MmalImageStoreItem * item);
 
-	/** Detects the names of all the presets */
-	static std::vector<std::string> detectPresetNames(const std::vector<Property>& properties);
-
-	std::string name;
-	Laser::LaserSide laserSide;
-	Camera::CameraMode cameraMode;
-	real laserThreshold;
-	int minLaserWidth;
-	int maxLaserWidth;
-	real maxObjectSize;
-	real maxTriangleEdgeLength;
-	int numLaserRowBins;
-	int stabilityDelay;
-	int id;
-	int framesPerRevolution;
-	bool generateXyz;
-	bool generateStl;
-	bool generatePly;
-	bool enableBurstModeForStillImages;
-	real groundPlaneHeight;
-	LaserMergeAction laserMergeAction;
-	PlyDataFormat plyDataFormat;
+	std::vector<MmalImageStoreItem *> m_items;
 };
 
 }

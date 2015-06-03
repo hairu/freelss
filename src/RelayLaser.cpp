@@ -20,8 +20,6 @@
 
 #include "Main.h"
 #include "RelayLaser.h"
-#include "Thread.h"
-#include "PresetManager.h"
 #include "Setup.h"
 
 namespace freelss
@@ -30,19 +28,16 @@ namespace freelss
 RelayLaser::RelayLaser() :
 	m_rightLaserPin(-1),
 	m_leftLaserPin(-1),
-	m_laserDelay(-1),
 	m_laserOnValue(-1),
 	m_laserOffValue(-1),
 	m_rightLaserOn(false),
 	m_leftLaserOn(false)
 {
 	Setup * setup = Setup::get();
-	Preset& preset = PresetManager::get()->getActivePreset();
 
 	m_rightLaserPin = setup->rightLaserPin;
 	m_leftLaserPin = setup->leftLaserPin;
 	m_laserOnValue = setup->laserOnValue;
-	m_laserDelay = preset.laserDelay;
 
 	m_laserOffValue = m_laserOnValue ? 0 : 1;
 }
@@ -80,8 +75,6 @@ void RelayLaser::turnOn(Laser::LaserSide laser)
 		digitalWrite (m_leftLaserPin, m_laserOnValue);
 		m_leftLaserOn = true;
 	}
-
-	Thread::usleep(m_laserDelay);
 }
 
 void RelayLaser::turnOff(Laser::LaserSide laser)

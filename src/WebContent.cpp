@@ -234,7 +234,6 @@ const std::string WebContent::LEFT_LASER_Y = "LEFT_LASER_Y";
 const std::string WebContent::LEFT_LASER_Z = "LEFT_LASER_Z";
 const std::string WebContent::LEFT_LASER_PIN = "LEFT_LASER_PIN";
 const std::string WebContent::LASER_MAGNITUDE_THRESHOLD = "LASER_MAGNITUDE_THRESHOLD";
-const std::string WebContent::LASER_DELAY = "LASER_DELAY";
 const std::string WebContent::LASER_ON_VALUE = "LASER_ON_VALUE";
 const std::string WebContent::LASER_SELECTION = "LASER_SELECTION";
 const std::string WebContent::STABILITY_DELAY = "STABILITY_DELAY";
@@ -257,7 +256,7 @@ const std::string WebContent::VERSION_NAME = "VERSION_NAME";
 const std::string WebContent::GROUND_PLANE_HEIGHT = "GROUND_PLANE_HEIGHT";
 const std::string WebContent::PLY_DATA_FORMAT = "PLY_DATA_FORMAT";
 const std::string WebContent::FREE_DISK_SPACE = "FREE_DISK_SPACE";
-
+const std::string WebContent::ENABLE_BURST_MODE = "ENABLE_BURST_MODE";
 
 const std::string WebContent::SERIAL_NUMBER_DESCR = "The serial number of the ATLAS 3D scanner";
 const std::string WebContent::CAMERA_X_DESCR = "X-compoment of camera location. ie: The camera is always at X = 0.";
@@ -270,7 +269,6 @@ const std::string WebContent::LEFT_LASER_X_DESCR = "X coordinate of the right la
 const std::string WebContent::LEFT_LASER_Y_DESCR = "Y coordinate of the right laser";
 const std::string WebContent::LEFT_LASER_Z_DESCR = "Z coordinate of the right laser.  The laser is parallel with the camera focal point";
 const std::string WebContent::LASER_MAGNITUDE_THRESHOLD_DESCR = "How bright the difference between a laser on and laser off pixel must be in order to be detected as part of the laser";
-const std::string WebContent::LASER_DELAY_DESCR = "The time to delay after turning the laser on or off";
 const std::string WebContent::RIGHT_LASER_PIN_DESCR = "The wiringPi pin number for controlling the right laser";
 const std::string WebContent::LEFT_LASER_PIN_DESCR = "The wiringPi pin number for controlling the left laser";
 const std::string WebContent::LASER_ON_VALUE_DESCR = "Set to 1 if setting the laser pin HIGH turns if on and 0 if LOW turns it on";
@@ -290,6 +288,7 @@ const std::string WebContent::GENERATE_PLY_DESCR = "Whether to generate a PLY po
 const std::string WebContent::SEPARATE_LASERS_BY_COLOR_DESCR = "Calibration debugging option to separate the results from different lasers by color (requires PLY).";
 const std::string WebContent::GROUND_PLANE_HEIGHT_DESCR = "Any scan data less than this height above the turntable will not be included in the output files.";
 const std::string WebContent::PLY_DATA_FORMAT_DESCR = "Whether to generate binary or ASCII PLY files.";
+const std::string WebContent::ENABLE_BURST_MODE_DESCR = "Enables the camera's burst mode when capturing in still mode";
 
 std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 {
@@ -832,7 +831,6 @@ std::string WebContent::settings(const std::string& message)
 	sstr << setting(WebContent::FRAMES_PER_REVOLUTION, "Frames Per Revolution", preset.framesPerRevolution, FRAMES_PER_REVOLUTION_DESCR);
 	sstr << setting(WebContent::LASER_MAGNITUDE_THRESHOLD, "Laser Threshold", preset.laserThreshold, LASER_MAGNITUDE_THRESHOLD_DESCR);
 	sstr << setting(WebContent::GROUND_PLANE_HEIGHT, "Ground Plane Height", ConvertUnitOfLength(preset.groundPlaneHeight, srcUnit, dstUnit), GROUND_PLANE_HEIGHT_DESCR,  ToString(dstUnit) + ".", false);
-	sstr << setting(WebContent::LASER_DELAY, "Laser Delay", preset.laserDelay, LASER_DELAY_DESCR, "&mu;s");
 	sstr << setting(WebContent::STABILITY_DELAY, "Stability Delay", preset.stabilityDelay, STABILITY_DELAY_DESCR, "&mu;s");
 	sstr << setting(WebContent::MAX_LASER_WIDTH, "Max Laser Width", preset.maxLaserWidth, MAX_LASER_WIDTH_DESCR, "px.");
 	sstr << setting(WebContent::MIN_LASER_WIDTH, "Min Laser Width", preset.minLaserWidth, MIN_LASER_WIDTH_DESCR, "px.");
@@ -857,6 +855,7 @@ std::string WebContent::settings(const std::string& message)
 	sstr << checkbox(WebContent::GENERATE_STL, "Generate STL File", preset.generateStl, GENERATE_STL_DESCR);
 	sstr << checkbox(WebContent::GENERATE_XYZ, "Generate XYZ File", preset.generateXyz, GENERATE_XYZ_DESCR);
 	sstr << checkbox(WebContent::SEPARATE_LASERS_BY_COLOR, "Separate the Lasers", preset.laserMergeAction == Preset::LMA_SEPARATE_BY_COLOR, SEPARATE_LASERS_BY_COLOR_DESCR);
+	sstr << checkbox(WebContent::ENABLE_BURST_MODE, "Enable Burst Mode", preset.enableBurstModeForStillImages, ENABLE_BURST_MODE_DESCR);
 
 	sstr << "</form>\
 <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\

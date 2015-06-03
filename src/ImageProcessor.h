@@ -41,7 +41,7 @@ public:
 	 * @param percentPixelsOverThreshold - The percentage of pixels that were over the threshold amount.
 	 * @return Returns the number of locations written to @p laserLocations.
 	 */
-	int process(const Image& before, const Image& after, Image * debuggingImage, PixelLocation * laserLocations, int maxNumLocations,
+	int process(Image& before, Image& after, Image * debuggingImage, PixelLocation * laserLocations, int maxNumLocations,
 			    int& firstRowLaserCol, int& numRowsBadFromColor, int& numRowsBadFromNumRanges, const char * debuggingCsvFile);
 
 private:

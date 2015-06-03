@@ -35,13 +35,13 @@ Preset::Preset() :
 	maxObjectSize(215.9),  // 8.5"
 	maxTriangleEdgeLength(12), // 12mm
 	numLaserRowBins(4),
-	laserDelay(180000),
 	stabilityDelay(0),
 	id(-1),
 	framesPerRevolution(800),
 	generateXyz (false),
 	generateStl(true),
 	generatePly(true),
+	enableBurstModeForStillImages(true),
 	groundPlaneHeight(0),
 	laserMergeAction (LMA_PREFER_RIGHT_LASER),
 	plyDataFormat(PLY_BINARY)
@@ -60,7 +60,6 @@ void Preset::encodeProperties(std::vector<Property>& properties, bool isActivePr
 	properties.push_back(Property("presets." + name + ".maxObjectSize", ToString(maxObjectSize)));
 	properties.push_back(Property("presets." + name + ".maxTriangleEdgeLength", ToString(maxTriangleEdgeLength)));
 	properties.push_back(Property("presets." + name + ".numLaserRowBins", ToString(numLaserRowBins)));
-	properties.push_back(Property("presets." + name + ".laserDelay", ToString(laserDelay)));
 	properties.push_back(Property("presets." + name + ".stabilityDelay", ToString(stabilityDelay)));
 	properties.push_back(Property("presets." + name + ".framesPerRevolution", ToString(framesPerRevolution)));
 	properties.push_back(Property("presets." + name + ".generateXyz", ToString(generateXyz)));
@@ -69,6 +68,7 @@ void Preset::encodeProperties(std::vector<Property>& properties, bool isActivePr
 	properties.push_back(Property("presets." + name + ".groundPlaneHeight", ToString(groundPlaneHeight)));
 	properties.push_back(Property("presets." + name + ".laserMergeAction", ToString((int)laserMergeAction)));
 	properties.push_back(Property("presets." + name + ".plyDataFormat", ToString((int)plyDataFormat)));
+	properties.push_back(Property("presets." + name + ".enableBurstModeForStillImages", ToString(enableBurstModeForStillImages)));
 
 	if (isActivePreset)
 	{
@@ -124,10 +124,6 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 		{
 			numLaserRowBins = ToInt(prop.value);
 		}
-		else if (prop.name == prefix + name + ".laserDelay")
-		{
-			laserDelay = ToInt(prop.value);
-		}
 		else if (prop.name == prefix + name + ".stabilityDelay")
 		{
 			stabilityDelay = ToInt(prop.value);
@@ -163,6 +159,10 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 		else if (prop.name == prefix + name + ".plyDataFormat")
 		{
 			plyDataFormat = (PlyDataFormat) ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".enableBurstModeForStillImages")
+		{
+			enableBurstModeForStillImages = ToBool(prop.value);
 		}
 	}
 }

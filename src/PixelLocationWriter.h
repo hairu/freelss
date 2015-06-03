@@ -38,7 +38,7 @@ public:
 	/**
 	 * Rescales and writes an image as a PNG file.
 	 */
-	void writeImage(const Image& image, int dstWidth, int dstHeight, const std::string& pngFilename);
+	void writeImage(Image& image, int dstWidth, int dstHeight, const std::string& pngFilename);
 };
 
 }

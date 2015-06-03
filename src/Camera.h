@@ -48,8 +48,18 @@ public:
 	/** Destructor */
 	virtual ~Camera();
 
-	/** Reads an image from the camera */
-	virtual void acquireImage(Image * image) = 0;
+	/**
+	 * Reads an image from the camera.
+	 * Onwership of the image is not transferred to the caller.  The image
+	 * must be released back to the camera with releaseImage.  The camera
+	 * may have a finite number of images that can be acquired at a given time.
+	 */
+	virtual Image * acquireImage() = 0;
+
+	/**
+	 * Releases an image previously acquired with acquireImage back to the camera.
+	 */
+	virtual void releaseImage(Image * image) = 0;
 
 	/**
 	 *  Acquires an image as a JPEG file.
@@ -59,7 +69,7 @@ public:
 	 *  @param size [IN/OUT] - The size of the passed in buffer.  If false is returned,
 	 *      this parameter is set to the size that the buffer needs to be.
 	 */
-	virtual bool acquireJpeg(byte* buffer, unsigned * size) = 0;
+	virtual bool acquireJpeg(byte* buffer, unsigned * size);
 
 	/** Returns the height of the image that this camera takes. */
 	virtual int getImageHeight() const = 0;
@@ -79,10 +89,24 @@ public:
 	/** Returns the focal length of the camera in mm */
 	virtual real getFocalLength() const = 0;
 
+
+	/**
+	 * Sets the earliest amount of time from now that a picture should allowed to be taken in seconds.
+	 * This gives the camera time to recognize things like laser changes in the scene.
+	 */
+	virtual void setAcquisitionDelay(double acquisitionDelaySec);
+
 protected:
 	Camera();
 
+	/** Delays the acquisition if requested by acquisition delay */
+	virtual void handleAcquisitionDelay();
+
 private:
+
+	/** The min time that the next acquisition can take place */
+	double m_nextAcquisitionTimeSec;
+
 	/** The singleton instance */
 	static Camera * m_instance;
 
