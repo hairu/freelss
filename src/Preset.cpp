@@ -41,7 +41,7 @@ Preset::Preset() :
 	generateXyz (false),
 	generateStl(true),
 	generatePly(true),
-	enableBurstModeForStillImages(true),
+	enableBurstModeForStillImages(false),
 	groundPlaneHeight(0),
 	laserMergeAction (LMA_PREFER_RIGHT_LASER),
 	plyDataFormat(PLY_BINARY)
