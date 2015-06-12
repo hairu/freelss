@@ -38,7 +38,7 @@ public:
 			       int numLocations,
 			       int & outNumLocations);
 	
-private:
+	void setLaserPlaneNormal(const Vector3& planeNormal);
 
 	/** 
 	 * Calculates a camera back projection Ray for the given image point.  The ray
@@ -48,6 +48,9 @@ private:
 	 * @param ray - The output ray.
 	 */
 	void calculateCameraRay(const PixelLocation& imagePixel, Ray * global);
+
+	/** Calculate where the ray will hit the plane and write it to @p point */
+	bool intersectPlane(const Plane& plane, const Ray& ray, ColoredPoint * inPoint, const PixelLocation& pixel);
 
 	/** Calculate where the ray will hit the laser plane and write it to @p point */
 	bool intersectLaserPlane(const Ray& ray, ColoredPoint * inPoint, const PixelLocation& pixel);

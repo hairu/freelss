@@ -107,6 +107,9 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 	border: solid 2px #1d5fa9;\
 	width: 625px;\
 }\
+.cal1GenerateDebugDiv {\
+	padding-bottom: 50px;\
+}\
 #deleteButton {\
 	float: left;\
 	padding-left: 10px;\
@@ -144,9 +147,6 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 }\
 #cal1ControlsDiv {\
 	float: left;\
-}\
-#cal1GenerateDebugDiv {\
-	padding-bottom: 50px;\
 }\
 #cal1ImageDiv {\
 	float: none;\
@@ -459,7 +459,7 @@ std::string WebContent::viewScan(const std::string& plyFilename)
 		 << std::endl
 		 << "\
 		 </head><body>\
-		 <div style=\"position: absolute; left: 10px; top: 10px\"> <a href=\"/\">Back</a></div>\
+		 <div style=\"position: absolute; left: 10px; top: 10px\"> <a href=\"/\">Back</a>&nbsp;&nbsp;<a href=\"/preview\">Refresh</a></div>\
 		 <script src=\"three.min.js\"></script>\
 		 <script src=\"OrbitControls.js\"></script>\
 		 <script src=\"PLYLoader.js\"></script>\
@@ -554,11 +554,15 @@ std::string WebContent::cal1(const std::string& inMessage)
          << "\
 <div id=\"cal1ContentDiv\">\
   <div id=\"cal1ControlsDiv\">\
-    <div id=\"cal1GenerateDebugDiv\">\
+    <div class=\"cal1GenerateDebugDiv\">\
 		<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
 			<input name=\"cmd\" value=\"generateDebug\" type=\"hidden\">\
 			<input style=\"height: 60px\" class=\"controlSubmit\" value=\"Test\" type=\"submit\">\
 		</form>\
+    </div>\
+    <div class=\"cal1GenerateDebugDiv\">\
+        <form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"><input name=\"cmd\" value=\"calibrateLasers\" type=\"hidden\"><input class=\"controlSubmit\" value=\"Calibrate Lasers\" type=\"submit\"></form>\
+        <div class=\"settingsDescr\">Line the front wall of the calibration item over <br>the center of the turntable hole and click this button<br> to calibrate the lasers.</div>\
     </div>\
 	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"><input name=\"cmd\" value=\"toggleLeftLaser\" type=\"hidden\"><input class=\"controlSubmit\" value=\"Toggle Left Laser\" type=\"submit\"></form>\
 	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"> <input name=\"cmd\" value=\"toggleRightLaser\" type=\"hidden\"> <input class=\"controlSubmit\" value=\"Toggle Right Laser\" type=\"submit\"> </form>\

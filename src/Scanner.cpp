@@ -267,6 +267,14 @@ void Scanner::run()
 	LocationMapper leftLocMapper(m_leftLaserLoc, m_cameraLoc);
 	LocationMapper rightLocMapper(m_rightLaserLoc, m_cameraLoc);
 
+	if (setup->haveLaserPlaneNormals)
+	{
+		std::cout << "Using auto-corrected laser plane normals" << std::endl;
+
+		leftLocMapper.setLaserPlaneNormal(setup->leftLaserPlaneNormal);
+		rightLocMapper.setLaserPlaneNormal(setup->rightLaserPlaneNormal);
+	}
+
 	// Compute the angle between the two laser planes
 	real leftLaserX = ABS(m_leftLaserLoc.x);
 	real rightLaserX = ABS(m_rightLaserLoc.x);
@@ -457,6 +465,17 @@ void Scanner::run()
 
 	timingStats.laserMergeTime += GetTimeInSeconds() - time1;
 
+	/*
+	// Balance the brightness
+	real totBright = 0;
+	for (size_t iPt = 0; iPt < results.size(); iPt++)
+	{
+		const DataPoint& pt = results[iPt];
+
+		totBright += sqrt(pt.point.r * pt.point.r + pt.point.g * pt.point.g + pt.point.b * pt.point.b);
+	}
+	*/
+
 	// Mesh the point cloud
 	FaceMap faces;
 	if (preset.generatePly || preset.generateStl)
@@ -609,6 +628,12 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 			// Map the points so that points below the ground plane and outside the max object size are omitted
 			int numLocationsMapped = 0;
 			LocationMapper locMapper(setup->rightLaserLocation, setup->cameraLocation);
+
+			if (setup->haveLaserPlaneNormals)
+			{
+				locMapper.setLaserPlaneNormal(setup->rightLaserPlaneNormal);
+			}
+
 			locMapper.mapPoints(&rightLocations.front(), image1, m_columnPoints, numRightLocations, numLocationsMapped);
 			numRightLocations = numLocationsMapped;
 		}
@@ -651,6 +676,11 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 			// Map the points so that points below the ground plane and outside the max object size are omitted
 			int numLocationsMapped = 0;
 			LocationMapper locMapper(setup->leftLaserLocation, setup->cameraLocation);
+			if (setup->haveLaserPlaneNormals)
+			{
+				locMapper.setLaserPlaneNormal(setup->leftLaserPlaneNormal);
+			}
+
 			locMapper.mapPoints(&leftLocations.front(), image1, m_columnPoints, numLeftLocations, numLocationsMapped);
 			numLeftLocations = numLocationsMapped;
 		}
@@ -665,10 +695,63 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 
 		std::string baseFilename = std::string(DEBUG_OUTPUT_DIR) + "/";
 
+		// Show the image center line
+		std::vector<PixelLocation> centerLocs (debuggingImage.getHeight());
+		for (size_t iLoc = 0; iLoc < centerLocs.size(); iLoc++)
+		{
+			if ((iLoc % 4) != 0 && ((iLoc + 2) % 4) != 0)
+			{
+				PixelLocation loc;
+				loc.x = debuggingImage.getWidth() / 2;
+				loc.y = static_cast<real>(iLoc);
+				centerLocs.push_back(loc);
+			}
+		}
+
+		Image::overlayPixels(debuggingImage, &centerLocs.front(), (int) centerLocs.size(), 0, 0, 255);
+
 		// Overlay the pixels onto the debug image and write that as a new image
 		PixelLocationWriter locWriter;
-		Image::overlayPixels(debuggingImage, &rightLocations.front(), numRightLocations);
-		Image::overlayPixels(debuggingImage, &leftLocations.front(), numLeftLocations);
+		Image::overlayPixels(debuggingImage, &rightLocations.front(), numRightLocations, 255, 0, 0);
+		Image::overlayPixels(debuggingImage, &leftLocations.front(), numLeftLocations, 255, 0, 0);
+
+		if (setup->haveLaserPlaneNormals)
+		{
+			// Left
+			std::vector<PixelLocation> left;
+			PixelLocation leftTop;
+			leftTop.x = setup->leftLaserCalibrationTop.x * debuggingImage.getWidth();
+			leftTop.y = setup->leftLaserCalibrationTop.y * debuggingImage.getHeight();
+			highlightPixel(leftTop, left);
+
+			PixelLocation leftBottom;
+			leftBottom.x = setup->leftLaserCalibrationBottom.x * debuggingImage.getWidth();
+			leftBottom.y = setup->leftLaserCalibrationBottom.y * debuggingImage.getHeight();
+			highlightPixel(leftBottom, left);
+
+			Image::overlayPixels(debuggingImage, &left.front(), (int) left.size(), 255, 255, 0);
+
+			// Right
+			std::vector<PixelLocation> right;
+			PixelLocation rightTop;
+			rightTop.x = setup->rightLaserCalibrationTop.x * debuggingImage.getWidth();
+			rightTop.y = setup->rightLaserCalibrationTop.y * debuggingImage.getHeight();
+			highlightPixel(rightTop, right);
+
+			PixelLocation rightBottom;
+			rightBottom.x = setup->rightLaserCalibrationBottom.x * debuggingImage.getWidth();
+			rightBottom.y = setup->rightLaserCalibrationBottom.y * debuggingImage.getHeight();
+			highlightPixel(rightBottom, right);
+
+			Image::overlayPixels(debuggingImage, &right.front(), (int) right.size(), 0, 255, 0);
+
+			std::cout << "Laser plane data is available" << std::endl;
+		}
+		else
+		{
+			std::cout << "No laser plane normal data is available" << std::endl;
+		}
+
 		locWriter.writeImage(debuggingImage, debuggingImage.getWidth(), debuggingImage.getHeight(), baseFilename + "5.png");
 	}
 	catch (...)
@@ -684,6 +767,26 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 	m_running = false;
 	m_status.leave();
 	std::cout << "Done." << std::endl;
+}
+
+void Scanner::highlightPixel(const PixelLocation& inPixel, std::vector<PixelLocation>& outPixels)
+{
+	PixelLocation pixel = inPixel;
+
+	pixel.x = inPixel.x - 5;
+	for (int i = 0; i <= 10; i++)
+	{
+		outPixels.push_back(pixel);
+		pixel.x++;
+	}
+
+	pixel = inPixel;
+	pixel.y = inPixel.y - 5;
+	for (int i = 0; i <= 10; i++)
+	{
+		outPixels.push_back(pixel);
+		pixel.y++;
+	}
 }
 
 void Scanner::mergeDebuggingImages(Image& outImage, Image& leftDebuggingImage, Image& rightDebuggingImage, Laser::LaserSide laserSide)
@@ -1045,6 +1148,8 @@ void Scanner::logTimingStats(const Scanner::TimingStats& stats)
 	std::cout << "Facetization:\t" << (100.0 * stats.facetizationTime / totalTime) << "%" << std::endl;
 	std::cout << "Num Frame Retries:\t" << stats.numFrameRetries << std::endl;
 	std::cout << "Num Frames:\t" << stats.numFrames << std::endl;
+	std::cout << "Point Memory:\t" << (sizeof(DataPoint) * (m_leftLaserResults.size() + m_rightLaserResults.size())) / 1024.0 / 1024.0 << " MB" << std::endl;
+
 	std::cout << "Total Time (min):\t" << (totalTime / 60.0) << std::endl << std::endl;
 }
 

@@ -56,7 +56,13 @@ public:
 	int httpPort;
 	std::string serialNumber;
 	UnitOfLength unitOfLength;
-
+	bool haveLaserPlaneNormals;
+	Vector3 leftLaserPlaneNormal;
+	Vector3 rightLaserPlaneNormal;
+	PixelLocation leftLaserCalibrationTop;
+	PixelLocation leftLaserCalibrationBottom;
+	PixelLocation rightLaserCalibrationTop;
+	PixelLocation rightLaserCalibrationBottom;
 private:
 
 	/** Default Constructor */

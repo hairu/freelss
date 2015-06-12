@@ -1,4 +1,4 @@
-VERSION=freelss-1-6
+VERSION=freelss-1-7
 CC=g++
 CFLAGS=-O3 -Wall -Winvalid-pch -fexceptions -I/usr/local/include -I/opt/vc/include \
 	-I/opt/vc/include/interface/vcos/pthreads \

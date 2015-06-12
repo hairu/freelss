@@ -40,6 +40,15 @@ public:
 	static real computeCameraZ(real yImagePtForTableCenter);
 	static real computeLaserX(real cameraZ, real xImagePtForLaser, real yImagePtForLaser);
 
+	static void calculateLaserPlane(Plane& outPlane, PixelLocation& outTop, PixelLocation& outBottom, Laser * laser, Laser::LaserSide side, const Vector3& laserLocation);
+
+	/**
+	 * Calculates a laser plane that compensate for laser misalignment (rotation and roll).
+	 * @param pt1 - The top (or topish) laser pixel detected on an image of an flat object sitting on the XY plane.
+	 * @param pt2 - The bottom (or bottomish) laser pixel detected on an image of an flat object sitting on the XY plane.
+	 */
+	static Plane calculateLaserPlane(const Vector3& laserLocation, const PixelLocation& pt1, const PixelLocation& pt2);
+
 	/**
 	 * Automatically detects the laser's X value by using image processing to detect the laser location
 	 * on the XY plane and then calling into computeLaserX to generate the X location.

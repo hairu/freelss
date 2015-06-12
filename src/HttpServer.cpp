@@ -734,6 +734,58 @@ static std::string AutoCalibrate(RequestInfo * reqInfo)
 	return message;
 }
 
+static std::string AutocorrectLaserMisalignment(RequestInfo * reqInfo)
+{
+	std::string message;
+	Setup * setup = Setup::get();
+	Preset& preset = PresetManager::get()->getActivePreset();
+
+	try
+	{
+		// Ensure that it is a 5MP preset
+		if (preset.cameraMode != Camera::CM_STILL_5MP && preset.cameraMode != Camera::CM_VIDEO_5MP)
+		{
+			throw Exception("Laser calibration can be performed in 5MP still or 5MP video mode only.");
+		}
+
+		Plane leftPlane;
+		PixelLocation leftTop, leftBottom;
+		Calibrator::calculateLaserPlane(leftPlane, leftTop, leftBottom, Laser::getInstance(), Laser::LEFT_LASER, setup->leftLaserLocation);
+
+		Plane rightPlane;
+		PixelLocation rightTop, rightBottom;
+		Calibrator::calculateLaserPlane(rightPlane, rightTop, rightBottom, Laser::getInstance(), Laser::RIGHT_LASER, setup->rightLaserLocation);
+
+		Camera * camera = Camera::getInstance();
+
+		// Update the setup
+		setup->haveLaserPlaneNormals = true;
+		setup->leftLaserPlaneNormal = leftPlane.normal;
+		setup->rightLaserPlaneNormal = rightPlane.normal;
+		setup->leftLaserCalibrationTop.x = leftTop.x / camera->getImageWidth();
+		setup->leftLaserCalibrationTop.y = leftTop.y / camera->getImageHeight();
+		setup->leftLaserCalibrationBottom.x = leftBottom.x / camera->getImageWidth();
+		setup->leftLaserCalibrationBottom.y = leftBottom.y / camera->getImageHeight();
+		setup->rightLaserCalibrationTop.x = rightTop.x / camera->getImageWidth();
+		setup->rightLaserCalibrationTop.y = rightTop.y / camera->getImageHeight();
+		setup->rightLaserCalibrationBottom.x = rightBottom.x / camera->getImageWidth();
+		setup->rightLaserCalibrationBottom.y = rightBottom.y / camera->getImageHeight();
+		SaveSetup(reqInfo);
+
+		message = "Successfully auto-corrected laser alignment";
+	}
+	catch (Exception& ex)
+	{
+		message = ex;
+	}
+	catch (...)
+	{
+		message = "Unknown error occurred";
+	}
+
+	return message;
+}
+
 static int ProcessPageRequest(RequestInfo * reqInfo)
 {
 	HttpServer * server = reqInfo->server;
@@ -914,6 +966,10 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 				ret = RetrieveFile(reqInfo, "/dbg/5.png");
 
 				responded = true;
+			}
+			else if (reqInfo->method == RequestInfo::POST && cmd == "calibrateLasers")
+			{
+				message = AutocorrectLaserMisalignment(reqInfo);
 			}
 
 			if (!responded)

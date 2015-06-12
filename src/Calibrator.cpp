@@ -25,7 +25,7 @@
 #include "Laser.h"
 #include "ImageProcessor.h"
 #include "Setup.h"
-#include "PresetManager.h"
+#include "LocationMapper.h"
 
 namespace freelss
 {
@@ -60,6 +60,175 @@ real Calibrator::computeCameraZ(real pixelY)
 	std::cout << "distance is : " << z << " mm" << std::endl;
 
 	return z;
+}
+
+
+void Calibrator::calculateLaserPlane(Plane& outPlane, PixelLocation& outTop, PixelLocation& outBottom, Laser * laser, Laser::LaserSide side, const Vector3& laserLocation)
+{
+	Camera * camera = Camera::getInstance();
+	int maxNumLocations = camera->getImageHeight();
+	int numLocations = 0;
+	const double acquisitionDelay = 1.0;
+	std::vector<PixelLocation> pixelLocations(maxNumLocations);
+
+	// Turn the lasers off and take a picture
+	laser->turnOff(Laser::ALL_LASERS);
+	camera->setAcquisitionDelay(acquisitionDelay);
+
+	Image * image1 = NULL;
+	Image * image2 = NULL;
+
+	try
+	{
+		// Take picture with laser off
+		image1 = camera->acquireImage();
+
+		// Take a picture with this laser on
+		laser->turnOn(side);
+		camera->setAcquisitionDelay(acquisitionDelay);
+
+		image2 = camera->acquireImage();
+
+		// Turn the laser back off
+		laser->turnOff(side);
+		camera->setAcquisitionDelay(acquisitionDelay);
+
+		// Run image processing
+		ImageProcessor imageProcessor;
+		int firstRowLaserCol = 0;
+		int numBad1, numBad2;
+
+		numLocations = imageProcessor.process(* image1,
+				* image2,
+				NULL,
+				&pixelLocations.front(),
+				maxNumLocations,
+				firstRowLaserCol,
+				numBad1,
+				numBad2,
+				NULL);
+
+		if (numLocations == 0)
+		{
+			throw Exception("Error detecting laser line");
+		}
+
+		camera->releaseImage(image1);
+		camera->releaseImage(image2);
+	}
+	catch (...)
+	{
+		std::cerr << "Error detecting laser location" << std::endl;
+
+		camera->releaseImage(image1);
+		camera->releaseImage(image2);
+
+		throw;
+	}
+
+	// Determine which pixels came from the object sitting on the XY plane as opposed to the background
+	int idx1 = -1;
+	int idx2 = -1;
+	int maxPixelsFromCenter = 100;  // Don't use pixels that are further than this from the center of the image
+	real centerOfImage = camera->getImageWidth() * 0.5;
+	real xStart = centerOfImage - (maxPixelsFromCenter * 0.5);
+	real xEnd = centerOfImage + (maxPixelsFromCenter * 0.5);
+	real yStart = 0;
+	real yEnd = 1700; // Don't consider the bottom of the image because the table is down there
+
+	for (int iLoc = 1; iLoc < numLocations - 1; iLoc++)
+	{
+		if (pixelLocations[iLoc].x >= xStart &&
+			pixelLocations[iLoc].x <= xEnd &&
+			pixelLocations[iLoc].y >= yStart &&
+			pixelLocations[iLoc].y <= yEnd)
+		{
+			// Look for some consistency first
+			if (ABS(pixelLocations[iLoc].y - pixelLocations[iLoc - 1].y) <= 1.5)
+			{
+				if (idx1 == -1)
+				{
+					idx1 = iLoc;
+				}
+				else
+				{
+					idx2 = iLoc;
+				}
+			}
+		}
+	}
+
+	if (idx1 == -1 || idx2 == -1)
+	{
+		throw Exception("Could not positively detect which pixels corresponded to the XY plane");
+	}
+
+
+	// Set the output variables
+	outTop = pixelLocations[idx1];
+	outBottom = pixelLocations[idx2];
+
+	real avgDistFromCenterPx = (ABS(pixelLocations[idx1].x - centerOfImage) + ABS(pixelLocations[idx2].x - centerOfImage)) / 2.0f;
+	std::cout << pixelLocations[idx1].x << " " << centerOfImage << " " << pixelLocations[idx2].x << " " << idx1 << " " << idx2 << " " << xStart << " " << xEnd << std::endl;
+	std::cout << "Avg Dist From Center of Image: " << avgDistFromCenterPx << " px" << std::endl;
+
+	outPlane = calculateLaserPlane(laserLocation, pixelLocations[idx1], pixelLocations[idx2]);
+	std::cout << "Plane Normal: (" << outPlane.normal.x << "," << outPlane.normal.y << "," << outPlane.normal.z << ")" << std::endl;
+}
+
+Plane Calibrator::calculateLaserPlane(const Vector3& laserLocation, const PixelLocation& pixel1, const PixelLocation& pixel2)
+{
+	Setup * setup = Setup::get();
+
+	std::cout << "Calculating laser plane for pt (" << pixel1.x << "," << pixel1.y << ") (" << pixel2.x << "," << pixel2.y << ")" << std::endl;
+
+	//
+	// Map the 2D image points to 3D points
+	//
+
+	Ray ray1, ray2;
+	LocationMapper locMapper(laserLocation, setup->cameraLocation);
+	locMapper.calculateCameraRay(pixel1, &ray1);
+	locMapper.calculateCameraRay(pixel2, &ray2);
+
+	ColoredPoint pt1, pt2;
+
+	Plane xyPlane;
+	xyPlane.point.x = 0;
+	xyPlane.point.y = 0;
+	xyPlane.point.z = 0;
+	xyPlane.normal.x = 0;
+	xyPlane.normal.y = 0;
+	xyPlane.normal.z = -1;
+
+	if (!locMapper.intersectPlane(xyPlane, ray1, &pt1, pixel1))
+	{
+		throw Exception("Error intersecting XY plane at point 1");
+	}
+
+	if (!locMapper.intersectPlane(xyPlane, ray2, &pt2, pixel2))
+	{
+		throw Exception("Error intersecting XY plane at point 2");
+	}
+
+	std::cout << "Intersection pt1: " << pt1.x << "," << pt1.y << "," << pt1.z << std::endl;
+	std::cout << "Intersection pt2: " << pt2.x << "," << pt2.y << "," << pt2.z << std::endl;
+
+	//
+	// Calculate the plane
+	//
+	Plane plane;
+	plane.point.x = pt1.x;
+	plane.point.y = pt1.y;
+	plane.point.z = pt1.z;
+
+	Vector3 laserDir1 (laserLocation.x - pt1.x, laserLocation.y - pt1.y, laserLocation.z - pt1.z);
+	Vector3 laserDir2 (laserLocation.x - pt2.x, laserLocation.y - pt2.y, laserLocation.z - pt2.z);
+
+	laserDir1.cross(plane.normal, laserDir2);
+	plane.normal.normalize();
+
+	return plane;
 }
 
 bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLocation& bottomLocation, Laser * laser, Laser::LaserSide side)

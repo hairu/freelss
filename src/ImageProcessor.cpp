@@ -309,7 +309,7 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 
 	if (numRowsBadFromColor > 0)
 	{
-		std::cout << "Dropped " << numRowsBadFromColor << " laser rows because the color wasn't red enough. " << std::endl;
+		std::cout << numRowsBadFromColor << " laser rows color wasn't red enough. " << std::endl;
 	}
 
 	if (numRowsBadFromNumRanges > 0)

@@ -125,19 +125,24 @@ void LocationMapper::mapPoints(PixelLocation * laserLocations,
 	}
 }
 
+void LocationMapper::setLaserPlaneNormal(const Vector3& planeNormal)
+{
+	m_laserPlane.normal = planeNormal;
+	m_laserPlane.normal.normalize();
+}
+
 void LocationMapper::calculateLaserPlane()
 {
 	// The origin is a point in the plane
-	m_laserPlane.point.x = 0;
-	m_laserPlane.point.y = 0;
-	m_laserPlane.point.z = 0;
-	
-	// (0, 0) to
-	// Generate the plane normal
-	// Reference: http://stackoverflow.com/questions/1243614/how-do-i-calculate-the-normal-vector-of-a-line-segment
-	m_laserPlane.normal.x = m_laserZ;
-	m_laserPlane.normal.y = 0;
-	m_laserPlane.normal.z = -1 * m_laserX;
+	m_laserPlane.point.x = m_laserX;
+	m_laserPlane.point.y = m_laserY;
+	m_laserPlane.point.z = m_laserZ;
+
+	Vector3 edge1 (m_laserX, m_laserY, m_laserZ);
+	Vector3 edge2 (m_laserX, 0, m_laserZ);
+
+	edge1.cross(m_laserPlane.normal, edge2);
+
 	m_laserPlane.normal.normalize();
 }
 
@@ -171,13 +176,18 @@ void LocationMapper::calculateCameraRay(const PixelLocation& imagePixel,  Ray * 
 	ray->direction.normalize();
 }
 
-bool LocationMapper::intersectLaserPlane(const Ray& ray, ColoredPoint * point, const PixelLocation& pixel)
+bool LocationMapper::intersectLaserPlane(const Ray& ray, ColoredPoint * inPoint, const PixelLocation& pixel)
+{
+	return intersectPlane(m_laserPlane, ray, inPoint, pixel);
+}
+
+bool LocationMapper::intersectPlane(const Plane& plane, const Ray& ray, ColoredPoint * point, const PixelLocation& pixel)
 {
 	// Reference: http://www.scratchapixel.com/lessons/3d-basic-lessons/lesson-7-intersecting-simple-shapes/ray-plane-and-ray-disk-intersection/
 	// d = ((p0 - l0) * n) / (l * n)
 	
 	// If dn is close to 0 then they don't intersect.  This should never happen
-	real denominator = ray.direction.dot(m_laserPlane.normal);
+	real denominator = ray.direction.dot(plane.normal);
 	if (ABS(denominator) < 0.000001)
 	{
 		std::cerr << "!!! Ray never hits laser plane, pixel=" << pixel.x << ", " << pixel.y
@@ -188,11 +198,11 @@ bool LocationMapper::intersectLaserPlane(const Ray& ray, ColoredPoint * point, c
 	}
 	
 	Vector3 v;
-	v.x = m_laserPlane.point.x - ray.origin.x;
-	v.y = m_laserPlane.point.y - ray.origin.y;
-	v.z = m_laserPlane.point.z - ray.origin.z;
+	v.x = plane.point.x - ray.origin.x;
+	v.y = plane.point.y - ray.origin.y;
+	v.z = plane.point.z - ray.origin.z;
 	
-	real numerator = v.dot(m_laserPlane.normal);
+	real numerator = v.dot(plane.normal);
 	
 	// Compute the distance along the ray to the plane
 	real d = numerator / denominator;

@@ -54,7 +54,7 @@ public:
 	static void writeJpeg(Image& image, const std::string& filename);
 
 	/** Overlay the given pixels as full red on top of the given image */
-	static void overlayPixels(Image& image, PixelLocation * locations, int numLocations);
+	static void overlayPixels(Image& image, PixelLocation * locations, int numLocations, unsigned char r = 255, unsigned char g = 0, unsigned b = 0);
 private:
 	unsigned char * m_pixels;
 	unsigned m_numComponents;

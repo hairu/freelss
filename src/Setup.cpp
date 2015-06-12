@@ -57,7 +57,8 @@ Setup::Setup() :
 	motorStepDelay(5000),
 	httpPort(80),
 	serialNumber(""),
-	unitOfLength(UL_INCHES)
+	unitOfLength(UL_INCHES),
+	haveLaserPlaneNormals(false)
 {
 	cameraLocation.x = 0;
 	cameraLocation.y = 82.55;
@@ -70,6 +71,14 @@ Setup::Setup() :
 	rightLaserLocation.x = 125.73;
 	rightLaserLocation.y = 82.55;
 	rightLaserLocation.z = 260.35;
+
+	leftLaserPlaneNormal.x = 0;
+	leftLaserPlaneNormal.y = 0;
+	leftLaserPlaneNormal.z = 0;
+
+	rightLaserPlaneNormal.x = 0;
+	rightLaserPlaneNormal.y = 0;
+	rightLaserPlaneNormal.z = 0;
 }
 
 
@@ -101,6 +110,31 @@ void Setup::encodeProperties(std::vector<Property>& properties)
 	properties.push_back(Property("setup.serialNumber", serialNumber));
 
 	properties.push_back(Property("setup.unitOfLength", ToString((int)unitOfLength)));
+
+	properties.push_back(Property("setup.haveLaserPlaneNormals", ToString(haveLaserPlaneNormals)));
+
+	if (haveLaserPlaneNormals)
+	{
+		properties.push_back(Property("setup.leftLaserPlaneNormal.x", ToString(leftLaserPlaneNormal.x)));
+		properties.push_back(Property("setup.leftLaserPlaneNormal.y", ToString(leftLaserPlaneNormal.y)));
+		properties.push_back(Property("setup.leftLaserPlaneNormal.z", ToString(leftLaserPlaneNormal.z)));
+
+		properties.push_back(Property("setup.rightLaserPlaneNormal.x", ToString(rightLaserPlaneNormal.x)));
+		properties.push_back(Property("setup.rightLaserPlaneNormal.y", ToString(rightLaserPlaneNormal.y)));
+		properties.push_back(Property("setup.rightLaserPlaneNormal.z", ToString(rightLaserPlaneNormal.z)));
+
+		properties.push_back(Property("setup.leftLaserCalibrationTop.x", ToString(leftLaserCalibrationTop.x)));
+		properties.push_back(Property("setup.leftLaserCalibrationTop.y", ToString(leftLaserCalibrationTop.y)));
+
+		properties.push_back(Property("setup.leftLaserCalibrationBottom.x", ToString(leftLaserCalibrationBottom.x)));
+		properties.push_back(Property("setup.leftLaserCalibrationBottom.y", ToString(leftLaserCalibrationBottom.y)));
+
+		properties.push_back(Property("setup.rightLaserCalibrationTop.x", ToString(rightLaserCalibrationTop.x)));
+		properties.push_back(Property("setup.rightLaserCalibrationTop.y", ToString(rightLaserCalibrationTop.y)));
+
+		properties.push_back(Property("setup.rightLaserCalibrationBottom.x", ToString(rightLaserCalibrationBottom.x)));
+		properties.push_back(Property("setup.rightLaserCalibrationBottom.y", ToString(rightLaserCalibrationBottom.y)));
+	}
 }
 
 void Setup::decodeProperties(const std::vector<Property>& properties)
@@ -196,6 +230,66 @@ void Setup::decodeProperties(const std::vector<Property>& properties)
 		else if (prop.name == "setup.unitOfLength")
 		{
 			unitOfLength = (UnitOfLength) ToInt(prop.value);
+		}
+		else if (prop.name == "setup.haveLaserPlaneNormals")
+		{
+			haveLaserPlaneNormals = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.leftLaserPlaneNormal.x")
+		{
+			leftLaserPlaneNormal.x = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.leftLaserPlaneNormal.y")
+		{
+			leftLaserPlaneNormal.y = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.leftLaserPlaneNormal.z")
+		{
+			leftLaserPlaneNormal.z = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.rightLaserPlaneNormal.x")
+		{
+			rightLaserPlaneNormal.x = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.rightLaserPlaneNormal.y")
+		{
+			rightLaserPlaneNormal.y = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.rightLaserPlaneNormal.z")
+		{
+			rightLaserPlaneNormal.z = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.leftLaserCalibrationTop.x")
+		{
+			leftLaserCalibrationTop.x = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.leftLaserCalibrationTop.y")
+		{
+			leftLaserCalibrationTop.y = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.leftLaserCalibrationBottom.x")
+		{
+			leftLaserCalibrationBottom.x = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.leftLaserCalibrationBottom.y")
+		{
+			leftLaserCalibrationBottom.y = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.rightLaserCalibrationTop.x")
+		{
+			rightLaserCalibrationTop.x = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.rightLaserCalibrationTop.y")
+		{
+			rightLaserCalibrationTop.y = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.rightLaserCalibrationBottom.x")
+		{
+			rightLaserCalibrationBottom.x = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.rightLaserCalibrationBottom.y")
+		{
+			rightLaserCalibrationBottom.y = ToReal(prop.value);
 		}
 	}
 }

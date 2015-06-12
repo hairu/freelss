@@ -26,18 +26,6 @@ $ cd wiringPi
 $ ./build
 ```
 
-Download and install Raspicam
-```
-$ wget http://downloads.sourceforge.net/project/raspicam/raspicam-0.1.3.zip
-$ unzip raspicam-0.1.3.zip
-$ cd raspicam-0.1.3
-$ mkdir build
-$ cd build
-$ cmake ..
-$ make
-$ sudo make install
-$ sudo ldconfig
-```
 Download and build FreeLSS
 ```
 $ git clone https://github.com/hairu/freelss
@@ -50,4 +38,9 @@ FreeLSS must be ran as root (or another user with access to the hardware pins). 
 The following command starts FreeLSS.
 ```
 $ sudo ./freelss
+```
+
+The following command automatically starts FreeLSS everytime the Raspberry Pi is powered on.
+```
+$ make startup
 ```

@@ -152,6 +152,11 @@ private:
 	 */
 	void delayAcquisitionForLaser();
 
+	/**
+	 * Draws a cross hair around pixel
+	 */
+	void highlightPixel(const PixelLocation& inPixel, std::vector<PixelLocation>& outPixels);
+
 private:
 	/** Unowned objects */
 	Laser * m_laser;

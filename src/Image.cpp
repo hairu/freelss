@@ -191,7 +191,7 @@ void Image::writeJpeg(Image& image, const std::string& filename)
 	free(imageData);
 }
 
-void Image::overlayPixels(Image& image, PixelLocation * locations, int numLocations)
+void Image::overlayPixels(Image& image, PixelLocation * locations, int numLocations, unsigned char r, unsigned char g, unsigned b)
 {
 	int width = image.getWidth();
 	int height = image.getHeight();
@@ -214,9 +214,9 @@ void Image::overlayPixels(Image& image, PixelLocation * locations, int numLocati
 		unsigned char * px = pixels + (rowStep * y + x * numComp);
 
 		// Set the pixel to red
-		px[0] = 255;
-		px[1] = 0;
-		px[2] = 0;
+		px[0] = r;
+		px[1] = g;
+		px[2] = b;
 	}
 }
 
