@@ -350,6 +350,28 @@ void MmalVideoCamera::createCameraComponent()
 		//MMAL_PARAMETER_EXPOSUREMODE_T exp_mode = {{MMAL_PARAMETER_EXPOSURE_MODE, sizeof(exp_mode)}, MMAL_PARAM_EXPOSUREMODE_AUTO};
 		//MMAL_CHECK(mmal_port_parameter_set(camera->control, &exp_mode.hdr));
 
+		/*
+		// AWB MODE
+		{
+			std::cout << "Disabling auto white balancing" << std::endl;
+			MMAL_PARAMETER_AWBMODE_T param = {{MMAL_PARAMETER_AWB_MODE,sizeof(param)}, MMAL_PARAM_AWBMODE_OFF};
+			mmal_port_parameter_set(camera->control, &param.hdr);
+		}
+
+		// AWB GAIN
+		{
+			real redGain = 0.2;
+			real blueGain = 1.0;
+
+			std::cout << "Setting color gain, r=" << redGain << ", b=" << blueGain << std::endl;
+			MMAL_PARAMETER_AWB_GAINS_T param = {{MMAL_PARAMETER_CUSTOM_AWB_GAINS,sizeof(param)}, {0,0}, {0,0}};
+			param.r_gain.num = (unsigned int)(redGain * 65536);
+			param.b_gain.num = (unsigned int)(blueGain * 65536);
+			param.r_gain.den = param.b_gain.den = 65536;
+			mmal_port_parameter_set(camera->control, &param.hdr);
+		}
+		*/
+
 		std::cout << "Camera Enabled..." << std::endl;
 	}
 	catch (...)

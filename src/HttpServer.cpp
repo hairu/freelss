@@ -500,7 +500,7 @@ static int RetrieveFile(RequestInfo * reqInfo, const std::string& url)
 		ext = filename.substr(dotPos + 1);
 	}
 
-	if (ext == "ply" || ext == "jpg" || ext == "stl" || ext == "db" || ext == "png" || ext == "csv" || ext == "xyz")
+	if (ext == "ply" || ext == "jpg" || ext == "stl" || ext == "db" || ext == "png" || ext == "csv" || ext == "xyz" || ext == "log")
 	{
 		std::string mimeType;
 
@@ -812,25 +812,41 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 	{
 		if (reqInfo->url.find("/camImage") == 0)
 		{
+			bool addLines = reqInfo->url.find("/camImageL") == 0;
+
 			// Get the image from the camera
+
+			unsigned char * imageData = NULL;
 			unsigned imageSize = 0;
-			byte * imageData = NULL;
+			Camera * camera = Camera::getInstance();
+			Image * image = NULL;
 
 			try
 			{
-				while (Camera::getInstance()->acquireJpeg(imageData, &imageSize) == false)
+				image = camera->acquireImage();
+				if (image == NULL)
 				{
-					free(imageData);
-					imageData = (byte *) malloc(imageSize);
-					if (imageData == NULL)
-					{
-						throw Exception("Out of memory");
-					}
+					throw Exception("NULL image in Camera::acquireJpeg");
 				}
+
+				imageSize = image->getPixelBufferSize();
+				imageData = reinterpret_cast<unsigned char *>(malloc(imageSize));
+
+				// Add the calibration lines
+				if (addLines)
+				{
+					Calibrator::addCalibrationLines(image);
+				}
+
+				// Convert the image to a JPEG
+				Image::convertToJpeg(* image, imageData, &imageSize);
+
+				camera->releaseImage(image);
 			}
 			catch (...)
 			{
 				free(imageData);
+				camera->releaseImage(image);
 				throw;
 			}
 

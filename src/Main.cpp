@@ -200,6 +200,22 @@ bool DataPoint::readNextFrame(std::vector<DataPoint>& out, const std::vector<Dat
 	return true;
 }
 
+bool DataPoint::readNextFrame(const std::vector<DataPoint>& results, size_t & resultIndex)
+{
+	if (resultIndex >= results.size() || results.empty())
+	{
+		return false;
+	}
+
+	int pseudoStep = results[resultIndex].pseudoFrame;
+	while (pseudoStep == results[resultIndex].pseudoFrame && resultIndex < results.size())
+	{
+		resultIndex++;
+	}
+
+	return true;
+}
+
 void DataPoint::computeAverage(const std::vector<DataPoint>& bin, DataPoint& out)
 {
 	out = bin.front();

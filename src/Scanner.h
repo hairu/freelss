@@ -117,7 +117,7 @@ private:
 			        LocationMapper& leftLocMapper,
 			        LocationMapper& rightLocMapper,
 			        TimingStats * timingStats);
-	void logTimingStats(const TimingStats& stats);
+	void logTimingStats(std::ostream& out, const TimingStats& stats);
 
 	/** Free the points data */
 	void clearPoints();

@@ -107,6 +107,11 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 	border: solid 2px #1d5fa9;\
 	width: 625px;\
 }\
+.calDescr{\
+	font-size: 10px;\
+	padding-bottom: 20px;\
+	width: 200px;\
+}\
 .cal1GenerateDebugDiv {\
 	padding-bottom: 50px;\
 }\
@@ -122,20 +127,6 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 	font-family: Verdana, serif, Arial, Helvetica;\
 	color: #ff0000;\
 	text-shadow: #000000 2px 2px 2px;\
-}\
-#vLine {\
-	position: absolute;\
-	background-color: red; \
-	margin-left: 648px; \
-	width: 1px; \
-	height: 972px;\
-}\
-#hLine {\
-	position: absolute;\
-	background-color: red;\
-	margin-top: 486px;\
-	width: 1296px;\
-	height: 1px;\
 }\
 #menuContainer {\
 	width: 800px;\
@@ -192,12 +183,12 @@ function startup2(){\
 }\
 function updateImgImage(){\
 	var img = document.getElementById('image');\
-	img.src = 'camImage_' + Math.random() + '.jpg';\
+	img.src = 'camImageL_' + Math.random() + '.jpg';\
 	imageCount = imageCount + 1;\
 }\
 function updateDivImage(){\
 	var div = document.getElementById('outerImageDiv');\
-	div.style.backgroundImage = \"url('camImage_\" + Math.random() + \".jpg')\";\
+	div.style.backgroundImage = \"url('camImageL_\" + Math.random() + \".jpg')\";\
 	imageCount = imageCount + 1;\
 	setTimeout(updateDivImage, 4000);\
 }\
@@ -312,7 +303,7 @@ std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 <p>Click the button to start the scan </p>\
 <form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
 <div><div class=\"settingsText\">Preset</div><input class=\"settingsInput\" readonly=\"true\" value=\"" << presetName << "\"></div>\
-<div><div class=\"settingsText\">Degrees</div><input name=\"degrees\" class=\"settingsInput\" value=\"360\"> degrees</div>\
+<div><div class=\"settingsText\">Range</div><input name=\"degrees\" class=\"settingsInput\" value=\"360\"> degrees</div>\
 	<input type=\"hidden\" name=\"cmd\" value=\"startScan\">\
 	<input class=\"submit\" type=\"submit\" value=\"Start Scan\">\
 </form>";
@@ -562,7 +553,7 @@ std::string WebContent::cal1(const std::string& inMessage)
     </div>\
     <div class=\"cal1GenerateDebugDiv\">\
         <form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"><input name=\"cmd\" value=\"calibrateLasers\" type=\"hidden\"><input class=\"controlSubmit\" value=\"Calibrate Lasers\" type=\"submit\"></form>\
-        <div class=\"settingsDescr\">Line the front wall of the calibration item over <br>the center of the turntable hole and click this button<br> to calibrate the lasers.</div>\
+        <div class=\"calDescr\">Line the front wall of the calibration item over the center of the turntable hole and click this button to calibrate the lasers.</div>\
     </div>\
 	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"><input name=\"cmd\" value=\"toggleLeftLaser\" type=\"hidden\"><input class=\"controlSubmit\" value=\"Toggle Left Laser\" type=\"submit\"></form>\
 	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"> <input name=\"cmd\" value=\"toggleRightLaser\" type=\"hidden\"> <input class=\"controlSubmit\" value=\"Toggle Right Laser\" type=\"submit\"> </form>\
@@ -574,18 +565,14 @@ std::string WebContent::cal1(const std::string& inMessage)
 		<input class=\"submit\" style=\"width: 110px\" value=\"Rotate\" type=\"submit\">\
 		</form>\
 	</div>\
-		<div class=\"settingsDescr\">Rotates the turntable in degrees.</div>\
+		<div class=\"calDescr\">Rotates the turntable in degrees.</div>\
   </div>\
 <div style=\"position: relative\">\
 	<div>\
-		<img style=\"position: absolute\" onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" width=\"1296\" src=\"camImage_\""
+		<img style=\"position: absolute\" onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" width=\"1296\" src=\"camImageL_\""
 	<< time(NULL)
 	<< ".jpg\">\
 	</div>\
-	<div style=\"margin-left: 215px;\">\
-	  <div id=\"vLine\"> </div>\
-	  <div id=\"hLine\"> </div>\
-    </div>\
 </div>\
 </div></body></html>";
 

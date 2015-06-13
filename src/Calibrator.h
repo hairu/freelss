@@ -24,6 +24,7 @@
 
 namespace freelss
 {
+class Image;
 
 class Calibrator
 {
@@ -40,7 +41,13 @@ public:
 	static real computeCameraZ(real yImagePtForTableCenter);
 	static real computeLaserX(real cameraZ, real xImagePtForLaser, real yImagePtForLaser);
 
+	/** Calculates where the origin of the coordinate system is as projected onto the sensor.  Output is in sensor coordinates */
+	static bool calculateOriginYOnSensor(real& originY);
+
 	static void calculateLaserPlane(Plane& outPlane, PixelLocation& outTop, PixelLocation& outBottom, Laser * laser, Laser::LaserSide side, const Vector3& laserLocation);
+
+	/** Adds the calibration lines to the image */
+	static void addCalibrationLines(Image * image);
 
 	/**
 	 * Calculates a laser plane that compensate for laser misalignment (rotation and roll).

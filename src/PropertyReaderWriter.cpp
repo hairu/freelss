@@ -62,10 +62,15 @@ void PropertyReaderWriter::writeProperties(const std::vector<Property>& properti
 		throw Exception("Error opening properties file for writing: " + filename);
 	}
 
+	writeProperties(fout, properties);
+}
+
+void PropertyReaderWriter::writeProperties(std::ostream& out, const std::vector<Property>& properties)
+{
 	for (size_t iProp = 0; iProp < properties.size(); iProp++)
 	{
 		const Property& prop = properties[iProp];
-		fout << prop.name << "=" << prop.value << std::endl;
+		out << prop.name << "=" << prop.value << std::endl;
 	}
 }
 

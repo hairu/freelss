@@ -419,6 +419,118 @@ real Calibrator::computeLaserX(real cameraZ, real xPixel, real yPixel)
 	return intersection.x;
 }
 
+void Calibrator::addCalibrationLines(Image * image)
+{
+	unsigned width = image->getWidth();
+	unsigned height = image->getHeight();
+	unsigned components = image->getNumComponents();
+	unsigned rowStride = width * components;
+
+	unsigned char * pixels = image->getPixels();
+
+	// Add center vertical bar
+	unsigned xCol = (width / 2) - 1;
+	unsigned xCount = 2;
+	for (unsigned iRow = 0; iRow < height; iRow++)
+	{
+		for (unsigned cnt = 0; cnt < xCount; cnt++)
+		{
+			if ((iRow + cnt) % 2)
+			{
+				pixels[(xCol + cnt) * components] = 255;
+				pixels[(xCol + cnt) * components + 1] = 0;
+				pixels[(xCol + cnt) * components + 2] = 0;
+			}
+		}
+
+		pixels += rowStride;
+	}
+
+	// Add center horizontal image
+	unsigned yCount = 2;
+	unsigned yCol = (height / 2) - 1;
+	for (unsigned cnt = 0; cnt < yCount; cnt++)
+	{
+		pixels = image->getPixels() + (rowStride * (yCol + cnt));
+		for (unsigned iCol = 0; iCol < width; iCol++)
+		{
+			if ((iCol + cnt) % 2)
+			{
+				pixels[iCol * components] = 255;
+				pixels[iCol * components + 1] = 0;
+				pixels[iCol * components + 2] = 0;
+			}
+		}
+	}
+
+	// Calculate the originY
+	real originY = 0;
+	if (calculateOriginYOnSensor(originY))
+	{
+		// Calculate the originY
+		Camera * camera = Camera::getInstance();
+
+		unsigned xStart = (width / 2) - 10;
+		unsigned xEnd = xStart + 20;
+		real sensorHeight = camera->getSensorHeight();
+		real sensorPct = (originY + (sensorHeight / 2)) / sensorHeight;
+
+		yCol = height - (unsigned)(sensorPct * height);
+		if (yCol > yCount && yCol < height - yCount)
+		{
+			for (unsigned cnt = 0; cnt < yCount; cnt++)
+			{
+				pixels = image->getPixels() + (rowStride * (yCol + cnt));
+				for (unsigned iCol = xStart; iCol < xEnd; iCol++)
+				{
+					if ((iCol + cnt) % 2)
+					{
+						pixels[iCol * components] = 255;
+						pixels[iCol * components + 1] = 0;
+						pixels[iCol * components + 2] = 0;
+					}
+				}
+			}
+		}
+	}
+}
+
+bool Calibrator::calculateOriginYOnSensor(real& originY)
+{
+	// NOTE: This method makes assumptions about the orientation of the camera
+
+	Setup * setup = Setup::get();
+	Camera * camera = Camera::getInstance();
+
+	Plane sensorPlane;
+	sensorPlane.normal.x = 0;
+	sensorPlane.normal.y = 0;
+	sensorPlane.normal.z = -1;
+	sensorPlane.point.x = setup->cameraLocation.x;
+	sensorPlane.point.y = setup->cameraLocation.y;
+	sensorPlane.point.z = setup->cameraLocation.z - camera->getFocalLength();
+
+	// Ray from origin to the focal point
+	Ray originRay;
+	originRay.origin.x = 0;
+	originRay.origin.y = 0;
+	originRay.origin.z = 0;
+	originRay.direction = setup->cameraLocation;
+	originRay.direction.normalize();
+
+	Vector3 intersection;
+	if (!intersectPlane(originRay, sensorPlane, &intersection))
+	{
+		std::cerr << "!! Origin ray did not intersect sensor plane" << std::endl;
+		return false;
+	}
+
+	// Convert from world coordinates to sensor coordinates
+	originY = intersection.y - setup->cameraLocation.y;
+
+	return true;
+}
+
 bool Calibrator::intersectPlane(const Ray& inRay, const Plane& plane, Vector3 * intersection)
 {
 	// Reference: http://www.scratchapixel.com/lessons/3d-basic-lessons/lesson-7-intersecting-simple-shapes/ray-plane-and-ray-disk-intersection/

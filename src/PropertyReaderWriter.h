@@ -35,6 +35,9 @@ public:
 
 	/** Writes the given properties to the given file */
 	static void writeProperties(const std::vector<Property>& properties, const std::string& filename);
+
+	/** Writes the given properties to the given stream */
+	static void writeProperties(std::ostream& out, const std::vector<Property>& properties);
 };
 
 }

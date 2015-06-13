@@ -83,8 +83,8 @@ The origin is the center of the turn table.
 
 // Non-configurable settings
 #define FREELSS_VERSION_MAJOR 1
-#define FREELSS_VERSION_MINOR 7
-#define FREELSS_VERSION_NAME "FreeLSS 1.7"
+#define FREELSS_VERSION_MINOR 8
+#define FREELSS_VERSION_NAME "FreeLSS 1.8"
 
 #define PI 3.14159265359
 
@@ -231,6 +231,9 @@ struct DataPoint
 {
 	/** Populates frameC with the next frame from the results vector starting at index resultIndex */
 	static bool readNextFrame(std::vector<DataPoint>& out, const std::vector<DataPoint>& results, size_t & resultIndex);
+
+	/** Updates resultIndex with the ending index of the next frame. */
+	static bool readNextFrame(const std::vector<DataPoint>& results, size_t & resultIndex);
 
 	/**
 	 * Reduce the number of result rows and filter out some of the noise

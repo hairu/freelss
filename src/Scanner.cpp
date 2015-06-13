@@ -32,6 +32,8 @@
 #include "LaserResultsMerger.h"
 #include "FileWriter.h"
 #include "Facetizer.h"
+#include "PropertyReaderWriter.h"
+//#include "BrightnessBalancer.h"
 
 namespace freelss
 {
@@ -410,7 +412,7 @@ void Scanner::run()
 			m_remainingTime = remainingSec;
 			m_status.leave();
 
-			logTimingStats(timingStats);
+			logTimingStats(std::cout, timingStats);
 			std::cout << percentComplete << "% Complete, " << (remainingSec / 60) << " minutes remaining." << std::endl;
 		}
 	}
@@ -461,20 +463,18 @@ void Scanner::run()
 
 	m_results.leave();
 
-	std::cout << "Constructing mesh..." << std::endl;
-
 	timingStats.laserMergeTime += GetTimeInSeconds() - time1;
 
-	/*
-	// Balance the brightness
-	real totBright = 0;
-	for (size_t iPt = 0; iPt < results.size(); iPt++)
-	{
-		const DataPoint& pt = results[iPt];
+#if 0
+	time1 = GetTimeInSeconds();
+	m_progress.setLabel("Balancing brightness");
+	BrightnessBalancer balancer;
+	balancer.balanceBrightness(results, m_progress);
 
-		totBright += sqrt(pt.point.r * pt.point.r + pt.point.g * pt.point.g + pt.point.b * pt.point.b);
-	}
-	*/
+	timingStats.pointProcessingTime += GetTimeInSeconds() - time1;
+#endif
+
+	std::cout << "Constructing mesh..." << std::endl;
 
 	// Mesh the point cloud
 	FaceMap faces;
@@ -552,7 +552,38 @@ void Scanner::run()
 		timingStats.stlWritingTime = GetTimeInSeconds() - time1;
 	}
 
-	logTimingStats(timingStats);
+	logTimingStats(std::cout, timingStats);
+
+	// Generate the log file
+	std::string txtFilename = m_filename + ".log";
+	std::ofstream fout (txtFilename.c_str());
+	if (fout.is_open())
+	{
+		// Log the software version
+		fout << "FreeLSS Version: " << FREELSS_VERSION_MAJOR << "." << FREELSS_VERSION_MINOR << std::endl;
+		fout << "Preset: " << preset.name << std::endl;
+		fout << "Range: " << m_range << " degrees" << std::endl;
+
+		// Log the timing stats
+		logTimingStats(fout, timingStats);
+
+		// Get the settings that were used to generate this scan
+		std::vector<Property> properties;
+		PresetManager::get()->encodeProperties(properties);
+		Setup::get()->encodeProperties(properties);
+
+		// Write the settings and preset properties
+		PropertyReaderWriter propWriter;
+		propWriter.writeProperties(fout, properties);
+
+		fout << std::endl;
+		fout.close();
+	}
+	else
+	{
+		std::cerr << "Error opening file for writing: " << txtFilename << std::endl;
+	}
+
 
 	m_progress.setPercent(100);
 
@@ -1116,7 +1147,7 @@ void Scanner::writeRangePoints(ColoredPoint * points, int numLocationsMapped, La
 	m_rangeFout << std::endl;
 }
 
-void Scanner::logTimingStats(const Scanner::TimingStats& stats)
+void Scanner::logTimingStats(std::ostream& out, const Scanner::TimingStats& stats)
 {
 	// Prevent divide by zero
 	if (stats.numFrames == 0)
@@ -1133,24 +1164,24 @@ void Scanner::logTimingStats(const Scanner::TimingStats& stats)
 	double unaccountedTime = totalTime - accountedTime;
 	double rate = totalTime / stats.numFrames;
 
-	std::cout << "Total Seconds per frame:\t" << rate << std::endl;
-	std::cout << "Unaccounted time:\t" << (100.0 * unaccountedTime / totalTime) << "%" << std::endl;
-	std::cout << "Image Acquisition:\t" << (100.0 * stats.imageAcquisitionTime / totalTime) << "%, " << (stats.imageAcquisitionTime / stats.numFrames) << " seconds per frame." << std::endl;
-	std::cout << "Image Processing:\t" << (100.0 * stats.imageProcessingTime / totalTime) << "%, " << (stats.imageProcessingTime / stats.numFrames) << " seconds per frame." << std::endl;
-	std::cout << "Laser Time:\t" << (100.0 * stats.laserTime / totalTime) << "%, " << (stats.laserTime / stats.numFrames) << " seconds per frame." << std::endl;
-	std::cout << "Point Mapping:\t" << (100.0 * stats.pointMappingTime / totalTime) << "%" << std::endl;
-	std::cout << "Point Processing:\t" << (100.0 * stats.pointProcessingTime / totalTime) << "%" << std::endl;
-	std::cout << "Table Rotation:\t" << (100.0 * stats.rotationTime / totalTime) << "%" << std::endl;
-	std::cout << "Laser Merging:\t" << (100.0 * stats.laserMergeTime / totalTime) << "%" << std::endl;
-	std::cout << "PLY Writing:\t" << (100.0 * stats.plyWritingTime / totalTime) << "%" << std::endl;
-	std::cout << "STL Writing:\t" << (100.0 * stats.stlWritingTime / totalTime) << "%" << std::endl;
-	std::cout << "XYZ Writing:\t" << (100.0 * stats.xyzWritingTime / totalTime) << "%" << std::endl;
-	std::cout << "Facetization:\t" << (100.0 * stats.facetizationTime / totalTime) << "%" << std::endl;
-	std::cout << "Num Frame Retries:\t" << stats.numFrameRetries << std::endl;
-	std::cout << "Num Frames:\t" << stats.numFrames << std::endl;
-	std::cout << "Point Memory:\t" << (sizeof(DataPoint) * (m_leftLaserResults.size() + m_rightLaserResults.size())) / 1024.0 / 1024.0 << " MB" << std::endl;
+	out << "Total Seconds per frame:\t" << rate << std::endl;
+	out << "Unaccounted time:\t" << (100.0 * unaccountedTime / totalTime) << "%" << std::endl;
+	out << "Image Acquisition:\t" << (100.0 * stats.imageAcquisitionTime / totalTime) << "%, " << (stats.imageAcquisitionTime / stats.numFrames) << " seconds per frame." << std::endl;
+	out << "Image Processing:\t" << (100.0 * stats.imageProcessingTime / totalTime) << "%, " << (stats.imageProcessingTime / stats.numFrames) << " seconds per frame." << std::endl;
+	out << "Laser Time:\t" << (100.0 * stats.laserTime / totalTime) << "%, " << (stats.laserTime / stats.numFrames) << " seconds per frame." << std::endl;
+	out << "Point Mapping:\t" << (100.0 * stats.pointMappingTime / totalTime) << "%" << std::endl;
+	out << "Point Processing:\t" << (100.0 * stats.pointProcessingTime / totalTime) << "%" << std::endl;
+	out << "Table Rotation:\t" << (100.0 * stats.rotationTime / totalTime) << "%" << std::endl;
+	out << "Laser Merging:\t" << (100.0 * stats.laserMergeTime / totalTime) << "%" << std::endl;
+	out << "PLY Writing:\t" << (100.0 * stats.plyWritingTime / totalTime) << "%" << std::endl;
+	out << "STL Writing:\t" << (100.0 * stats.stlWritingTime / totalTime) << "%" << std::endl;
+	out << "XYZ Writing:\t" << (100.0 * stats.xyzWritingTime / totalTime) << "%" << std::endl;
+	out << "Facetization:\t" << (100.0 * stats.facetizationTime / totalTime) << "%" << std::endl;
+	out << "Num Frame Retries:\t" << stats.numFrameRetries << std::endl;
+	out << "Num Frames:\t" << stats.numFrames << std::endl;
+	out << "Point Memory:\t" << (sizeof(DataPoint) * (m_leftLaserResults.size() + m_rightLaserResults.size())) / 1024.0 / 1024.0 << " MB" << std::endl;
 
-	std::cout << "Total Time (min):\t" << (totalTime / 60.0) << std::endl << std::endl;
+	out << "Total Time (min):\t" << (totalTime / 60.0) << std::endl << std::endl;
 }
 
 
