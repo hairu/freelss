@@ -1211,14 +1211,18 @@ std::vector<ScanResult> Scanner::getPastScanResults()
 			ScanResultFile file;
 
 			struct stat st;
-			if (stat(fullPath.c_str(), &st) != 0)
+			if (stat(fullPath.c_str(), &st) == 0)
 			{
-				throw Exception("Error obtaining stats on file: " + fullPath);
+				file.fileSize = st.st_size;
+			}
+			else
+			{
+				file.fileSize = 0;
+				std::cerr << "Error obtaining stats on file: " << fullPath << ", error=" << strerror(errno) << std::endl;
 			}
 
 			file.extension = extension;
 			file.creationTime = atol(base.c_str());
-			file.fileSize = st.st_size;
 
 			scanResultMap[base].files.push_back(file);
 		}
