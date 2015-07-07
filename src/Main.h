@@ -40,9 +40,6 @@ The origin is the center of the turn table.
 #include <mmal_default_components.h>
 #include <mmal_connection.h>
 
-// RASPICAM
-#include <raspicam/raspicam.h>
-
 // MICROHTTPD
 #include <microhttpd.h>
 
