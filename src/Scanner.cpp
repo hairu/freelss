@@ -33,7 +33,7 @@
 #include "FileWriter.h"
 #include "Facetizer.h"
 #include "PropertyReaderWriter.h"
-//#include "BrightnessBalancer.h"
+#include "ObjectBaseCreator.h"
 
 namespace freelss
 {
@@ -69,6 +69,7 @@ Scanner::Scanner() :
 	m_status(),
 	m_maxNumFrameRetries(5),                    // TODO: Place this in Database
 	m_maxNumFailedRows(10),                      // TODO: Place this in Database
+	m_numObjectBaseSubdivisions(3),
 	m_columnPoints(NULL),
 	m_remainingTime(0),
 	m_firstRowRightLaserCol(0),
@@ -202,7 +203,7 @@ void Scanner::prepareScan()
 	switch (preset.cameraMode)
 	{
 	case Camera::CM_STILL_5MP:
-		m_laserDelaySec = 0.09;
+		m_laserDelaySec = 0.36;
 		break;
 
 	case Camera::CM_VIDEO_5MP:
@@ -210,11 +211,12 @@ void Scanner::prepareScan()
 		break;
 
 	case Camera::CM_VIDEO_HD:
-		m_laserDelaySec = 0.09;
+		m_laserDelaySec = 0.18;
 		break;
 
 	case Camera::CM_VIDEO_1P2MP:
-		m_laserDelaySec = 0.09;
+		//m_laserDelaySec = 0.09;
+		m_laserDelaySec = 0.18;
 		break;
 
 	case Camera::CM_VIDEO_VGA:
@@ -254,6 +256,26 @@ void Scanner::releaseLiveDataLock()
 }
 
 void Scanner::run()
+{
+	try
+	{
+		runScan();
+	}
+	catch (Exception& ex)
+	{
+		std::cerr << "!! Exception: " << ex << std::endl;
+	}
+	catch (std::exception& ex)
+	{
+		std::cerr << "!! Exception: " << ex.what() << std::endl;
+	}
+	catch (...)
+	{
+		std::cerr << "Unknown Exception Occurred" << std::endl;
+	}
+}
+
+void Scanner::runScan()
 {
 	// Prepare to scan
 	prepareScan();
@@ -485,11 +507,17 @@ void Scanner::run()
 		time1 = GetTimeInSeconds();
 		m_progress.setLabel("Facetizing Point Cloud");
 		facetizer.facetize(faces, results, m_range > 359, m_progress, true);
+
+		// Add the object base
+		if (preset.createBaseForObject)
+		{
+			ObjectBaseCreator objectBaseCreator;
+			objectBaseCreator.createBase(faces, results, preset.groundPlaneHeight, m_numObjectBaseSubdivisions, m_progress);
+		}
 		timingStats.facetizationTime += GetTimeInSeconds() - time1;
 	}
 
 	// Write the PLY file
-	std::cout << "Starting output thread..." << std::endl;
 	if (preset.generatePly)
 	{
 		m_progress.setLabel("Generating PLY file");
@@ -535,7 +563,6 @@ void Scanner::run()
 	// Generate the XYZ file
 	if (preset.generateXyz)
 	{
-		std::cout << "Generating XYZ file..." << std::endl;
 		time1 = GetTimeInSeconds();
 		XyzWriter xyzWriter;
 		xyzWriter.write(m_filename, results, m_progress);
@@ -545,7 +572,6 @@ void Scanner::run()
 	// Generate the STL file
 	if (preset.generateStl)
 	{
-		std::cout << "Generating STL mesh..." << std::endl;
 		time1 = GetTimeInSeconds();
 		StlWriter stlWriter;
 		stlWriter.write(m_filename, results, faces, m_progress);
@@ -1008,8 +1034,6 @@ bool Scanner::processScan(Image * image1, Image * image2, std::vector<DataPoint>
 				  << ", numRowsBadFromColor=" << numRowsBadFromColor
 				  << ", numRowsBadFromNumRanges=" << numRowsBadFromNumRanges
 				  << std::endl;
-
-		return false;
 	}
 
 	std::cout << "Detected " << numLocations << " laser pixels." << std::endl;
@@ -1032,6 +1056,7 @@ bool Scanner::processScan(Image * image1, Image * image2, std::vector<DataPoint>
 	{
 		// Stop here if we didn't detect the laser at all
 		std::cerr << "!!! Could not detect laser at all" << std::endl;
+		timingStats->numEmptyFrames++;
 	}
 
 
@@ -1179,6 +1204,8 @@ void Scanner::logTimingStats(std::ostream& out, const Scanner::TimingStats& stat
 	out << "Facetization:\t" << (100.0 * stats.facetizationTime / totalTime) << "%" << std::endl;
 	out << "Num Frame Retries:\t" << stats.numFrameRetries << std::endl;
 	out << "Num Frames:\t" << stats.numFrames << std::endl;
+	out << "Num Empties:\t" << stats.numEmptyFrames << std::endl;
+
 	out << "Point Memory:\t" << (sizeof(DataPoint) * (m_leftLaserResults.size() + m_rightLaserResults.size())) / 1024.0 / 1024.0 << " MB" << std::endl;
 
 	out << "Total Time (min):\t" << (totalTime / 60.0) << std::endl << std::endl;

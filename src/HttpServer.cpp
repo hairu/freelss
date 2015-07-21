@@ -31,6 +31,7 @@
 #include "UpdateManager.h"
 #include "Progress.h"
 #include "MemWriter.h"
+#include "Lighting.h"
 #include <three.min.js.h>
 #include <OrbitControls.js.h>
 #include <PLYLoader.js.h>
@@ -246,6 +247,7 @@ static void SavePreset(RequestInfo * reqInfo)
 	preset->generateStl = !reqInfo->arguments[WebContent::GENERATE_STL].empty();
 	preset->generateXyz = !reqInfo->arguments[WebContent::GENERATE_XYZ].empty();
 	preset->enableBurstModeForStillImages = !reqInfo->arguments[WebContent::ENABLE_BURST_MODE].empty();
+	preset->createBaseForObject = !reqInfo->arguments[WebContent::CREATE_BASE_FOR_OBJECT].empty();
 
 	if (reqInfo->arguments[WebContent::SEPARATE_LASERS_BY_COLOR].empty())
 	{
@@ -402,6 +404,20 @@ static void SaveSetup(RequestInfo * reqInfo)
 	if (!serialNumber.empty())
 	{
 		setup->serialNumber = serialNumber;
+	}
+
+	setup->enableLighting = !reqInfo->arguments[WebContent::ENABLE_LIGHTING].empty();
+
+	std::string lightingPin = reqInfo->arguments[WebContent::LIGHTING_PIN];
+	if (!lightingPin.empty())
+	{
+		int pin = ToInt(lightingPin);
+		if (pin > MAX_PIN)
+		{
+			throw Exception("Invalid Lighting Pin Setting");
+		}
+
+		setup->lightingPin = pin;
 	}
 
 	// Save the properties
@@ -986,6 +1002,12 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			else if (reqInfo->method == RequestInfo::POST && cmd == "calibrateLasers")
 			{
 				message = AutocorrectLaserMisalignment(reqInfo);
+			}
+			else if (reqInfo->method == RequestInfo::POST && cmd == "setLightIntensity")
+			{
+				std::string intensityStr = reqInfo->arguments["intensity"];
+				Lighting::get()->setIntensity(ToInt(intensityStr));
+				message = "Set light intensity to " + intensityStr + ".";
 			}
 
 			if (!responded)

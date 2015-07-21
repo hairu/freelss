@@ -99,6 +99,9 @@ void LocationMapper::mapPoints(PixelLocation * laserLocations,
 					point->b = pixels[pixelStart + 2];
 				}
 
+				// Make the ground plane height our new y plane
+				point->y -= m_groundPlaneHeight;
+
 				// Make sure we have the correct laser location
 				laserLocations[outNumLocations] = laserLocations[iLoc];
 				outNumLocations++;

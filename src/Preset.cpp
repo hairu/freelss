@@ -41,6 +41,7 @@ Preset::Preset() :
 	generateXyz (false),
 	generateStl(true),
 	generatePly(true),
+	createBaseForObject(true),
 	enableBurstModeForStillImages(false),
 	groundPlaneHeight(0),
 	laserMergeAction (LMA_PREFER_RIGHT_LASER),
@@ -69,6 +70,7 @@ void Preset::encodeProperties(std::vector<Property>& properties, bool isActivePr
 	properties.push_back(Property("presets." + name + ".laserMergeAction", ToString((int)laserMergeAction)));
 	properties.push_back(Property("presets." + name + ".plyDataFormat", ToString((int)plyDataFormat)));
 	properties.push_back(Property("presets." + name + ".enableBurstModeForStillImages", ToString(enableBurstModeForStillImages)));
+	properties.push_back(Property("presets." + name + ".createBaseForObject", ToString(createBaseForObject)));
 
 	if (isActivePreset)
 	{
@@ -163,6 +165,10 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 		else if (prop.name == prefix + name + ".enableBurstModeForStillImages")
 		{
 			enableBurstModeForStillImages = ToBool(prop.value);
+		}
+		else if (prop.name == prefix + name + ".createBaseForObject")
+		{
+			createBaseForObject = ToBool(prop.value);
 		}
 	}
 }

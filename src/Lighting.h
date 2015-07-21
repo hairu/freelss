@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -20,58 +20,32 @@
 
 #pragma once
 
+
 namespace freelss
 {
 
 /**
- * Holds setup information about the hardware.
+ * Singleton class for controlling the lighting system
  */
-class Setup
+class Lighting
 {
 public:
-
 	/** Returns the singleton instance */
-	static Setup * get();
+	static Lighting * get();
+
+	/** Releases the singleton instance */
 	static void release();
 
-	/** Encodes property information to the properties vector */
-	void encodeProperties(std::vector<Property>& properties);
+	Lighting();
 
-	/** Decodes property information from the given vector  */
-	void decodeProperties(const std::vector<Property>& properties);
+	/** 0 (off) to 100 (full intensity) */
+	void setIntensity(int intensity);
 
-	Vector3 cameraLocation;
-	Vector3 leftLaserLocation;
-	Vector3 rightLaserLocation;
-	int rightLaserPin;
-	int leftLaserPin;
-	int motorEnablePin;
-	int motorStepPin;
-	int motorDirPin;
-	int motorDirPinValue;
-	int laserOnValue;
-	int stepsPerRevolution;
-	int motorResponseDelay;
-	int motorStepDelay;
-	int httpPort;
-	std::string serialNumber;
-	UnitOfLength unitOfLength;
-	bool haveLaserPlaneNormals;
-	Vector3 leftLaserPlaneNormal;
-	Vector3 rightLaserPlaneNormal;
-	PixelLocation leftLaserCalibrationTop;
-	PixelLocation leftLaserCalibrationBottom;
-	PixelLocation rightLaserCalibrationTop;
-	PixelLocation rightLaserCalibrationBottom;
-	bool enableLighting;
-	int lightingPin;
+	int getIntensity() const;
 private:
-
-	/** Default Constructor */
-	Setup();
-
-	/** Singleton instance */
-	static Setup * m_instance;
+	static Lighting * m_instance;
+	int m_pin;
+	int m_intensity;
 };
 
 }

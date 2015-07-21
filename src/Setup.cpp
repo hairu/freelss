@@ -58,7 +58,9 @@ Setup::Setup() :
 	httpPort(80),
 	serialNumber(""),
 	unitOfLength(UL_INCHES),
-	haveLaserPlaneNormals(false)
+	haveLaserPlaneNormals(false),
+	enableLighting(false),
+	lightingPin(3)
 {
 	cameraLocation.x = 0;
 	cameraLocation.y = 82.55;
@@ -108,10 +110,11 @@ void Setup::encodeProperties(std::vector<Property>& properties)
 	properties.push_back(Property("setup.motorStepDelay", ToString(motorStepDelay)));
 	properties.push_back(Property("setup.httpPort", ToString(httpPort)));
 	properties.push_back(Property("setup.serialNumber", serialNumber));
-
 	properties.push_back(Property("setup.unitOfLength", ToString((int)unitOfLength)));
-
 	properties.push_back(Property("setup.haveLaserPlaneNormals", ToString(haveLaserPlaneNormals)));
+	properties.push_back(Property("setup.enableLighting", ToString(enableLighting)));
+	properties.push_back(Property("setup.lightingPin", ToString(lightingPin)));
+
 
 	if (haveLaserPlaneNormals)
 	{
@@ -290,6 +293,14 @@ void Setup::decodeProperties(const std::vector<Property>& properties)
 		else if (prop.name == "setup.rightLaserCalibrationBottom.y")
 		{
 			rightLaserCalibrationBottom.y = ToReal(prop.value);
+		}
+		else if (prop.name == "setup.enableLighting")
+		{
+			enableLighting = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.lightingPin")
+		{
+			lightingPin = ToInt(prop.value);
 		}
 	}
 }

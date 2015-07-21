@@ -29,7 +29,7 @@
 #define PEAK_FILTER       0
 #define INV_SQRT_2PI      0.3989422804014327
 
-#define MAX_NUM_LASER_RANGES 3 // TODO: Place this in the settings
+#define MAX_NUM_LASER_RANGES 0 // TODO: Place this in the settings
 
 #if GUASS_FILTER
 #include <mpfit.h>
@@ -256,7 +256,7 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 		}
 
 		// Removes the ranges that on closer inspection don't appear to be caused by the laser
-		if (numLaserRanges < MAX_NUM_LASER_RANGES)
+		if (numLaserRanges < MAX_NUM_LASER_RANGES || MAX_NUM_LASER_RANGES == 0)
 		{
 			if (numLaserRanges > 0)
 			{

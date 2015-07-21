@@ -20,57 +20,24 @@
 
 #pragma once
 
-#include "Laser.h"
-#include "Camera.h"
-#include "PlyWriter.h"
+
+#include "Progress.h"
 
 namespace freelss
 {
 
-/**
- * Holds camera settings, image processing settings, delay settings,
- * and other related settings for scanning.
- */
-class Preset
+class ObjectBaseCreator
 {
 public:
+	ObjectBaseCreator();
 
-	/** The action that should be taken to merge laser results */
-	enum LaserMergeAction {LMA_PREFER_RIGHT_LASER, LMA_SEPARATE_BY_COLOR };
+	void createBase(FaceMap & outFaces, std::vector<DataPoint>& results, real32 groundPlaneHeight, int numSubdivisions, Progress& progress);
 
-	Preset();
-
-	/** Encodes property information to the properties vector */
-	void encodeProperties(std::vector<Property>& properties, bool isActivePreset);
-
-	/**
-	 * Decodes property information from the given vector.
-	 */
-	void decodeProperties(const std::vector<Property>& properties, const std::string& name, bool &isActivePreset);
-
-	/** Detects the names of all the presets */
-	static std::vector<std::string> detectPresetNames(const std::vector<Property>& properties);
-
-	std::string name;
-	Laser::LaserSide laserSide;
-	Camera::CameraMode cameraMode;
-	real laserThreshold;
-	int minLaserWidth;
-	int maxLaserWidth;
-	real maxObjectSize;
-	real maxTriangleEdgeLength;
-	int numLaserRowBins;
-	int stabilityDelay;
-	int id;
-	int framesPerRevolution;
-	bool generateXyz;
-	bool generateStl;
-	bool generatePly;
-	bool createBaseForObject;
-	bool enableBurstModeForStillImages;
-	real groundPlaneHeight;
-	LaserMergeAction laserMergeAction;
-	PlyDataFormat plyDataFormat;
+private:
+	void subdivide(std::vector<unsigned>& triangles, std::vector<DataPoint>& results);
+	DataPoint splitEdge(const DataPoint& p1, const DataPoint& p2, std::vector<DataPoint>& results);
+	void addTriangle(const DataPoint& pt1, const DataPoint& pt2, const DataPoint& pt3, std::vector<unsigned>& triangles);
+	void updateTriangle(unsigned idx1, const DataPoint& pt1, const DataPoint& pt2, const DataPoint& pt3, std::vector<unsigned>& triangles);
 };
 
 }

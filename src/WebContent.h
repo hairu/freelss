@@ -85,6 +85,9 @@ public:
 	static const std::string PLY_DATA_FORMAT;
 	static const std::string FREE_DISK_SPACE;
 	static const std::string ENABLE_BURST_MODE;
+	static const std::string ENABLE_LIGHTING;
+	static const std::string LIGHTING_PIN;
+	static const std::string CREATE_BASE_FOR_OBJECT;
 
 private:
 	static std::string setting(const std::string& name, const std::string& label,
@@ -135,6 +138,9 @@ private:
 	static const std::string GROUND_PLANE_HEIGHT_DESCR;
 	static const std::string PLY_DATA_FORMAT_DESCR;
 	static const std::string ENABLE_BURST_MODE_DESCR;
+	static const std::string ENABLE_LIGHTING_DESCR;
+	static const std::string LIGHTING_PIN_DESCR;
+	static const std::string CREATE_BASE_FOR_OBJECT_DESCR;
 };
 
 }

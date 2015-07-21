@@ -29,6 +29,7 @@
 #include "PropertyReaderWriter.h"
 #include "Setup.h"
 #include "UpdateManager.h"
+#include "Lighting.h"
 #include <curl/curl.h>
 #include <algorithm>
 
@@ -74,6 +75,7 @@ struct InitSingletons
 		freelss::RelayLaser::initialize();
 		freelss::UpdateManager::get();
 		freelss::Setup::get();
+		freelss::Lighting::get();
 		freelss::HttpServer::get();
 	}
 
@@ -85,6 +87,7 @@ struct InitSingletons
 		freelss::TurnTable::release();
 		freelss::UpdateManager::release();
 		freelss::PresetManager::release();
+		freelss::Lighting::release();
 		freelss::Setup::release();
 	}
 };

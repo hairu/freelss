@@ -26,6 +26,7 @@
 #include "Camera.h"
 #include "Progress.h"
 #include "PlyWriter.h"
+#include "Lighting.h"
 
 namespace freelss
 {
@@ -248,6 +249,9 @@ const std::string WebContent::GROUND_PLANE_HEIGHT = "GROUND_PLANE_HEIGHT";
 const std::string WebContent::PLY_DATA_FORMAT = "PLY_DATA_FORMAT";
 const std::string WebContent::FREE_DISK_SPACE = "FREE_DISK_SPACE";
 const std::string WebContent::ENABLE_BURST_MODE = "ENABLE_BURST_MODE";
+const std::string WebContent::ENABLE_LIGHTING = "ENABLE_LIGHTING";
+const std::string WebContent::LIGHTING_PIN = "LIGHTING_PIN";
+const std::string WebContent::CREATE_BASE_FOR_OBJECT = "CREATE_BASE_FOR_OBJECT";
 
 const std::string WebContent::SERIAL_NUMBER_DESCR = "The serial number of the ATLAS 3D scanner";
 const std::string WebContent::CAMERA_X_DESCR = "X-compoment of camera location. ie: The camera is always at X = 0.";
@@ -280,6 +284,9 @@ const std::string WebContent::SEPARATE_LASERS_BY_COLOR_DESCR = "Calibration debu
 const std::string WebContent::GROUND_PLANE_HEIGHT_DESCR = "Any scan data less than this height above the turntable will not be included in the output files.";
 const std::string WebContent::PLY_DATA_FORMAT_DESCR = "Whether to generate binary or ASCII PLY files.";
 const std::string WebContent::ENABLE_BURST_MODE_DESCR = "Enables the camera's burst mode when capturing in still mode";
+const std::string WebContent::ENABLE_LIGHTING_DESCR = "Enables support for controlling a connected light.";
+const std::string WebContent::LIGHTING_PIN_DESCR = "The wiringPi pin number for the light. Change will not go into effect until system is rebooted.";
+const std::string WebContent::CREATE_BASE_FOR_OBJECT_DESCR = "Adds a flat base to the object for easier 3D printing preparation.";
 
 std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 {
@@ -526,6 +533,7 @@ std::string WebContent::viewScan(const std::string& plyFilename)
 std::string WebContent::cal1(const std::string& inMessage)
 {
 	std::string message = inMessage.empty() ? std::string("") : ("<h2>" + inMessage + "</h2>");
+	Setup * setup = Setup::get();
 
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
@@ -554,7 +562,22 @@ std::string WebContent::cal1(const std::string& inMessage)
     <div class=\"cal1GenerateDebugDiv\">\
         <form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"><input name=\"cmd\" value=\"calibrateLasers\" type=\"hidden\"><input class=\"controlSubmit\" value=\"Calibrate Lasers\" type=\"submit\"></form>\
         <div class=\"calDescr\">Line the front wall of the calibration item over the center of the turntable hole and click this button to calibrate the lasers.</div>\
-    </div>\
+    </div>";
+
+	if (setup->enableLighting)
+	{
+		sstr << "\
+		<div>\
+		<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
+		<input name=\"cmd\" value=\"setLightIntensity\" type=\"hidden\">\
+		<input name=\"intensity\" style=\"width: 75px\" class=\"settingsInput\" value=\"" << Lighting::get()->getIntensity() << "\" type=\"text\">\
+		<input class=\"submit\" style=\"width: 110px\" value=\"Set Light\" type=\"submit\">\
+		</form>\
+		</div>\
+		<div class=\"calDescr\">Sets the lighting intensity - 0 (off) to 100 (full).</div>";
+	}
+
+	sstr << "\
 	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"><input name=\"cmd\" value=\"toggleLeftLaser\" type=\"hidden\"><input class=\"controlSubmit\" value=\"Toggle Left Laser\" type=\"submit\"></form>\
 	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\"> <input name=\"cmd\" value=\"toggleRightLaser\" type=\"hidden\"> <input class=\"controlSubmit\" value=\"Toggle Right Laser\" type=\"submit\"> </form>\
 	<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">  <input name=\"cmd\" value=\"disableMotor\" type=\"hidden\">  <input class=\"controlSubmit\" value=\"Disable Motor\" type=\"submit\">  </form>\
@@ -565,7 +588,7 @@ std::string WebContent::cal1(const std::string& inMessage)
 		<input class=\"submit\" style=\"width: 110px\" value=\"Rotate\" type=\"submit\">\
 		</form>\
 	</div>\
-		<div class=\"calDescr\">Rotates the turntable in degrees.</div>\
+	<div class=\"calDescr\">Rotates the turntable in degrees.</div>\
   </div>\
 <div style=\"position: relative\">\
 	<div>\
@@ -709,6 +732,8 @@ std::string WebContent::setup(const std::string& message)
 	sstr << setting(WebContent::STEP_DELAY, "Motor Step Delay", setup->motorStepDelay, STEP_DELAY_DESCR, "&mu;s");
 	sstr << setting(WebContent::DIRECTION_PIN, "Motor Direction Pin", setup->motorDirPin, DIRECTION_PIN_DESCR);
 	sstr << setting(WebContent::RESPONSE_DELAY, "Motor Response Delay", setup->motorResponseDelay, RESPONSE_DELAY_DESCR, "&mu;s");
+	sstr << checkbox(WebContent::ENABLE_LIGHTING, "Enable Lighting", setup->enableLighting, ENABLE_LIGHTING_DESCR);
+	sstr << setting(WebContent::LIGHTING_PIN, "Lighting Pin", setup->lightingPin, LIGHTING_PIN_DESCR);
 	sstr << setting(WebContent::VERSION_NAME, "Firmware Version", FREELSS_VERSION_NAME, "The version of FreeLSS the scanner is running", "", true);
 	sstr << setting(WebContent::FREE_DISK_SPACE, "Free Space", freeSpaceMb, "The amount of free disk space available", "MB", true);
 
@@ -847,13 +872,19 @@ std::string WebContent::settings(const std::string& message)
 	sstr << checkbox(WebContent::GENERATE_XYZ, "Generate XYZ File", preset.generateXyz, GENERATE_XYZ_DESCR);
 	sstr << checkbox(WebContent::SEPARATE_LASERS_BY_COLOR, "Separate the Lasers", preset.laserMergeAction == Preset::LMA_SEPARATE_BY_COLOR, SEPARATE_LASERS_BY_COLOR_DESCR);
 	sstr << checkbox(WebContent::ENABLE_BURST_MODE, "Enable Burst Mode", preset.enableBurstModeForStillImages, ENABLE_BURST_MODE_DESCR);
+	sstr << checkbox(WebContent::CREATE_BASE_FOR_OBJECT, "Create Baser for Object", preset.createBaseForObject, CREATE_BASE_FOR_OBJECT_DESCR);
+
+	sstr << "<p><br><br><a target=\"_\" href=\"/licenses.txt\">Licenses</a></p>";
+	sstr << "</form>\
+	<form action=\"/reboot\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
+	<p><br><br><br><input class=\"submit\" type=\"submit\" value=\"Reboot\"></p></form>";
 
 	sstr << "</form>\
 <form action=\"/settings\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
-<p><br><br><a target=\"_\" href=\"/licenses.txt\">Licenses</a></p>\
 <p><br><br><br><form> <input type=\"hidden\" name=\"cmd\" value=\"shutdown\">\
-<input class=\"submit\" type=\"submit\" value=\"Shutdown\"></p></form>\
-</body></html>";
+<input class=\"submit\" type=\"submit\" value=\"Shutdown\"></p></form>";
+
+	sstr << "</body></html>";
 
 	     return sstr.str();
 }

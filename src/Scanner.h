@@ -109,6 +109,7 @@ private:
 		double laserMergeTime;
 		int numFrameRetries;
 		int numFrames;
+		int numEmptyFrames;
 	};
 
 	void singleScan(int frame,
@@ -157,6 +158,10 @@ private:
 	 */
 	void highlightPixel(const PixelLocation& inPixel, std::vector<PixelLocation>& outPixels);
 
+	/**
+	 * Perform the scan.
+	 */
+	void runScan();
 private:
 	/** Unowned objects */
 	Laser * m_laser;
@@ -190,6 +195,9 @@ private:
 
 	/** The maximum number of failed laser detection rows before */
 	const real m_maxNumFailedRows;
+
+	/** The number of subdivions for the base */
+	int m_numObjectBaseSubdivisions;
 
 	/** The image points for every column */
 	ColoredPoint * m_columnPoints;

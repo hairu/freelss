@@ -16,7 +16,7 @@ OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
 	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
 	XyzWriter.o UpdateManager.o Progress.o FileWriter.o MemWriter.o \
-	Facetizer.o MmalImageStore.o
+	Facetizer.o MmalImageStore.o Lighting.o ObjectBaseCreator.o
 
 all: freelss 
 
@@ -121,6 +121,12 @@ Facetizer.o: Facetizer.cpp Facetizer.h Main.h
 
 MmalImageStore.o: MmalImageStore.cpp MmalImageStore.h Main.h
 	$(CC) -c $(CFLAGS) MmalImageStore.cpp
+
+Lighting.o: Lighting.cpp Lighting.h Main.h
+	$(CC) -c $(CFLAGS) Lighting.cpp
+
+ObjectBaseCreator.o: ObjectBaseCreator.cpp ObjectBaseCreator.h Main.h
+	$(CC) -c $(CFLAGS) ObjectBaseCreator.cpp
 
 github:
 	mkdir -p ../../github

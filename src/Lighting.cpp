@@ -1,6 +1,6 @@
 /*
  ****************************************************************************
- *  Copyright (c) 2015 Uriah Liggett <freelaserscanner@gmail.com>           *
+ *  Copyright (c) 2014 Uriah Liggett <freelaserscanner@gmail.com>           *
  *	This file is part of FreeLSS.                                           *
  *                                                                          *
  *  FreeLSS is free software: you can redistribute it and/or modify         *
@@ -17,61 +17,57 @@
  *   along with FreeLSS.  If not, see <http://www.gnu.org/licenses/>.       *
  ****************************************************************************
 */
-
-#pragma once
+#include "Main.h"
+#include "Lighting.h"
+#include "Setup.h"
+#include <softPwm.h>
 
 namespace freelss
 {
+Lighting * Lighting::m_instance = NULL;
 
-/**
- * Holds setup information about the hardware.
- */
-class Setup
+Lighting * Lighting::get()
 {
-public:
+	if (Lighting::m_instance == NULL)
+	{
+		Lighting::m_instance = new Lighting();
+	}
 
-	/** Returns the singleton instance */
-	static Setup * get();
-	static void release();
+	return Lighting::m_instance;
+}
 
-	/** Encodes property information to the properties vector */
-	void encodeProperties(std::vector<Property>& properties);
+void Lighting::release()
+{
+	delete Lighting::m_instance;
+	Lighting::m_instance = NULL;
+}
 
-	/** Decodes property information from the given vector  */
-	void decodeProperties(const std::vector<Property>& properties);
+Lighting::Lighting() :
+	m_pin(-1),
+	m_intensity(0)
+{
+	Setup * setup = Setup::get();
+	m_pin = setup->lightingPin;
 
-	Vector3 cameraLocation;
-	Vector3 leftLaserLocation;
-	Vector3 rightLaserLocation;
-	int rightLaserPin;
-	int leftLaserPin;
-	int motorEnablePin;
-	int motorStepPin;
-	int motorDirPin;
-	int motorDirPinValue;
-	int laserOnValue;
-	int stepsPerRevolution;
-	int motorResponseDelay;
-	int motorStepDelay;
-	int httpPort;
-	std::string serialNumber;
-	UnitOfLength unitOfLength;
-	bool haveLaserPlaneNormals;
-	Vector3 leftLaserPlaneNormal;
-	Vector3 rightLaserPlaneNormal;
-	PixelLocation leftLaserCalibrationTop;
-	PixelLocation leftLaserCalibrationBottom;
-	PixelLocation rightLaserCalibrationTop;
-	PixelLocation rightLaserCalibrationBottom;
-	bool enableLighting;
-	int lightingPin;
-private:
+	if (setup->enableLighting)
+	{
+		softPwmCreate(m_pin, m_intensity, 100);
+	}
+}
 
-	/** Default Constructor */
-	Setup();
 
-	/** Singleton instance */
-	static Setup * m_instance;
-};
+void Lighting::setIntensity(int intensity)
+{
+	if (intensity >= 0 && intensity <= 100)
+	{
+		softPwmWrite (m_pin, intensity);
+		m_intensity = intensity;
+	}
+}
+
+int Lighting::getIntensity() const
+{
+	return m_intensity;
+}
 
 }
