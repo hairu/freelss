@@ -65,6 +65,8 @@ public:
 	PixelLocation rightLaserCalibrationBottom;
 	bool enableLighting;
 	int lightingPin;
+	bool enableAuthentication;
+	std::string passwordHash;
 private:
 
 	/** Default Constructor */

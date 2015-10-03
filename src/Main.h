@@ -49,9 +49,16 @@ The origin is the center of the turn table.
 // SQLITE
 #include <sqlite3.h>
 
+// LIBIW
+#include <iwlib.h>
+
+// OpenSSL
+#include <openssl/sha.h>
+
 #include <string>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <exception>
 #include <memory>
@@ -77,11 +84,14 @@ The origin is the center of the turn table.
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/utsname.h>
 
 // Non-configurable settings
 #define FREELSS_VERSION_MAJOR 1
-#define FREELSS_VERSION_MINOR 9
-#define FREELSS_VERSION_NAME "FreeLSS 1.9"
+#define FREELSS_VERSION_MINOR 10
+#define FREELSS_VERSION_NAME "FreeLSS 1.10"
 
 #define PI 3.14159265359
 
@@ -290,6 +300,7 @@ std::string ToString(UnitOfLength unit);
 std::string ToString(real value);
 std::string ToString(int value);
 std::string ToString(bool value);
+std::string ToHexString(unsigned char * data, size_t dataLength);
 real ToReal(const std::string& str);
 int ToInt(const std::string& str);
 bool ToBool(const std::string& str);

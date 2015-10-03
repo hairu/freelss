@@ -46,6 +46,8 @@ public:
 	static std::string viewScan(const std::string& plyFilename);
 	static std::string showUpdate(SoftwareUpdate * update, const std::string& message);
 	static std::string updateApplied(SoftwareUpdate * update, const std::string& message, bool success);
+	static std::string network(const std::string& message);
+	static std::string security(const std::string& message);
 
 	static const std::string PROFILE_NAME;
 	static const std::string SERIAL_NUMBER;
@@ -88,10 +90,18 @@ public:
 	static const std::string ENABLE_LIGHTING;
 	static const std::string LIGHTING_PIN;
 	static const std::string CREATE_BASE_FOR_OBJECT;
+	static const std::string WIFI_ESSID;
+	static const std::string WIFI_PASSWORD;
+	static const std::string KERNEL_VERSION;
+	static const std::string MENU2;
+	static const std::string ENABLE_AUTHENTICATION;
+	static const std::string AUTH_USERNAME;
+	static const std::string AUTH_PASSWORD1;
+	static const std::string AUTH_PASSWORD2;
 
 private:
 	static std::string setting(const std::string& name, const std::string& label,
-			const std::string& value, const std::string& description, const std::string& units = "", bool readOnly = false);
+			const std::string& value, const std::string& description, const std::string& units = "", bool readOnly = false, bool password = false);
 
 	static std::string setting(const std::string& name, const std::string& label,
 			int value, const std::string& description, const std::string& units = "", bool readOnly = false);
@@ -141,6 +151,12 @@ private:
 	static const std::string ENABLE_LIGHTING_DESCR;
 	static const std::string LIGHTING_PIN_DESCR;
 	static const std::string CREATE_BASE_FOR_OBJECT_DESCR;
+	static const std::string WIFI_ESSID_DESCR;
+	static const std::string WIFI_PASSWORD_DESCR;
+	static const std::string ENABLE_AUTHENTICATION_DESCR;
+	static const std::string AUTH_USERNAME_DESCR;
+	static const std::string AUTH_PASSWORD1_DESCR;
+	static const std::string AUTH_PASSWORD2_DESCR;
 };
 
 }

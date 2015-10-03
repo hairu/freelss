@@ -60,7 +60,9 @@ Setup::Setup() :
 	unitOfLength(UL_INCHES),
 	haveLaserPlaneNormals(false),
 	enableLighting(false),
-	lightingPin(3)
+	lightingPin(3),
+	enableAuthentication(false),
+	passwordHash("")
 {
 	cameraLocation.x = 0;
 	cameraLocation.y = 82.55;
@@ -114,6 +116,8 @@ void Setup::encodeProperties(std::vector<Property>& properties)
 	properties.push_back(Property("setup.haveLaserPlaneNormals", ToString(haveLaserPlaneNormals)));
 	properties.push_back(Property("setup.enableLighting", ToString(enableLighting)));
 	properties.push_back(Property("setup.lightingPin", ToString(lightingPin)));
+	properties.push_back(Property("setup.enableAuthentication", ToString(enableAuthentication)));
+	properties.push_back(Property("setup.passwordHash", passwordHash));
 
 
 	if (haveLaserPlaneNormals)
@@ -301,6 +305,14 @@ void Setup::decodeProperties(const std::vector<Property>& properties)
 		else if (prop.name == "setup.lightingPin")
 		{
 			lightingPin = ToInt(prop.value);
+		}
+		else if (prop.name == "setup.enableAuthentication")
+		{
+			enableAuthentication = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.passwordHash")
+		{
+			passwordHash = prop.value;
 		}
 	}
 }

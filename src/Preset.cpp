@@ -39,7 +39,7 @@ Preset::Preset() :
 	id(-1),
 	framesPerRevolution(800),
 	generateXyz (false),
-	generateStl(true),
+	generateStl(false),
 	generatePly(true),
 	createBaseForObject(true),
 	enableBurstModeForStillImages(false),

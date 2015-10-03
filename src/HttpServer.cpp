@@ -32,6 +32,7 @@
 #include "Progress.h"
 #include "MemWriter.h"
 #include "Lighting.h"
+#include "WifiConfig.h"
 #include <three.min.js.h>
 #include <OrbitControls.js.h>
 #include <PLYLoader.js.h>
@@ -267,6 +268,101 @@ static void SavePreset(RequestInfo * reqInfo)
 
 	/** Save the properties */
 	SaveProperties();
+}
+
+static std::string ConnectWifi(RequestInfo * reqInfo)
+{
+	std::string password = reqInfo->arguments[WebContent::WIFI_PASSWORD];
+	if (password.empty())
+	{
+		return "Password is required";
+	}
+
+	std::string essidIndexStr = reqInfo->arguments[WebContent::WIFI_ESSID];
+	if (essidIndexStr.empty())
+	{
+		return "Missing ESSID";
+	}
+
+	std::string message;
+	int index = ToInt(essidIndexStr);
+	WifiConfig * wifi = WifiConfig::get();
+
+	try
+	{
+		std::vector<WifiConfig::AccessPoint> accessPoints = wifi->getAccessPoints();
+		if (index < 0 || index >= (int)accessPoints.size())
+		{
+			throw Exception("Invalid access point index");
+		}
+
+		// Connect via WiFi
+		wifi->connect(accessPoints[index].essid, password);
+		message = "Connecting to " + accessPoints[index].essid + "...";
+	}
+	catch (Exception& ex)
+	{
+		message = ex;
+	}
+	catch (...)
+	{
+		throw;
+	}
+
+	return message;
+}
+
+static std::string SaveAuthenticationSettings(RequestInfo * reqInfo)
+{
+	Setup * setup = Setup::get();
+
+	std::string message;
+
+	std::string password1 = reqInfo->arguments[WebContent::AUTH_PASSWORD1];
+	std::string password2 = reqInfo->arguments[WebContent::AUTH_PASSWORD2];
+	std::string enablePassword = reqInfo->arguments[WebContent::ENABLE_AUTHENTICATION];
+
+	if (!enablePassword.empty())
+	{
+		if (password1 == password2)
+		{
+			if (!password1.empty())
+			{
+				// Generate hash for the password
+				unsigned char hash[SHA_DIGEST_LENGTH];
+				memset(hash, 0, sizeof(hash));
+				SHA1((const unsigned char *)password1.c_str(), password1.size(), hash);
+
+				setup->passwordHash = ToHexString(hash, SHA_DIGEST_LENGTH);
+				setup->enableAuthentication = true;
+				message = "Enabled password requirement";
+				SaveProperties();
+			}
+			else
+			{
+				message = "Password must be given";
+			}
+		}
+		else
+		{
+			message = "Passwords do not match";
+		}
+	}
+	else
+	{
+		if (password1.empty() && password2.empty())
+		{
+			message = "Disabled password requirement";
+			setup->enableAuthentication = false;
+			SaveProperties();
+		}
+		else
+		{
+			message = "\"Require Password\" must be enable before setting a password";
+		}
+	}
+
+	return message;
 }
 
 static void SaveSetup(RequestInfo * reqInfo)
@@ -946,6 +1042,40 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
 			MHD_destroy_response (response);
 		}
+		else if (reqInfo->url.find("/network") == 0)
+		{
+			// Save the settings if this was a post
+			std::string cmd = reqInfo->arguments["cmd"];
+			std::string message = "";
+
+			if (reqInfo->method == RequestInfo::POST && cmd == "connect")
+			{
+				message = ConnectWifi(reqInfo);
+			}
+
+			std::string page = WebContent::network(message);
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
+		else if (reqInfo->url.find("/security") == 0)
+		{
+			// Save the settings if this was a post
+			std::string cmd = reqInfo->arguments["cmd"];
+			std::string message = "";
+
+			if (reqInfo->method == RequestInfo::POST && cmd == "save")
+			{
+				message = SaveAuthenticationSettings(reqInfo);
+			}
+
+			std::string page = WebContent::security(message);
+			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+			MHD_add_response_header (response, "Content-Type", "text/html");
+			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);
+			MHD_destroy_response (response);
+		}
 		else if (reqInfo->url.find("/cal1") == 0)
 		{
 			std::string cmd = reqInfo->arguments["cmd"];
@@ -1245,19 +1375,68 @@ static int ContinueRequest(RequestInfo * reqInfo)
 {
 	int ret = MHD_YES;
 
-	if (reqInfo->method == RequestInfo::POST && reqInfo->uploadDataSize != 0)
+	Setup * setup = Setup::get();
+
+	// HTTP Basic Auth
+
+	bool authenticated = false;
+
+	if (setup->enableAuthentication)
 	{
-		MHD_post_process (reqInfo->postProcessor, reqInfo->uploadData, reqInfo->uploadDataSize);
-		reqInfo->uploadDataSize = 0;
-	}
-	else if (reqInfo->method == RequestInfo::GET || reqInfo->uploadDataSize == 0)
-	{
-		// Process the request
-		ret = ProcessPageRequest(reqInfo);
+		char * pass = NULL;
+		char * user = MHD_basic_auth_get_username_password (reqInfo->connection, &pass);
+		try
+		{
+			if (pass != NULL)
+			{
+				// Generate hash for the password
+				std::string password = pass;
+				unsigned char hash[SHA_DIGEST_LENGTH];
+				memset(hash, 0, sizeof(hash));
+				SHA1((const unsigned char *)password.c_str(), password.size(), hash);
+
+				// Test against the stored hash
+				authenticated = ToHexString(hash, SHA_DIGEST_LENGTH) == setup->passwordHash;
+			}
+		}
+		catch (...)
+		{
+			free(pass);
+			free(user);
+			throw;
+		}
+
+		free(pass);
+		free(user);
 	}
 	else
 	{
-		ret = BuildError(reqInfo->connection, "Bad Request", MHD_HTTP_BAD_REQUEST);
+		authenticated = true;
+	}
+
+	if (authenticated)
+	{
+		if (reqInfo->method == RequestInfo::POST && reqInfo->uploadDataSize != 0)
+		{
+			MHD_post_process (reqInfo->postProcessor, reqInfo->uploadData, reqInfo->uploadDataSize);
+			reqInfo->uploadDataSize = 0;
+		}
+		else if (reqInfo->method == RequestInfo::GET || reqInfo->uploadDataSize == 0)
+		{
+			// Process the request
+			ret = ProcessPageRequest(reqInfo);
+		}
+		else
+		{
+			ret = BuildError(reqInfo->connection, "Bad Request", MHD_HTTP_BAD_REQUEST);
+		}
+	}
+	else
+	{
+		std::string page = "<html><body>UNAUTHORIZED</body></html>";
+		struct MHD_Response * response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_PERSISTENT);
+		ret = MHD_queue_basic_auth_fail_response (reqInfo->connection, "ATLAS 3D", response);
+		MHD_destroy_response (response);
 	}
 
 	return ret;

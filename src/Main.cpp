@@ -30,6 +30,7 @@
 #include "Setup.h"
 #include "UpdateManager.h"
 #include "Lighting.h"
+#include "WifiConfig.h"
 #include <curl/curl.h>
 #include <algorithm>
 
@@ -76,6 +77,7 @@ struct InitSingletons
 		freelss::UpdateManager::get();
 		freelss::Setup::get();
 		freelss::Lighting::get();
+		freelss::WifiConfig::get();
 		freelss::HttpServer::get();
 	}
 
@@ -88,6 +90,7 @@ struct InitSingletons
 		freelss::UpdateManager::release();
 		freelss::PresetManager::release();
 		freelss::Lighting::release();
+		freelss::WifiConfig::release();
 		freelss::Setup::release();
 	}
 };
@@ -472,6 +475,17 @@ std::string ToString(UnitOfLength unit)
 	}
 
 	return out;
+}
+
+std::string ToHexString(unsigned char * data, size_t dataLength)
+{
+	std::stringstream sstr;
+	for (size_t iDat = 0; iDat < dataLength; iDat++)
+	{
+		sstr << std::setbase(16) << (unsigned) data[iDat];
+	}
+
+	return sstr.str();
 }
 
 std::string ToString(real value)

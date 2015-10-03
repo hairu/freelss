@@ -27,6 +27,7 @@
 #include "Progress.h"
 #include "PlyWriter.h"
 #include "Lighting.h"
+#include "WifiConfig.h"
 
 namespace freelss
 {
@@ -37,11 +38,10 @@ const int WebContent::LOW_DISK_SPACE_MB = 1000;
 const std::string WebContent::CSS = "\
 <style type=\"text/css\">\
 .menu2 {\
-	float: right;\
-	width: 350px;\
+	float: left;\
+	width: 650px;\
 	height: 20px;\
-	padding-bottom: 5px;\
-	margin-right: 100px;\
+    text-align: right;\
 }\
 body {\
 	font-size: 20px;\
@@ -252,6 +252,15 @@ const std::string WebContent::ENABLE_BURST_MODE = "ENABLE_BURST_MODE";
 const std::string WebContent::ENABLE_LIGHTING = "ENABLE_LIGHTING";
 const std::string WebContent::LIGHTING_PIN = "LIGHTING_PIN";
 const std::string WebContent::CREATE_BASE_FOR_OBJECT = "CREATE_BASE_FOR_OBJECT";
+const std::string WebContent::WIFI_ESSID = "WIFI_ESSID";
+const std::string WebContent::WIFI_PASSWORD = "WIFI_PASSWORD";
+const std::string WebContent::KERNEL_VERSION = "KERNEL_VERSION";
+const std::string WebContent::ENABLE_AUTHENTICATION = "ENABLE_AUTHENTICATION";
+const std::string WebContent::AUTH_USERNAME = "AUTH_USERNAME";
+const std::string WebContent::AUTH_PASSWORD1 = "AUTH_PASSWORD1";
+const std::string WebContent::AUTH_PASSWORD2 = "AUTH_PASSWORD2";
+const std::string WebContent::MENU2 = "<div class=\"menu2\"><a href=\"/checkUpdate\"><small><small>Check for Update</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/network\"><small><small>Network</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/security\"><small><small>Security</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/setup\"><small><small>Setup</small></small></a></div>";
+
 
 const std::string WebContent::SERIAL_NUMBER_DESCR = "The serial number of the ATLAS 3D scanner";
 const std::string WebContent::CAMERA_X_DESCR = "X-compoment of camera location. ie: The camera is always at X = 0.";
@@ -287,6 +296,12 @@ const std::string WebContent::ENABLE_BURST_MODE_DESCR = "Enables the camera's bu
 const std::string WebContent::ENABLE_LIGHTING_DESCR = "Enables support for controlling a connected light.";
 const std::string WebContent::LIGHTING_PIN_DESCR = "The wiringPi pin number for the light. Change will not go into effect until system is rebooted.";
 const std::string WebContent::CREATE_BASE_FOR_OBJECT_DESCR = "Adds a flat base to the object for easier 3D printing preparation.";
+const std::string WebContent::WIFI_ESSID_DESCR = "The wireless network to configure";
+const std::string WebContent::WIFI_PASSWORD_DESCR = "The password for the wireless network";
+const std::string WebContent::ENABLE_AUTHENTICATION_DESCR = "Enables password protection for accessing the scanner";
+const std::string WebContent::AUTH_USERNAME_DESCR = "The username to login with";
+const std::string WebContent::AUTH_PASSWORD1_DESCR = "The password to login with";
+const std::string WebContent::AUTH_PASSWORD2_DESCR = "Repeat the password";
 
 std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 {
@@ -616,8 +631,10 @@ std::string WebContent::showUpdate(SoftwareUpdate * update, const std::string& m
 <div id=\"menuContainer\">\
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
-  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
-</div>";
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
+		 << WebContent::MENU2
+		 << "\
+</div><div style=\"padding-top: 50px\">";
 
 	if (update != NULL)
 	{
@@ -637,7 +654,7 @@ std::string WebContent::showUpdate(SoftwareUpdate * update, const std::string& m
 		sstr << "<h2>No updates available.</h2>";
 	}
 
-	sstr << "</body></html>";
+	sstr << "</div></body></html>";
 
 	return sstr.str();
 }
@@ -656,12 +673,114 @@ std::string WebContent::updateApplied(SoftwareUpdate * update, const std::string
 <div id=\"menuContainer\">\
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
-  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
-</div>";
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
+		 << WebContent::MENU2
+		 << "\
+</div><div style=\"padding-top: 50px\">";
 
 	sstr << "<h2>" << message << "</h2>";
 
-	sstr << "</body></html>";
+	sstr << "</div></body></html>";
+
+	return sstr.str();
+}
+
+std::string WebContent::security(const std::string& message)
+{
+	Setup * setup = Setup::get();
+
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+		 << CSS
+		 << std::endl
+		 << JAVASCRIPT
+		 << std::endl
+		 << "</head>"
+		 << "\
+<body>\
+<div id=\"menuContainer\">\
+  <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
+  <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
+		 << WebContent::MENU2
+		 << "\
+</div><div style=\"padding-top: 50px\">";
+
+	if (!message.empty())
+	{
+		sstr << "<h2>" << message << "</h2>";
+	}
+
+	sstr << "<form action=\"/security\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
+	sstr << checkbox(WebContent::ENABLE_AUTHENTICATION, "Require Password", setup->enableAuthentication, ENABLE_AUTHENTICATION_DESCR);
+	sstr << setting(WebContent::AUTH_USERNAME, "Username", "pi", AUTH_USERNAME_DESCR,  "", true);
+	sstr << setting(WebContent::AUTH_PASSWORD1, "Password", "", AUTH_PASSWORD1_DESCR,  "", false, true);
+	sstr << setting(WebContent::AUTH_PASSWORD2, "Repeat Password", "", AUTH_PASSWORD2_DESCR,  "", false, true);
+	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"save\">\
+<input class=\"submit\" type=\"submit\" value=\"Save\">\
+</p></form></div>\
+</body></html>";
+
+	return sstr.str();
+}
+std::string WebContent::network(const std::string& message)
+{
+	WifiConfig * wifi = WifiConfig::get();
+
+	//  Perform a scan
+	wifi->scan();
+
+	std::vector<std::string> interfaces = wifi->getAllInterfaces();
+	std::vector<WifiConfig::AccessPoint> accessPoints = wifi->getAccessPoints();
+
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+		 << CSS
+		 << std::endl
+		 << JAVASCRIPT
+		 << std::endl
+		 << "</head>"
+		 << "\
+<body>\
+<div id=\"menuContainer\">\
+  <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
+  <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
+		 << WebContent::MENU2
+		 << "\
+</div><div style=\"padding-top: 50px\">";
+
+	if (!message.empty())
+	{
+		sstr << "<h2>" << message << "</h2>";
+	}
+
+	sstr << "<form action=\"/network\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
+
+	for (size_t iNt = 0; iNt < interfaces.size(); iNt++)
+	{
+		std::string interface = interfaces[iNt];
+		if (interface != "lo")
+		{
+			sstr << setting(interface, interface, wifi->getIpAddress(interface), "IP address for " + interface, "", true);
+		}
+	}
+
+	sstr << "<div><div class=\"settingsText\">Wireless Network</div>";
+	sstr << "<select name=\"" << WebContent::WIFI_ESSID << "\">";
+	for (size_t iAp = 0; iAp < accessPoints.size(); iAp++)
+	{
+		sstr << "<option value=\"" << iAp << "\">" << accessPoints[iAp].essid << "</option>\r\n";
+	}
+
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">The wireless network to connect to.</div>\n";
+
+	sstr << setting(WebContent::WIFI_PASSWORD, "Wireless Password", "", WIFI_PASSWORD_DESCR);
+	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"connect\">\
+<input class=\"submit\" type=\"submit\" value=\"Connect\">\
+</p></form></div>\
+</body></html>";
 
 	return sstr.str();
 }
@@ -675,6 +794,14 @@ std::string WebContent::setup(const std::string& message)
 	// Detect the amount of free space available
 	std::string freeSpaceMb = ToString(GetFreeSpaceMb());
 
+	std::stringstream kernelVersion;
+	struct utsname uts;
+
+	if (uname(&uts) == 0)
+	{
+		kernelVersion << uts.sysname << " " << uts.release << " " << uts.version << " " << uts.machine;
+	}
+
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
 		 << CSS
@@ -687,8 +814,10 @@ std::string WebContent::setup(const std::string& message)
 <div id=\"menuContainer\">\
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
-  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
-</div>";
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
+	     << WebContent::MENU2
+	     << "\
+</div><div style=\"padding-top: 50px\">";
 
 	if (!message.empty())
 	{
@@ -736,11 +865,12 @@ std::string WebContent::setup(const std::string& message)
 	sstr << setting(WebContent::LIGHTING_PIN, "Lighting Pin", setup->lightingPin, LIGHTING_PIN_DESCR);
 	sstr << setting(WebContent::VERSION_NAME, "Firmware Version", FREELSS_VERSION_NAME, "The version of FreeLSS the scanner is running", "", true);
 	sstr << setting(WebContent::FREE_DISK_SPACE, "Free Space", freeSpaceMb, "The amount of free disk space available", "MB", true);
+	sstr << setting(WebContent::KERNEL_VERSION, "Kernel", kernelVersion.str(), "The version of the kernel", "", true);
 
 
 	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"save\">\
 <input class=\"submit\" type=\"submit\" value=\"Save\">\
-</p></form>\
+</p></form></div>\
 </body></html>";
 
 	     return sstr.str();
@@ -766,9 +896,9 @@ std::string WebContent::settings(const std::string& message)
 <div id=\"menuContainer\">\
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
-  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
-  <div class=\"menu2\"><a href=\"/checkUpdate\"><small><small>Check for Update</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/setup\"><small><small>Setup</small></small></a></div>\
-</div>";
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
+	     << WebContent::MENU2
+	     << "</div>";
 
 	if (!message.empty())
 	{
@@ -872,7 +1002,7 @@ std::string WebContent::settings(const std::string& message)
 	sstr << checkbox(WebContent::GENERATE_XYZ, "Generate XYZ File", preset.generateXyz, GENERATE_XYZ_DESCR);
 	sstr << checkbox(WebContent::SEPARATE_LASERS_BY_COLOR, "Separate the Lasers", preset.laserMergeAction == Preset::LMA_SEPARATE_BY_COLOR, SEPARATE_LASERS_BY_COLOR_DESCR);
 	sstr << checkbox(WebContent::ENABLE_BURST_MODE, "Enable Burst Mode", preset.enableBurstModeForStillImages, ENABLE_BURST_MODE_DESCR);
-	sstr << checkbox(WebContent::CREATE_BASE_FOR_OBJECT, "Create Baser for Object", preset.createBaseForObject, CREATE_BASE_FOR_OBJECT_DESCR);
+	sstr << checkbox(WebContent::CREATE_BASE_FOR_OBJECT, "Create Base for Object", preset.createBaseForObject, CREATE_BASE_FOR_OBJECT_DESCR);
 
 	sstr << "<p><br><br><a target=\"_\" href=\"/licenses.txt\">Licenses</a></p>";
 	sstr << "</form>\
@@ -890,27 +1020,47 @@ std::string WebContent::settings(const std::string& message)
 }
 
 std::string WebContent::setting(const std::string& name, const std::string& label,
-			const std::string& value, const std::string& description, const std::string& units, bool readOnly)
+			const std::string& value, const std::string& description, const std::string& units, bool readOnly, bool password)
 {
 	std::stringstream sstr;
 	sstr << "<div><div class=\"settingsText\">"
 		 << label
-		 << "</div><input class=\"settingsInput\" value=\""
-		 << value
-		 << "\" name=\""
-		 << name
-		 << "\" ";
+		 << "</div>";
 
-	if (readOnly)
+	if (!readOnly)
 	{
-		sstr << "readonly=\"true\"";
+		sstr << "<input class=\"settingsInput\" value=\""
+			 << value
+			 << "\" name=\""
+			 << name
+			 << "\" ";
+
+		if (readOnly)
+		{
+			sstr << "readonly=\"true\"";
+		}
+
+		if (password)
+		{
+			sstr << " type=\"password\"";
+		}
+
+		sstr << "> ";
+
+		if (!units.empty())
+		{
+			sstr << units;
+		}
 	}
-
-	sstr << "> ";
-
-	if (!units.empty())
+	else
 	{
-		sstr << units;
+		sstr << "<div><small>" << value << "</small> ";
+
+		if (!units.empty())
+		{
+			sstr << units;
+		}
+		sstr << "</div>";
 	}
 
 	sstr << "</div><div class=\"settingsDescr\">" << description << "</div>\n";
