@@ -278,27 +278,37 @@ static std::string ConnectWifi(RequestInfo * reqInfo)
 		return "Password is required";
 	}
 
-	std::string essidIndexStr = reqInfo->arguments[WebContent::WIFI_ESSID];
-	if (essidIndexStr.empty())
+	std::string essid = reqInfo->arguments[WebContent::WIFI_ESSID_HIDDEN];
+	int index = -1;
+	if (essid.empty())
 	{
-		return "Missing ESSID";
+		std::string essidIndexStr = reqInfo->arguments[WebContent::WIFI_ESSID];
+		if (essidIndexStr.empty())
+		{
+			return "Missing ESSID";
+		}
+
+		index = ToInt(essidIndexStr);
 	}
 
 	std::string message;
-	int index = ToInt(essidIndexStr);
 	WifiConfig * wifi = WifiConfig::get();
 
 	try
 	{
-		std::vector<WifiConfig::AccessPoint> accessPoints = wifi->getAccessPoints();
-		if (index < 0 || index >= (int)accessPoints.size())
+		if (essid.empty())
 		{
-			throw Exception("Invalid access point index");
+			std::vector<WifiConfig::AccessPoint> accessPoints = wifi->getAccessPoints();
+			if (index < 0 || index >= (int)accessPoints.size())
+			{
+				throw Exception("Invalid access point index");
+			}
+			essid = accessPoints[index].essid;
 		}
 
 		// Connect via WiFi
-		wifi->connect(accessPoints[index].essid, password);
-		message = "Connecting to " + accessPoints[index].essid + "...";
+		wifi->connect(essid, password);
+		message = "Connecting to " + essid + "...";
 	}
 	catch (Exception& ex)
 	{
@@ -1053,7 +1063,8 @@ static int ProcessPageRequest(RequestInfo * reqInfo)
 				message = ConnectWifi(reqInfo);
 			}
 
-			std::string page = WebContent::network(message);
+			bool hiddenEssid = ! reqInfo->arguments["hidden"].empty();
+			std::string page = WebContent::network(message, hiddenEssid);
 			MHD_Response *response = MHD_create_response_from_buffer (page.size(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
 			MHD_add_response_header (response, "Content-Type", "text/html");
 			ret = MHD_queue_response (reqInfo->connection, MHD_HTTP_OK, response);

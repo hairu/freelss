@@ -253,6 +253,7 @@ const std::string WebContent::ENABLE_LIGHTING = "ENABLE_LIGHTING";
 const std::string WebContent::LIGHTING_PIN = "LIGHTING_PIN";
 const std::string WebContent::CREATE_BASE_FOR_OBJECT = "CREATE_BASE_FOR_OBJECT";
 const std::string WebContent::WIFI_ESSID = "WIFI_ESSID";
+const std::string WebContent::WIFI_ESSID_HIDDEN = "WIFI_ESSID_HIDDEN";
 const std::string WebContent::WIFI_PASSWORD = "WIFI_PASSWORD";
 const std::string WebContent::KERNEL_VERSION = "KERNEL_VERSION";
 const std::string WebContent::ENABLE_AUTHENTICATION = "ENABLE_AUTHENTICATION";
@@ -723,12 +724,15 @@ std::string WebContent::security(const std::string& message)
 
 	return sstr.str();
 }
-std::string WebContent::network(const std::string& message)
+std::string WebContent::network(const std::string& message, bool hiddenEssidInput)
 {
 	WifiConfig * wifi = WifiConfig::get();
 
 	//  Perform a scan
-	wifi->scan();
+	if (!hiddenEssidInput)
+	{
+		wifi->scan();
+	}
 
 	std::vector<std::string> interfaces = wifi->getAllInterfaces();
 	std::vector<WifiConfig::AccessPoint> accessPoints = wifi->getAccessPoints();
@@ -766,15 +770,24 @@ std::string WebContent::network(const std::string& message)
 		}
 	}
 
-	sstr << "<div><div class=\"settingsText\">Wireless Network</div>";
-	sstr << "<select name=\"" << WebContent::WIFI_ESSID << "\">";
-	for (size_t iAp = 0; iAp < accessPoints.size(); iAp++)
+	if (!hiddenEssidInput)
 	{
-		sstr << "<option value=\"" << iAp << "\">" << accessPoints[iAp].essid << "</option>\r\n";
-	}
+		sstr << "<div><div class=\"settingsText\">Wireless Network</div>";
+		sstr << "<select name=\"" << WebContent::WIFI_ESSID << "\">";
+		for (size_t iAp = 0; iAp < accessPoints.size(); iAp++)
+		{
+			sstr << "<option value=\"" << iAp << "\">" << accessPoints[iAp].essid << "</option>\r\n";
+		}
 
-	sstr << "</select></div>";
-	sstr << "<div class=\"settingsDescr\">The wireless network to connect to.</div>\n";
+		sstr << "</select>&nbsp;&nbsp;<a href=\"?hidden=true\"><small><small>Hidden</small></small></a></div>";
+
+		sstr << "";
+		sstr << "<div class=\"settingsDescr\">" << WIFI_ESSID_DESCR << "</div>\n";
+	}
+	else
+	{
+		sstr << setting(WebContent::WIFI_ESSID_HIDDEN, "Wireless Network", "", WIFI_ESSID_DESCR);
+	}
 
 	sstr << setting(WebContent::WIFI_PASSWORD, "Wireless Password", "", WIFI_PASSWORD_DESCR);
 	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"connect\">\

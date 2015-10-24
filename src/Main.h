@@ -90,8 +90,8 @@ The origin is the center of the turn table.
 
 // Non-configurable settings
 #define FREELSS_VERSION_MAJOR 1
-#define FREELSS_VERSION_MINOR 10
-#define FREELSS_VERSION_NAME "FreeLSS 1.10"
+#define FREELSS_VERSION_MINOR 11
+#define FREELSS_VERSION_NAME "FreeLSS 1.11"
 
 #define PI 3.14159265359
 

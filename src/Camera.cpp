@@ -22,6 +22,7 @@
 #include "Camera.h"
 #include "MmalStillCamera.h"
 #include "MmalVideoCamera.h"
+#include "MockCamera.h"
 #include "PresetManager.h"
 #include "Thread.h"
 
@@ -78,8 +79,9 @@ Camera * Camera::getInstance()
 	}
 	catch (...)
 	{
+		// Initialize the mock camera if there was a problem
+		m_instance = new MockCamera(m_reqImageWidth, m_reqImageHeight);
 		m_cs.leave();
-		throw;
 	}
 	m_cs.leave();
 
@@ -88,7 +90,6 @@ Camera * Camera::getInstance()
 
 void Camera::release()
 {
-
 	m_cs.enter();
 	try
 	{

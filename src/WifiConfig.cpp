@@ -22,7 +22,7 @@
 
 namespace freelss
 {
-// sudo apt-get install libiw-dev libssl-dev
+
 WifiConfig * WifiConfig::m_instance = NULL;
 const std::string WifiConfig::PROC_NET_WIRELESS = "/proc/net/wireless";
 const std::string WifiConfig::PROC_NET_DEV = "/proc/net/dev";

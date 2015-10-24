@@ -46,7 +46,7 @@ public:
 	static std::string viewScan(const std::string& plyFilename);
 	static std::string showUpdate(SoftwareUpdate * update, const std::string& message);
 	static std::string updateApplied(SoftwareUpdate * update, const std::string& message, bool success);
-	static std::string network(const std::string& message);
+	static std::string network(const std::string& message, bool hiddenEssidInput);
 	static std::string security(const std::string& message);
 
 	static const std::string PROFILE_NAME;
@@ -91,6 +91,7 @@ public:
 	static const std::string LIGHTING_PIN;
 	static const std::string CREATE_BASE_FOR_OBJECT;
 	static const std::string WIFI_ESSID;
+	static const std::string WIFI_ESSID_HIDDEN;
 	static const std::string WIFI_PASSWORD;
 	static const std::string KERNEL_VERSION;
 	static const std::string MENU2;

@@ -81,7 +81,7 @@ void ObjectBaseCreator::createBase(FaceMap & outFaces, std::vector<DataPoint>& r
 			DataPoint pt = basePoints[idx];
 
 			center.point.x += pt.point.x;
-			center.point.z += pt.point.y;
+			center.point.z += pt.point.z;
 
 			pointSubset.push_back(pt);
 		}
@@ -211,44 +211,6 @@ void ObjectBaseCreator::subdivide(std::vector<unsigned>& triangles, std::vector<
 		}
 	}
 }
-
-/*
-void ObjectBaseCreator::subdivide(std::vector<unsigned>& triangles, std::vector<DataPoint>& results)
-{
-	real32 oneThird = 1.0f / 3.0f;
-	size_t numTriIndices = triangles.size();
-	for (size_t idx = 0; idx + 2 < numTriIndices; idx += 3)
-	{
-		unsigned i1 = triangles[idx];
-		unsigned i2 = triangles[idx + 1];
-		unsigned i3 = triangles[idx + 2];
-		if (i1 < results.size() && i2 < results.size() && i3 < results.size())
-		{
-			DataPoint p1 = results[i1];
-			DataPoint p2 = results[i2];
-			DataPoint p3 = results[i3];
-
-			// Create a point in the center of the triangle
-			DataPoint newPt = p1;
-			newPt.point.x = (p1.point.x + p2.point.x + p3.point.x) * oneThird;
-			newPt.point.y = 0;
-			newPt.point.z = (p1.point.z + p2.point.z + p3.point.z) * oneThird;
-			newPt.index = (unsigned) results.size();
-
-			// Create triangles from this new point
-			updateTriangle(idx, p2, p1, newPt, triangles);
-			addTriangle(p3, p2, newPt, triangles);
-			addTriangle(p1, p3, newPt, triangles);
-
-			results.push_back(newPt);
-		}
-		else
-		{
-			std::cerr << "!! Invalid triangle index from set of " << results.size() << "(" << i1 << "," << i2 << "," << i3 << ")" << std::endl;
-		}
-	}
-}
-*/
 
 void ObjectBaseCreator::updateTriangle(unsigned idx1, const DataPoint& pt1, const DataPoint& pt2, const DataPoint& pt3, std::vector<unsigned>& triangles)
 {
