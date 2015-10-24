@@ -10,8 +10,8 @@ These instructions assume you are running the latest version of Raspbian.  Other
 
 First, update the firmware to the latest version and reboot.
 ```
-$ sudo rpi-update
 $ sudo apt-get update
+$ sudo apt-get upgrade
 ```
 
 Install the dependencies that are managed by the package manager.
