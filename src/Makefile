@@ -1,4 +1,4 @@
-VERSION=freelss-1-10
+VERSION=freelss-1-11
 CC=g++
 CFLAGS=-O3 -Wall -Winvalid-pch -fexceptions -I/usr/local/include -I/opt/vc/include \
 	-I/opt/vc/include/interface/vcos/pthreads \
@@ -16,7 +16,8 @@ OBJECTS=WebContent.o PropertyReaderWriter.o Main.o \
 	MmalVideoCamera.o PixelLocationWriter.o StlWriter.o TurnTable.o \
 	Laser.o Preset.o PresetManager.o Setup.o LaserResultsMerger.o\
 	XyzWriter.o UpdateManager.o Progress.o FileWriter.o MemWriter.o \
-	Facetizer.o MmalImageStore.o Lighting.o ObjectBaseCreator.o WifiConfig.o
+	Facetizer.o MmalImageStore.o Lighting.o ObjectBaseCreator.o WifiConfig.o \
+	MockCamera.o
 
 all: freelss 
 
@@ -130,6 +131,9 @@ ObjectBaseCreator.o: ObjectBaseCreator.cpp ObjectBaseCreator.h Main.h
 
 WifiConfig.o: WifiConfig.cpp WifiConfig.h Main.h
 	$(CC) -c $(CFLAGS) WifiConfig.cpp
+
+MockCamera.o: MockCamera.cpp MockCamera.h Main.h
+	$(CC) -c $(CFLAGS) MockCamera.cpp
 
 github:
 	mkdir -p ../../github
