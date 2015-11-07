@@ -44,44 +44,28 @@ void XyzWriter::write(const std::string& baseFilename, const std::vector<DataPoi
 		throw Exception("Error opening STL file for writing: " + xyzFilename);
 	}
 
-	uint32 maxNumRows = Camera::getInstance()->getImageHeight(); // TODO: Make this use the image height that generated the result and not the current Camera
-	uint32 numRowBins = 400; // TODO: Autodetect this or have it in Database
+	xyz << std::fixed;
 
-	try
+	real percent = 0;
+	for (size_t iRec = 0; iRec < results.size(); iRec++)
 	{
-		std::vector<DataPoint> frameA;
-		std::vector<DataPoint> currentFrame;
-
-		size_t resultIndex = 0;
-		real percent = 0;
-		while (DataPoint::readNextFrame(frameA, results, resultIndex))
+		real newPct = 100.0f * (iRec + 1) / results.size();
+		if (newPct - percent > 0.1)
 		{
-			real newPct = 100.0f * resultIndex / results.size();
-			if (newPct - percent > 0.1)
-			{
-				progress.setPercent(newPct);
-				percent = newPct;
-			}
-
-			// Reduce the number of result rows and filter out some of the noise
-			DataPoint::lowpassFilter(currentFrame, frameA, maxNumRows, numRowBins);
-
-			// Write the filtered results to the XYZ file
-			for (size_t iRec = 0; iRec < currentFrame.size(); iRec++)
-			{
-				const DataPoint& rec = currentFrame[iRec];
-				const ColoredPoint & pt = rec.point;
-
-				xyz << pt.x        << " " << pt.y        << " " << pt.z        << " "
-				    << pt.normal.x << " " << pt.normal.y << " " << pt.normal.z
-				    << std::endl;
-			}
+			progress.setPercent(newPct);
+			percent = newPct;
 		}
-	}
-	catch (...)
-	{
-		xyz.close();
-		throw;
+
+		const DataPoint& rec = results[iRec];
+		const ColoredPoint & pt = rec.point;
+
+		xyz << std::setprecision(2) << pt.x << " "
+			<< std::setprecision(2) << pt.y << " "
+			<< std::setprecision(2) << pt.z << " "
+			<< std::setprecision(2) << pt.normal.x << " "
+			<< std::setprecision(2) << pt.normal.y << " "
+			<< std::setprecision(2) << pt.normal.z
+			<< std::endl;
 	}
 
 	xyz.close();
