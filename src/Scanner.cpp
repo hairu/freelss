@@ -94,12 +94,6 @@ Scanner::Scanner() :
 
 Scanner::~Scanner()
 {
-	// Disable the turn table motor
-	if (m_turnTable != NULL)
-	{
-		m_turnTable->setMotorEnabled(false);
-	}
-
 	delete [] m_laserLocations;
 	delete [] m_columnPoints;
 }
