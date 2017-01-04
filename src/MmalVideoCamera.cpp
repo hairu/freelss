@@ -305,8 +305,8 @@ void MmalVideoCamera::createCameraComponent()
 		// Setup the video port
 		//
 		format = video_port->format;
-		format->encoding = MMAL_ENCODING_BGR24;
-		format->encoding_variant = MMAL_ENCODING_BGR24;
+		format->encoding = MMAL_ENCODING_RGB24;
+		format->encoding_variant = MMAL_ENCODING_RGB24;
 
 		format->es->video.width = VCOS_ALIGN_UP(m_imageWidth, 32);
 		format->es->video.height = VCOS_ALIGN_UP(m_imageHeight, 16);
