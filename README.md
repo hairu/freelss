@@ -1,10 +1,10 @@
-#FreeLSS
+# FreeLSS
 
 FreeLSS is a laser scanning program for the Raspberry Pi. It allows a Raspberry Pi to function as the core to a complete turn table laser scanning system.
 
 
 
-###COMPILE
+### COMPILE
 
 These instructions assume you are running the latest version of Raspbian.  Other distros will likely require changes.
 
@@ -32,7 +32,7 @@ $ git clone https://github.com/hairu/freelss
 $ cd freelss/src
 $ make
 ```
-###Running FreeLSS
+### Running FreeLSS
 FreeLSS must be ran as root (or another user with access to the hardware pins).  The interface for FreeLSS is web based and by default runs on port 80.  When running, access it by navigating to http://localhost/ from the Raspberry Pi itself. Or access it from another machine on the network by the Raspberry Pi's IP or hostname.  For Example: http://raspberrypi/
 
 The following command starts FreeLSS.
