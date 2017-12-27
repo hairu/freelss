@@ -34,7 +34,7 @@ public:
 	enum CameraType { CT_RASPICAM, CT_MMALSTILL, CT_MMALVIDEO, CT_RASPISTILL};
 
 	/** The camera mode */
-	enum CameraMode { CM_STILL_5MP, CM_VIDEO_5MP, CM_VIDEO_HD, CM_VIDEO_1P2MP, CM_VIDEO_VGA};
+	enum CameraMode { CM_STILL_8MP, CM_STILL_5MP, CM_VIDEO_5MP, CM_VIDEO_HD, CM_VIDEO_1P2MP, CM_VIDEO_VGA};
 
 	/** Returns the singleton instance */
 	static Camera * getInstance();

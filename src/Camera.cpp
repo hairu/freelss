@@ -115,6 +115,12 @@ void Camera::reinitialize()
 
 	switch (cameraMode)
 	{
+	case CM_STILL_8MP:
+		type = CT_MMALSTILL;
+		reqImageWidth = 3296;
+		reqImageHeight = 2512;
+		break;
+
 	case CM_STILL_5MP:
 		type = CT_MMALSTILL;
 		reqImageWidth = 2592;

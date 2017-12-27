@@ -971,6 +971,7 @@ std::string WebContent::settings(const std::string& message)
 	// Camera Mode UI
 	//
 	Camera::CameraMode cameraMode = preset.cameraMode;
+	std::string still8Sel   = cameraMode == Camera::CM_STILL_8MP  ? " SELECTED" : "";
 	std::string still5Sel   = cameraMode == Camera::CM_STILL_5MP  ? " SELECTED" : "";
 	std::string video5Sel   = cameraMode == Camera::CM_VIDEO_5MP ? " SELECTED" : "";
 	std::string videoHDSel  = cameraMode == Camera::CM_VIDEO_HD ? " SELECTED" : "";
@@ -979,6 +980,7 @@ std::string WebContent::settings(const std::string& message)
 
 	sstr << "<div><div class=\"settingsText\">Camera Mode</div>";
 	sstr << "<select name=\"" << WebContent::CAMERA_MODE<< "\">";
+	sstr << "<option value=\"" << (int)Camera::CM_STILL_8MP << "\"" << still8Sel << ">8 Megapixel (still mode, 3296x2512)</option>\r\n";
 	sstr << "<option value=\"" << (int)Camera::CM_STILL_5MP << "\"" << still5Sel << ">5 Megapixel (still mode, 2592x1944)</option>\r\n";
 	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_5MP << "\"" << video5Sel << ">5 Megapixel (video mode, 2592x1944)</option>\r\n";
 	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_HD << "\"" << videoHDSel << ">1.9 Megapixel (video mode, 1600x1200)</option>\r\n";
