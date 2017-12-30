@@ -16,14 +16,7 @@ $ sudo apt-get upgrade
 
 Install the dependencies that are managed by the package manager.
 ```
-$ sudo apt-get install libpng-dev libjpeg-dev cmake vlc git-core gcc build-essential unzip sqlite3 libsqlite3-dev libmicrohttpd-dev libcurl4-openssl-dev libiw-dev libssl-dev
-```
-
-Download and install wiringPi
-```
-$ git clone git://git.drogon.net/wiringPi
-$ cd wiringPi
-$ ./build
+$ sudo apt-get install libpng-dev libjpeg-dev git-core gcc build-essential unzip sqlite3 libsqlite3-dev libmicrohttpd-dev libcurl4-openssl-dev libiw-dev libssl-dev wiringpi 
 ```
 
 Download and build FreeLSS
