@@ -136,6 +136,7 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 }\
 #cal1ContentDiv {\
     margin-top: 75px;\
+    display: flex;\
 }\
 #cal1ControlsDiv {\
 	float: left;\
@@ -606,9 +607,9 @@ std::string WebContent::cal1(const std::string& inMessage)
 	</div>\
 	<div class=\"calDescr\">Rotates the turntable in degrees.</div>\
   </div>\
-<div style=\"position: relative\">\
+<div>\
 	<div>\
-		<img style=\"position: absolute\" onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" width=\"1296\" src=\"camImageL_\""
+		<img style=\"max-height:100vh; max-width:100vw\" onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" src=\"camImageL_\""
 	<< time(NULL)
 	<< ".jpg\">\
 	</div>\
