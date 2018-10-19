@@ -93,6 +93,9 @@ void UpdateManager::downloadFile(const std::string& url, const std::string& dest
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+		// TLS Certificate in use expired in early 2018; so do not check it
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE);
+
 		CURLcode curlCode = curl_easy_perform(curl);
 
 		// Read back the return code
