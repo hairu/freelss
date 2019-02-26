@@ -45,6 +45,9 @@ public:
 	/** Sleeps the active thread the specified number of MICROSECONDS */
 	static void usleep(unsigned long microseconds);
 	
+	/** Sleeps the active thread the specified number of SECONDS */
+	static void sleep(unsigned long seconds);
+
 protected:
 	/** True if stop() was called on this thread */
 	bool m_stopRequested;

@@ -26,12 +26,15 @@ namespace freelss
 {
 
 class ImageProcessor
-{	
-	
+{
+
 public:
 	ImageProcessor();
 	~ImageProcessor();
 	
+	/** The mode and amount of thresholding */
+	enum ThresholdMode { THM_STATIC, THM_LOW, THM_MEDIUM, THM_HIGH };
+
 	/**
 	 * Detects the laser in x, y pixel coordinates.
 	 * @param debuggingImage - If non-NULL, it will be populated with the processed image that was used to detect the laser locations.
@@ -44,6 +47,8 @@ public:
 	int process(Image& before, Image& after, Image * debuggingImage, PixelLocation * laserLocations, int maxNumLocations,
 			    int& firstRowLaserCol, int& numRowsBadFromColor, int& numRowsBadFromNumRanges, const char * debuggingCsvFile);
 
+	static void toHsv(real r, real g, real b, Hsv * hsv);
+
 private:
 
 	/** The starting and ending column for a detected laser line in the image */
@@ -52,6 +57,7 @@ private:
 		int startCol;
 		int endCol;
 		int centerCol;
+		real energy;
 	};
 
 	/**  Removes the ranges that on closer inspection don't appear to be caused by the laser */
@@ -64,17 +70,16 @@ private:
 	real computeMeanAverage(unsigned char * br, int numSteps, int stepSize);
 
 	/** Converts the RGB color to HSV */
-	static void toHsv(real r, real g, real b, Hsv * hsv);
-	static const real RED_HUE_LOWER_THRESHOLD;
-	static const real RED_HUE_UPPER_THRESHOLD;
 	static const unsigned RANGE_DISTANCE_THRESHOLD;
 
 	/** The LaserRanges for each column */
 	LaserRange * m_laserRanges;
-
+	ImageProcessor::ThresholdMode m_thresholdMode;
 	real m_laserMagnitudeThreshold;
+	real m_laserThresholdFactor;
 	int m_maxLaserWidth;
 	int m_minLaserWidth;
+	std::vector<real> m_magnitudes;
 };
 
 }

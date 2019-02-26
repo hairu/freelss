@@ -42,28 +42,39 @@ void Setup::release()
 }
 
 Setup::Setup() :
-	cameraLocation(),
-	leftLaserLocation(),
-	rightLaserLocation(),
-	rightLaserPin(5),
-	leftLaserPin(4),
-	motorEnablePin(0),
-	motorStepPin(7),
-	motorDirPin(1),
-	motorDirPinValue(0),
-	laserOnValue(1),
-	stepsPerRevolution(3200),
-	motorResponseDelay(2),
-	motorStepDelay(5000),
 	httpPort(80),
-	serialNumber(""),
-	unitOfLength(UL_INCHES),
-	haveLaserPlaneNormals(false),
-	enableLighting(false),
-	lightingPin(3),
-	enableAuthentication(false),
-	passwordHash("")
+	serialNumber("")
 {
+	reinit();
+}
+
+void Setup::reinit()
+{
+	rightLaserPin = 5;
+	leftLaserPin = 4;
+	motorEnablePin = 0;
+	motorStepPin = 7;
+	motorDirPin = 1;
+	motorDirPinValue = 0;
+	laserOnValue = 1;
+	stepsPerRevolution = 3200;
+	motorResponseDelay = 2;
+	motorStepDelay = 5000;
+	unitOfLength = UL_INCHES;
+	haveLaserPlaneNormals = false;
+	enableLighting = false;
+	lightingPin = 3;
+	enableAuthentication = false;
+	passwordHash = "";
+	enableUsbNetworkConfig = true;
+	enableExperimental = false;
+	enableWebGLWhenAvailable = true;
+	enablePointCloudRenderer = true;
+	overrideFocalLength = false;
+	overriddenFocalLength = "";
+	mmalFlipRedBlue = false;
+	maxObjectSize = 215.9;
+
 	cameraLocation.x = 0;
 	cameraLocation.y = 82.55;
 	cameraLocation.z = 260.35;
@@ -84,7 +95,6 @@ Setup::Setup() :
 	rightLaserPlaneNormal.y = 0;
 	rightLaserPlaneNormal.z = 0;
 }
-
 
 void Setup::encodeProperties(std::vector<Property>& properties)
 {
@@ -118,7 +128,14 @@ void Setup::encodeProperties(std::vector<Property>& properties)
 	properties.push_back(Property("setup.lightingPin", ToString(lightingPin)));
 	properties.push_back(Property("setup.enableAuthentication", ToString(enableAuthentication)));
 	properties.push_back(Property("setup.passwordHash", passwordHash));
-
+	properties.push_back(Property("setup.enableUsbNetworkConfig", ToString(enableUsbNetworkConfig)));
+	properties.push_back(Property("setup.enableExperimental", ToString(enableExperimental)));
+	properties.push_back(Property("setup.enableWebGLWhenAvailable", ToString(enableWebGLWhenAvailable)));
+	properties.push_back(Property("setup.enablePointCloudRenderer", ToString(enablePointCloudRenderer)));
+	properties.push_back(Property("setup.overrideFocalLength", ToString(overrideFocalLength)));
+	properties.push_back(Property("setup.overriddenFocalLength", overriddenFocalLength));
+	properties.push_back(Property("setup.mmalFlipBlueRed", ToString(mmalFlipRedBlue)));
+	properties.push_back(Property("setup.maxObjectSize", ToString(maxObjectSize)));
 
 	if (haveLaserPlaneNormals)
 	{
@@ -313,6 +330,38 @@ void Setup::decodeProperties(const std::vector<Property>& properties)
 		else if (prop.name == "setup.passwordHash")
 		{
 			passwordHash = prop.value;
+		}
+		else if (prop.name == "setup.enableUsbNetworkConfig")
+		{
+			enableUsbNetworkConfig = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.enableExperimental")
+		{
+			enableExperimental = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.enableWebGLWhenAvailable")
+		{
+			enableWebGLWhenAvailable = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.enablePointCloudRenderer")
+		{
+			enablePointCloudRenderer = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.overrideFocalLength")
+		{
+			overrideFocalLength = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.overriddenFocalLength")
+		{
+			overriddenFocalLength = prop.value;
+		}
+		else if (prop.name == "setup.mmalFlipBlueRed")
+		{
+			mmalFlipRedBlue = ToBool(prop.value);
+		}
+		else if (prop.name == "setup.maxObjectSize")
+		{
+			maxObjectSize = ToReal(prop.value);
 		}
 	}
 }

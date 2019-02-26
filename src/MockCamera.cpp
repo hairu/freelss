@@ -20,16 +20,25 @@
 
 #include "Main.h"
 #include "MockCamera.h"
-
+#include "Logger.h"
 
 namespace freelss
 {
 
-MockCamera::MockCamera(int imageWidth, int imageHeight) :
-	m_imageWidth(imageWidth),
-	m_imageHeight(imageHeight)
+MockCamera::MockCamera() :
+	m_imageWidth(-1),
+	m_imageHeight(-1)
 {
-	std::cout << "Creating Mock camera, width=" << m_imageWidth << ", height=" << m_imageHeight << std::endl;
+	m_name = "MockCamera";
+	setSensorProperties(3.629, 2.722, 3.6);
+}
+
+void MockCamera::initialize(CameraMode cameraMode)
+{
+	m_resolution = CreateResolution(640, 480, 15, CT_UNKNOWN, cameraMode, "Mock Camera VGA");
+	m_supportedResolutions.push_back(m_resolution);
+	m_imageWidth = m_resolution.width;
+	m_imageHeight = m_resolution.height;
 }
 
 Image * MockCamera::acquireImage()
@@ -72,6 +81,16 @@ void MockCamera::releaseImage(Image * image)
 	delete image;
 }
 
+void MockCamera::setShutterSpeed(unsigned shutterSpeedUs)
+{
+	// Do nothing
+}
+
+void MockCamera::setFlipRedBlue(bool flip)
+{
+	// Do nothing
+}
+
 int MockCamera::getImageHeight() const
 {
 	return m_imageHeight;
@@ -87,18 +106,9 @@ int MockCamera::getImageComponents() const
 	return 3;
 }
 
-real MockCamera::getSensorWidth() const
+void MockCamera::setBurstModeEnabled(bool /*enable*/)
 {
-	return 3.629;
+	// Do nothing
 }
 
-real MockCamera::getSensorHeight() const
-{
-	return 2.722;
-}
-
-real MockCamera::getFocalLength() const
-{
-	return 3.6;
-}
 } // end ns scanner

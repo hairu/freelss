@@ -60,6 +60,8 @@ private:
 
 	PresetManager();
 
+	void migratePresets(std::vector<Preset>& presets, int majorVersion, int minorVersion);
+
 	static PresetManager * m_instance;
 
 	/** The Presets */

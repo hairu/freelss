@@ -25,16 +25,43 @@
 namespace freelss
 {
 
+/** The type of camera instance to create */
+enum CameraAcquisitionType { CT_UNKNOWN = 0, CT_MMALSTILL = 1, CT_MMALVIDEO = 2 };
+
+/** The camera mode */
+enum CameraMode { CM_STILL_5MP, CM_VIDEO_5MP, CM_VIDEO_HD, CM_VIDEO_1P2MP, CM_VIDEO_VGA, CM_STILL_8MP, CM_STILL_VGA, CM_STILL_HD};
+
+/** The exposure time for capturing images */
+enum CameraExposureTime { CET_AUTO, CET_VERYSHORT, CET_SHORT, CET_MEDIUM, CET_LONG, CET_VERYLONG };
+
+struct CameraResolution
+{
+	/** Image width */
+	int width;
+
+	/** Image height */
+	int height;
+
+	/** The camera framerate */
+	int frameRate;
+
+	/** The type of acquisition to be made */
+	CameraAcquisitionType cameraType;
+
+	/** The camera mode */
+	CameraMode cameraMode;
+
+	/** The name of the resolution */
+	std::string name;
+};
+
+/** Builds a CameraResolution structure */
+CameraResolution CreateResolution(int width, int height, int frameRate, CameraAcquisitionType cameraType, CameraMode cameraMode, const std::string& shortName);
+
 /** Camera interface */
 class Camera
 {
 public:
-
-	/** The type of camera instance to create */
-	enum CameraType { CT_RASPICAM, CT_MMALSTILL, CT_MMALVIDEO, CT_RASPISTILL};
-
-	/** The camera mode */
-	enum CameraMode { CM_STILL_8MP, CM_STILL_5MP, CM_VIDEO_5MP, CM_VIDEO_HD, CM_VIDEO_1P2MP, CM_VIDEO_VGA};
 
 	/** Returns the singleton instance */
 	static Camera * getInstance();
@@ -47,6 +74,21 @@ public:
 
 	/** Destructor */
 	virtual ~Camera();
+
+	/** Returns the width of the sensor in mm */
+	virtual real getSensorWidth() const;
+
+	/** Returns the height of the sensor in mm */
+	virtual real getSensorHeight() const;
+
+	/** Returns the focal length of the camera in mm */
+	virtual real getFocalLength() const;
+
+	/** Returns the name of the camera */
+	virtual std::string getName() const;
+
+	/** Returns the list of supported resolutions */
+	virtual const std::vector<CameraResolution>& getSupportedResolutions() const;
 
 	/**
 	 * Reads an image from the camera.
@@ -80,21 +122,21 @@ public:
 	/** Returns the number of image components */
 	virtual int getImageComponents() const = 0;
 
-	/** Returns the width of the sensor in mm */
-	virtual real getSensorWidth() const = 0;
-
-	/** Returns the height of the sensor in mm */
-	virtual real getSensorHeight() const = 0;
-
-	/** Returns the focal length of the camera in mm */
-	virtual real getFocalLength() const = 0;
-
-
 	/**
 	 * Sets the earliest amount of time from now that a picture should allowed to be taken in seconds.
 	 * This gives the camera time to recognize things like laser changes in the scene.
 	 */
 	virtual void setAcquisitionDelay(double acquisitionDelaySec);
+
+	/**
+	 *  Sets the exposure time without having to recreate the camera.
+	 */
+	virtual void setExposureTime(CameraExposureTime exposureTime);
+
+	/**
+	 * Returns the camera resolution
+	 */
+	virtual const CameraResolution& getCameraResolution() const;
 
 protected:
 	Camera();
@@ -102,27 +144,41 @@ protected:
 	/** Delays the acquisition if requested by acquisition delay */
 	virtual void handleAcquisitionDelay();
 
+	/** Sets the shutter speed in microseconds */
+	virtual void setShutterSpeed(unsigned shutterSpeedUs) = 0;
+
+	/** Sets the sensor properties */
+	void setSensorProperties(real sensorWidth, real sensorHeight, real focalLength);
+
+	/** The name of the camera */
+	std::string m_name;
+
+	/** The resolutions that this camera supports */
+	std::vector<CameraResolution> m_supportedResolutions;
+
+	/** The camera resolution */
+	CameraResolution m_resolution;
 private:
+
+	static unsigned convertToShutterSpeed(CameraExposureTime exposureTime);
 
 	/** The min time that the next acquisition can take place */
 	double m_nextAcquisitionTimeSec;
 
+	/** The width of the sensor in mm */
+	real m_sensorWidth;
+
+	/** The height of the sensor in mm */
+	real m_sensorHeight;
+
+	/** The focal length of the camera in mm */
+	real m_focalLength;
+
 	/** The singleton instance */
 	static Camera * m_instance;
 
-	/** The type of camera that m_instance is */
-	static CameraType m_cameraType;
-
 	static CriticalSection m_cs;
 
-	/** The requested image width */
-	static int m_reqImageWidth;
-
-	/** The requested image height */
-	static int m_reqImageHeight;
-
-	/** The requested frame rate */
-	static int m_reqFrameRate;
 };
 
 }

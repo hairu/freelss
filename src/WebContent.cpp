@@ -28,6 +28,7 @@
 #include "PlyWriter.h"
 #include "Lighting.h"
 #include "WifiConfig.h"
+#include "BootConfigManager.h"
 
 namespace freelss
 {
@@ -60,6 +61,9 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 	font-weight: bold;\
 	font-size: 18px;\
 	margin-right: 15px;\
+}\
+.submitSmall {\
+	height: 30px;\
 }\
 .controlSubmit {\
 	width: 200px;\
@@ -144,15 +148,6 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 	float: none;\
 	margin-top: 75px;\
 }\
-#outerImageDiv {\
-	float: none;\
-	margin-top: 75px;\
-	width: 1296px;\
-	height: 972px;\
-	background-size: contain;\
-	background-repeat: no-repeat;\
-	background-image: url('skull.jpg');\
-}\
 #outerPresetDiv {\
 	margin-top: 75px;\
 	background-color: rgb(130, 130, 130);\
@@ -166,11 +161,13 @@ A:active  {color: #ffffff; font-size: 22px; font-weight: bold; text-shadow: #000
 	padding-right: 12px;\
 	padding-top: 5px;\
 }\
+#restoreDefaultsA {\
+	padding-top: 15px;\
+}\
 </style>";
 
 const std::string WebContent::JAVASCRIPT= "\
 <script type=\"text/javascript\">\
-var imageCount = 0;\
 \
 function endsWith(str, suffix) {\
     return str.indexOf(suffix, str.length - suffix.length) !== -1;\
@@ -179,35 +176,9 @@ function endsWith(str, suffix) {\
 function startup1(){\
 	setTimeout(updateImgImage, 1000);\
 }\
-function startup2(){\
-	setTimeout(updateDivImage, 1000);\
-}\
 function updateImgImage(){\
 	var img = document.getElementById('image');\
 	img.src = 'camImageL_' + Math.random() + '.jpg';\
-	imageCount = imageCount + 1;\
-}\
-function updateDivImage(){\
-	var div = document.getElementById('outerImageDiv');\
-	div.style.backgroundImage = \"url('camImageL_\" + Math.random() + \".jpg')\";\
-	imageCount = imageCount + 1;\
-	setTimeout(updateDivImage, 4000);\
-}\
-function centerTableClick(event)\
-{\
-	var pos_x = event.offsetX?(event.offsetX):event.pageX-document.getElementById('outerImageDiv').offsetLeft;\
-	var pos_y = event.offsetY?(event.offsetY):event.pageY-document.getElementById('outerImageDiv').offsetTop;\
-	window.location.href = 'cal3?y=' + pos_y;\
-}\
-function rightLaserClick(event) {\
-    var pos_x = event.offsetX?(event.offsetX):event.pageX-document.getElementById('outerImageDiv').offsetLeft;\
-    var pos_y = event.offsetY?(event.offsetY):event.pageY-document.getElementById('outerImageDiv').offsetTop;\
-	window.location.href = 'cal4?rightLaserX=' + pos_x + '&rightLaserY=' + pos_y;\
-}\
-function leftLaserClick(event) {\
-	var pos_x = event.offsetX?(event.offsetX):event.pageX-document.getElementById('outerImageDiv').offsetLeft;\
-	var pos_y = event.offsetY?(event.offsetY):event.pageY-document.getElementById('outerImageDiv').offsetTop;\
-	window.location.href = 'cal5?leftLaserX=' + pos_x + '&leftLaserY=' + pos_y;\
 }\
 </script>";
 
@@ -260,10 +231,39 @@ const std::string WebContent::ENABLE_AUTHENTICATION = "ENABLE_AUTHENTICATION";
 const std::string WebContent::AUTH_USERNAME = "AUTH_USERNAME";
 const std::string WebContent::AUTH_PASSWORD1 = "AUTH_PASSWORD1";
 const std::string WebContent::AUTH_PASSWORD2 = "AUTH_PASSWORD2";
+const std::string WebContent::NOISE_REMOVAL_SETTING = "NOISE_REMOVAL_SETTING";
+const std::string WebContent::IMAGE_THRESHOLD_MODE = "IMAGE_THRESHOLD_MODE";
+const std::string WebContent::CAMERA_EXPOSURE_TIME = "CAMERA_EXPOSURE_TIME";
+const std::string WebContent::ENABLE_USB_NETWORK_CONFIG = "ENABLE_USB_NETWORK_CONFIG";
+const std::string WebContent::MOUNT_SERVERPATH = "MOUNT_SERVERPATH";
+const std::string WebContent::MOUNT_USERNAME = "MOUNT_USERNAME";
+const std::string WebContent::MOUNT_PASSWORD = "MOUNT_PASSWORD";
+const std::string WebContent::MOUNT_WORKGROUP = "MOUNT_WORKGROUP";
+const std::string WebContent::PHOTO_MOUNT = "PHOTO_MOUNT";
+const std::string WebContent::PHOTO_WRITE_LASER_IMAGES = "PHOTO_WRITE_LASER_IMAGES";
+const std::string WebContent::MOUNT_INDEX = "MOUNT_INDEX";
+const std::string WebContent::GPU_MEMORY = "GPU_MEMORY";
+const std::string WebContent::DISABLE_CAMERA_LED = "DISABLE_CAMERA_LED";
+const std::string WebContent::ENABLE_EXPERIMENTAL = "ENABLE_EXPERIMENTAL";
+const std::string WebContent::RESTORE_DEFAULTS = "RESTORE_DEFAULTS";
+const std::string WebContent::WIDTH = "WIDTH";
+const std::string WebContent::PIXEL_RADIUS = "PIXEL_RADIUS";
+const std::string WebContent::ROTATION = "ROTATION";
+const std::string WebContent::ENABLE_WEBGL = "ENABLE_WEBGL";
+const std::string WebContent::CAMERA_SENSOR = "CAMERA_SENSOR";
+const std::string WebContent::ENABLE_POINT_CLOUD_RENDERER = "ENABLE_POINT_CLOUD_RENDERER";
+const std::string WebContent::OVERRIDE_FOCAL_LENGTH = "OVERRIDE_FOCAL_LENGTH";
+const std::string WebContent::OVERRIDDEN_FOCAL_LENGTH = "OVERRIDDEN_FOCAL_LENGTH";
+const std::string WebContent::FLIP_RED_BLUE = "FLIP_RED_BLUE";
+const std::string WebContent::MAX_OBJECT_SIZE = "MAX_OBJECT_SIZE";
+
+const std::string WebContent::ID = "id";
 const std::string WebContent::MENU2 = "<div class=\"menu2\"><a href=\"/checkUpdate\"><small><small>Check for Update</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/network\"><small><small>Network</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/security\"><small><small>Security</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/setup\"><small><small>Setup</small></small></a></div>";
+const std::string WebContent::MENU2_EXPERIMENTAL = "<div class=\"menu2\"><a href=\"/checkUpdate\"><small><small>Check for Update</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/mounts\"><small><small>Mounts</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/network\"><small><small>Network</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/security\"><small><small>Security</small></small></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/setup\"><small><small>Setup</small></small></a></div>";
+const std::string WebContent::MENU3 = "<div class=\"menu2\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/writePhotos\"><small><small>Capture Photos</small></small></a></div>";
 
 
-const std::string WebContent::SERIAL_NUMBER_DESCR = "The serial number of the ATLAS 3D scanner";
+const std::string WebContent::SERIAL_NUMBER_DESCR = "The serial number or license key of the ATLAS 3D scanner";
 const std::string WebContent::CAMERA_X_DESCR = "X-compoment of camera location. ie: The camera is always at X = 0.";
 const std::string WebContent::CAMERA_Y_DESCR = "Y-component of camera location. ie: The distance from camera center to the XZ plane";
 const std::string WebContent::CAMERA_Z_DESCR = "Z-component of camera location. ie: The distance from camera center to origin";
@@ -303,10 +303,31 @@ const std::string WebContent::ENABLE_AUTHENTICATION_DESCR = "Enables password pr
 const std::string WebContent::AUTH_USERNAME_DESCR = "The username to login with";
 const std::string WebContent::AUTH_PASSWORD1_DESCR = "The password to login with";
 const std::string WebContent::AUTH_PASSWORD2_DESCR = "Repeat the password";
+const std::string WebContent::NOISE_REMOVAL_SETTING_DESCR = "Controls how aggressively noise should be removed from the point cloud";
+const std::string WebContent::IMAGE_THRESHOLD_MODE_DESCR = "Controls how the laser line is detected in the image.<br>Static is the old method and the threshold must be given below.<br>The new adaptive mode is enabled by selecting low, medium, or high and does not require a threshold.";
+const std::string WebContent::CAMERA_EXPOSURE_TIME_DESCR = "Controls how long the shutter stays open for each picture. Default is Auto";
+const std::string WebContent::ENABLE_USB_NETWORK_CONFIG_DESCR = "Enables the ability to configure the network via USB flash drives.";
+const std::string WebContent::MOUNT_PASSWORD_DESCR = "The user's password on the server.";
+const std::string WebContent::MOUNT_USERNAME_DESCR = "The user's username on the server.";
+const std::string WebContent::MOUNT_SERVERPATH_DESCR = "The source SMB mount path. Ex: \\\\server\\files";
+const std::string WebContent::MOUNT_WORKGROUP_DESCR = "The workgroup on the server.";
+const std::string WebContent::PHOTO_MOUNT_DESCR = "The location to write the photos.";
+const std::string WebContent::PHOTO_WRITE_LASER_IMAGES_DESCR = "Whether the laser on pictures should be taken or not.";
+const std::string WebContent::GPU_MEMORY_DESCR = "Changes the amount of memory dedicated to the GPU.  Reboot is required.";
+const std::string WebContent::DISABLE_CAMERA_LED_DESCR = "Disables the LED light on the camera.  Reboot is required.";
+const std::string WebContent::ENABLE_EXPERIMENTAL_DESCR = "Allows access to the experimental features.";
+const std::string WebContent::RESTORE_DEFAULTS_DESCR = "Restore the default settings for the scanner?";
+const std::string WebContent::ENABLE_WEBGL_DESCR = "Enable WebGL when available.";
+const std::string WebContent::ENABLE_POINT_CLOUD_RENDERER_DESCR = "Enables the 2D point cloud renderer";
+const std::string WebContent::OVERRIDE_FOCAL_LENGTH_DESCR = "Overrides the camera's focal length with the value given below.";
+const std::string WebContent::OVERRIDDEN_FOCAL_LENGTH_DESCR = "The value override the camera's focal length with.  This is always in millimters.";
+const std::string WebContent::FLIP_RED_BLUE_DESCR = "Flips the red and blue channels in the image.";
+const std::string WebContent::MAX_OBJECT_SIZE_DESCR = "The maximum size object that can be scanned.";
 
 std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 {
 	const Preset& preset = PresetManager::get()->getActivePreset();
+	Setup * setup = Setup::get();
 	std::string presetName = preset.name;
 
 	std::stringstream sstr;
@@ -325,7 +346,7 @@ std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 </div>\
 <p>Click the button to start the scan </p>\
 <form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
-<div><div class=\"settingsText\">Preset</div><input class=\"settingsInput\" readonly=\"true\" value=\"" << presetName << "\"></div>\
+<div><div class=\"settingsText\">Preset</div><div><small>" << presetName << "</small></div></div>\
 <div><div class=\"settingsText\">Range</div><input name=\"degrees\" class=\"settingsInput\" value=\"360\"> degrees</div>\
 	<input type=\"hidden\" name=\"cmd\" value=\"startScan\">\
 	<input class=\"submit\" type=\"submit\" value=\"Start Scan\">\
@@ -339,7 +360,7 @@ std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 
 	for (size_t iRt = 0; iRt < pastScans.size(); iRt++)
 	{
-		sstr << WebContent::scanResult(iRt + 1, pastScans[iRt]);
+		sstr << WebContent::scanResult(iRt + 1, pastScans[iRt], setup->enablePointCloudRenderer);
 	}
 
 	sstr << "</body></html>";
@@ -347,7 +368,52 @@ std::string WebContent::scan(const std::vector<ScanResult>& pastScans)
 	return sstr.str();
 }
 
-std::string WebContent::scanResult(size_t index, const ScanResult& result)
+std::string WebContent::writePhotos(const std::vector<std::string>& mountPaths)
+{
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+		 << CSS
+		 << std::endl
+		 << JAVASCRIPT
+		 << std::endl
+		 << "</head>"
+		 << "\
+<body>\
+<div id=\"menuContainer\">\
+  <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
+  <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
+  </div><div style=\"padding-top: 50px\">";
+
+	if (mountPaths.empty())
+	{
+		sstr << "<h2>No valid mount paths detected.</h2>";
+		sstr << "</div> </body></html>";
+		return sstr.str();
+	}
+
+	sstr << "<form action=\"/writePhotos\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
+
+	sstr << "<div><div class=\"settingsText\">Mount Path</div>";
+	sstr << "<select name=\"" << WebContent::PHOTO_MOUNT << "\">";
+	for (size_t i = 0; i < mountPaths.size(); i++)
+	{
+		sstr << "<option value=\"" << i << "\">" << mountPaths[i] << "</option>\r\n";
+	}
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">" << PHOTO_MOUNT_DESCR << "</div>\n";
+
+	sstr << checkbox(WebContent::PHOTO_WRITE_LASER_IMAGES, "Write Laser Images", false, PHOTO_WRITE_LASER_IMAGES_DESCR);
+	sstr << setting(WebContent::PROFILE_NAME, "Profile", PresetManager::get()->getActivePreset().name, "The profile to generate the photos with", "", true);
+	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"writePhotos\">\
+<input class=\"submit\" type=\"submit\" value=\"Generate Photos\">\
+</p></form></div>\
+</body></html>";
+
+	return sstr.str();
+}
+
+std::string WebContent::scanResult(size_t index, const ScanResult& result, bool usePointCloudRenderer)
 {
 	std::stringstream sstr;
 
@@ -412,7 +478,9 @@ std::string WebContent::scanResult(size_t index, const ScanResult& result)
 	// Show the PLY view link
 	if (hasPly)
 	{
-		sstr << "<div id=\"viewButton\"><form action=\"/view\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
+		std::string action = usePointCloudRenderer ? "/view" : "/viewPly";
+
+		sstr << "<div id=\"viewButton\"><form action=\"" << action << "\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
 			 << "<input type=\"Hidden\" name=\"id\" value=\"" << result.getScanDate() << "\">"
 			 << "<input style=\"left-padding: 20px\" type=\"Submit\" value=\"View\">"
 			 << "</form></div>";
@@ -426,9 +494,23 @@ std::string WebContent::scanResult(size_t index, const ScanResult& result)
 	return sstr.str();
 }
 
-std::string WebContent::scanRunning(Progress& progress, real remainingTime)
+std::string WebContent::scanRunning(Progress& progress, real remainingTime, Scanner::Task task,
+		                            const std::string& url, bool showPointCloudRenderer,
+		                            const std::string& rotation, const std::string& pixelRadius)
 {
 	real minRemaining = remainingTime / 60.0;
+
+	std::string taskNoun;
+	if (task == Scanner::GENERATE_PHOTOS)
+	{
+		taskNoun = "Generating Photos";
+	}
+	else
+	{
+		taskNoun = "Scanning";
+	}
+
+	bool showPreview = (task == Scanner::GENERATE_SCAN);
 
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
@@ -451,19 +533,32 @@ std::string WebContent::scanRunning(Progress& progress, real remainingTime)
 				  << " minutes remaining";
 		}
 
-	sstr << ".&nbsp;</div><div style=\"padding-left: 50px\"><form action=\"/preview\" method=\"GET\" enctype=\"application/x-www-form-urlencoded\">"
-		 << "<input type=\"submit\" value=\"Preview\">"
-		 << "</form></div><br><br>"
-	     << "<form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
-	     << "<input type=\"hidden\" name=\"cmd\" value=\"stopScan\">"
-	     << "<input type=\"submit\" value=\"Stop Scan\">"
-	     << "</form>"
-	     << "</body></html>";
+	sstr << ".&nbsp;</div>";
 
-	     return sstr.str();
+	if (showPreview)
+	{
+		sstr << "<div style=\"padding-left: 50px\"><form action=\"/preview\" method=\"GET\" enctype=\"application/x-www-form-urlencoded\">"
+			 << "<input type=\"submit\" value=\"Preview 3D\">"
+			 << "</form></div><br><br>";
+	}
+
+	sstr << "<form action=\"/\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
+	     << "<input type=\"hidden\" name=\"cmd\" value=\"stopScan\">"
+	     << "<input type=\"submit\" value=\"Stop " << taskNoun << "\">"
+	     << "</form>";
+
+	if (showPreview && showPointCloudRenderer)
+	{
+		sstr << renderImageControls(url, rotation, pixelRadius);
+	}
+
+	sstr << "</body></html>";
+
+	return sstr.str();
 }
 
-std::string WebContent::viewScan(const std::string& plyFilename)
+
+std::string WebContent::viewScanRender(int scanId, const std::string& url, const std::string& rotation, const std::string& pixelRadius)
 {
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
@@ -472,75 +567,96 @@ std::string WebContent::viewScan(const std::string& plyFilename)
 		 << JAVASCRIPT
 		 << std::endl
 		 << "\
+		 </head><body>";
+
+	sstr << "<div style=\"float: left\"><a href=\"/\">Back</a></div><div style=\"padding-left: 75px\"><form action=\"/viewPly\" method=\"GET\" enctype=\"application/x-www-form-urlencoded\">"
+		 << "<input type=\"hidden\" name=\"id\" value=\"" << scanId << "\">"
+		 << "<input type=\"submit\" value=\"View 3D\">"
+		 << "</form></div><br><br>";
+
+	sstr << renderImageControls(url, rotation, pixelRadius, scanId);
+
+	sstr << "</body></html>";
+
+	return sstr.str();
+}
+
+std::string WebContent::renderImageControls(const std::string& url, const std::string& inRotation, const std::string& inPixelRadius, int scanId)
+{
+	std::string rotation = inRotation.empty() ? "0" : inRotation;
+	std::string pixelRadius = inPixelRadius.empty() ? "1" : inPixelRadius;
+
+	std::stringstream sstr;
+	sstr << "<div>";
+	sstr << "<div style=\"float: left; height: 1000px\">";
+	sstr << "<div style=\"padding-top: 20px\">View</div>";
+	sstr << "<a href=\"" << url << "?" << WebContent::ROTATION << "=0&" << WebContent::PIXEL_RADIUS << "=" << pixelRadius << "&id=" << scanId << "\"> Front </a><br>";
+	sstr << "<a href=\"" << url << "?" << WebContent::ROTATION << "=90&" << WebContent::PIXEL_RADIUS << "=" << pixelRadius << "&id=" << scanId << "\"> Right </a><br>";
+	sstr << "<a href=\"" << url << "?" << WebContent::ROTATION << "=180&" << WebContent::PIXEL_RADIUS << "=" << pixelRadius << "&id=" << scanId << "\"> Back </a><br>";
+	sstr << "<a href=\"" << url << "?" << WebContent::ROTATION << "=270&" << WebContent::PIXEL_RADIUS << "=" << pixelRadius << "&id=" << scanId << "\"> Left </a><br>";
+
+	sstr << "<div style=\"padding-top: 20px\">Point Size</div>";
+	sstr << "<a href=\"" << url << "?" << WebContent::ROTATION << "=" << rotation << "&" << WebContent::PIXEL_RADIUS << "=0&id=" << scanId << "\"> Small </a><br>";
+	sstr << "<a href=\"" << url << "?" << WebContent::ROTATION << "=" << rotation << "&" << WebContent::PIXEL_RADIUS << "=1&id=" << scanId << "\"> Medium </a><br>";
+	sstr << "<a href=\"" << url << "?" << WebContent::ROTATION << "=" << rotation << "&" << WebContent::PIXEL_RADIUS << "=2&id=" << scanId << "\"> Large </a><br>";
+	sstr << "<a href=\"" << url << "?" << WebContent::ROTATION << "=" << rotation << "&" << WebContent::PIXEL_RADIUS << "=3&id=" << scanId << "\"> Very Large </a><br>";
+	sstr << "</div>";
+
+	sstr << "<div><img id=\"image\" width=\"800\" src=\"renderImage_" << time(NULL) << ".jpg?a=0";
+
+	if (scanId != -1)
+	{
+		sstr << "&" << WebContent::ID << "=" << scanId;
+	}
+
+	if (!rotation.empty())
+	{
+		sstr << "&" << WebContent::ROTATION << "=" << rotation;
+	}
+
+	if (!pixelRadius.empty())
+	{
+		sstr << "&" << WebContent::PIXEL_RADIUS << "=" << pixelRadius;
+	}
+
+	sstr << "\"></div>";
+
+	return sstr.str();
+}
+
+std::string WebContent::viewScan(const std::string& plyFilename)
+{
+	int canvasVertexSkip = 50;
+	int detail = 100 / canvasVertexSkip;
+	bool useWebGL = Setup::get()->enableWebGLWhenAvailable;
+
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+		 << CSS
+		 << std::endl
+		 << JAVASCRIPT
+		 << std::endl
+		 << "\
 		 </head><body>\
-		 <div style=\"position: absolute; left: 10px; top: 10px\"> <a href=\"/\">Back</a>&nbsp;&nbsp;<a href=\"/preview\">Refresh</a></div>\
+		 <div style=\"position: absolute; left: 10px; top: 10px\"> <a href=\"/\">Back</a>&nbsp;&nbsp;<a href=\"/preview\">Refresh</a><div id=\"detail\"></div></div>\
+		 <script>";
+
+	sstr << "var canvasVertexSkip = " << canvasVertexSkip << ";";
+	sstr << "var plyFilename = '" << plyFilename << "';";
+	sstr << "var useWebGL = " << (useWebGL ? "true" : "false") << ";";
+
+	sstr << "</script>\
 		 <script src=\"three.min.js\"></script>\
 		 <script src=\"OrbitControls.js\"></script>\
 		 <script src=\"PLYLoader.js\"></script>\
-		 <script>\
-		 var scene = new THREE.Scene();\
-		var camera = new THREE.PerspectiveCamera( 30, window.innerWidth/window.innerHeight, 1.0, 10000 );\
-		var controls;\
-\
-		var renderer = new THREE.WebGLRenderer({ alpha: true });\
-		renderer.setSize( window.innerWidth, window.innerHeight );\
-		renderer.setClearColor( 0x555555, 1);\
-\
-		document.body.appendChild( renderer.domElement );\
-		window.addEventListener( 'resize', onWindowResize, false );\
-\
-		var loader = new THREE.PLYLoader();\
-		loader.addEventListener( 'load', function ( event ) {\
-			var geometry = event.content;\
-			var pcMaterial = new THREE.PointCloudMaterial( {\
-			size: 1.75,\
-			vertexColors: THREE.VertexColors\
-		} );\
-			geometry.useColor = true;\
-			var mesh = new THREE.PointCloud( geometry, pcMaterial );\
-			scene.add( mesh );\
-		} );";
+		 <script src=\"Projector.js\"></script>\
+	     <script src=\"CanvasRenderer.js\"></script>\
+	     <script src=\"SoftwareRenderer.js\"></script>\
+		 <script src=\"showScan.js\"></script>";
 
-		sstr << "loader.load( '" << plyFilename << "');";
-
-		sstr << "\
-		var cylHeight = 1;\
-		var cylRadius = 6 * 25.4;\
-		var cylGeometry = new THREE.CylinderGeometry( cylRadius, cylRadius, cylHeight, 64 );\
-		var cylMaterial = new THREE.MeshBasicMaterial( {color: 0x222222 } );\
-		var cylinder = new THREE.Mesh( cylGeometry, cylMaterial );\
-		cylinder.translateY( -cylHeight/2 );\
-		scene.add( cylinder );\
-\
-		var cylHeight2 = 8;\
-		var cylRadius2 = 6 * 25.4;\
-		var cylGeometry2 = new THREE.CylinderGeometry( cylRadius2, cylRadius2, cylHeight2, 64 );\
-		var cylMaterial2 = new THREE.MeshBasicMaterial( { color: 0xaaaaaa } );\
-		var cylinder2 = new THREE.Mesh( cylGeometry2, cylMaterial2 );\
-		cylinder2.translateY( -cylHeight2/2 - cylHeight );\
-		scene.add( cylinder2 );\
-\
-		camera.position.z = 350;\
-		camera.position.y = 450;\
-		controls = new THREE.OrbitControls( camera );\
-		controls.maxDistance = 1000;\
-\
-		var render = function () {\
-			requestAnimationFrame( render );\
-			renderer.render(scene, camera);\
-		};\
-\
-		render();\
-\
-		function onWindowResize() {\
-			windowHalfX = window.innerWidth / 2;\
-			windowHalfY = window.innerHeight / 2;\
-			camera.aspect = window.innerWidth / window.innerHeight;\
-			camera.updateProjectionMatrix();\
-			renderer.setSize( window.innerWidth, window.innerHeight );\
-		}\
-	</script>";
-
+	sstr << "<script>"
+		 << "if (!useWebGL) { document.getElementById('detail').innerHTML = 'Displaying " << detail << "% detail';}"
+		 << "</script>";
 	sstr << "</body></html>";
 
 	return sstr.str();
@@ -550,6 +666,39 @@ std::string WebContent::cal1(const std::string& inMessage)
 {
 	std::string message = inMessage.empty() ? std::string("") : ("<h2>" + inMessage + "</h2>");
 	Setup * setup = Setup::get();
+	const Preset& preset = PresetManager::get()->getActivePreset();
+
+	std::string exposureStr;
+	switch (preset.cameraExposureTime)
+	{
+	case CET_AUTO:
+		exposureStr = "Auto";
+		break;
+
+	case CET_VERYSHORT:
+		exposureStr = "Very Short";
+		break;
+
+	case CET_SHORT:
+		exposureStr = "Short";
+		break;
+
+	case CET_MEDIUM:
+		exposureStr = "Medium";
+		break;
+
+	case CET_LONG:
+		exposureStr = "Long";
+		break;
+
+	case CET_VERYLONG:
+		exposureStr = "Very Long";
+		break;
+
+	default:
+		exposureStr = "UNSUPPORTED EXPOSURE SETTING";
+		break;
+	}
 
 	std::stringstream sstr;
 	sstr << "<!DOCTYPE html><html><head>"
@@ -564,11 +713,28 @@ std::string WebContent::cal1(const std::string& inMessage)
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>\
-</div>"
-	     << message
+</div>";
+
+	if (setup->enableExperimental)
+	{
+	     sstr << WebContent::MENU3;
+	}
+
+	sstr << message
          << "\
 <div id=\"cal1ContentDiv\">\
   <div id=\"cal1ControlsDiv\">\
+    <div style=\"margin-bottom: 50px\">\
+         <div><small>Exposure: " << exposureStr << "</small></div>";
+
+	sstr << exposureDiv((int)CET_AUTO, "Auto", false);
+	sstr << exposureDiv((int)CET_VERYSHORT, "Very Short", false);
+	sstr << exposureDiv((int)CET_SHORT, "Short", false);
+	sstr << exposureDiv((int)CET_MEDIUM, "Medium", false);
+	sstr << exposureDiv((int)CET_LONG, "Long", false);
+	sstr << exposureDiv((int)CET_VERYLONG, "Very Long", false);
+
+    sstr << "</div>\
     <div class=\"cal1GenerateDebugDiv\">\
 		<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">\
 			<input name=\"cmd\" value=\"generateDebug\" type=\"hidden\">\
@@ -608,7 +774,7 @@ std::string WebContent::cal1(const std::string& inMessage)
   </div>\
 <div style=\"position: relative\">\
 	<div>\
-		<img style=\"position: absolute\" onload=\"setTimeout(updateImgImage, 0);\" id=\"image\" width=\"1296\" src=\"camImageL_\""
+		<img style=\"position: absolute\" onload=\"setTimeout(updateImgImage, 1000);\" id=\"image\" width=\"1296\" src=\"camImageL_"
 	<< time(NULL)
 	<< ".jpg\">\
 	</div>\
@@ -616,6 +782,11 @@ std::string WebContent::cal1(const std::string& inMessage)
 </div></body></html>";
 
 	     return sstr.str();
+}
+
+std::string WebContent::menu2()
+{
+	return Setup::get()->enableExperimental ? WebContent::MENU2_EXPERIMENTAL : WebContent::MENU2;
 }
 
 std::string WebContent::showUpdate(SoftwareUpdate * update, const std::string& message)
@@ -633,7 +804,7 @@ std::string WebContent::showUpdate(SoftwareUpdate * update, const std::string& m
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
-		 << WebContent::MENU2
+		 << menu2()
 		 << "\
 </div><div style=\"padding-top: 50px\">";
 
@@ -652,7 +823,7 @@ std::string WebContent::showUpdate(SoftwareUpdate * update, const std::string& m
 	}
 	else
 	{
-		sstr << "<h2>No updates available.</h2>";
+		sstr << "<h2>No updates available. You are already running the latest version.</h2>";
 	}
 
 	sstr << "</div></body></html>";
@@ -675,7 +846,7 @@ std::string WebContent::updateApplied(SoftwareUpdate * update, const std::string
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
-		 << WebContent::MENU2
+		 << menu2()
 		 << "\
 </div><div style=\"padding-top: 50px\">";
 
@@ -683,6 +854,34 @@ std::string WebContent::updateApplied(SoftwareUpdate * update, const std::string
 
 	sstr << "</div></body></html>";
 
+	return sstr.str();
+}
+
+std::string WebContent::restoreDefaults()
+{
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+			 << CSS
+			 << std::endl
+			 << JAVASCRIPT
+			 << std::endl
+			 << "</head>"
+			 << "\
+	<body>\
+	<div id=\"menuContainer\">\
+	  <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
+	  <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
+	  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
+			 << menu2()
+			 << "\
+	</div><div style=\"padding-top: 50px\">";
+
+		sstr << "<h2>" << RESTORE_DEFAULTS_DESCR << "</h2>";
+		sstr << "<form action=\"/setup\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
+		sstr << "<input type=\"hidden\" name=\"cmd\" value=\"" << WebContent::RESTORE_DEFAULTS << "\">";
+		sstr << "<input class=\"submit\" type=\"submit\" value=\"Restore Defaults\">";
+		sstr << "</form>";
+		sstr << "</div></body></html>";
 	return sstr.str();
 }
 
@@ -703,7 +902,7 @@ std::string WebContent::security(const std::string& message)
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
-		 << WebContent::MENU2
+		 << menu2()
 		 << "\
 </div><div style=\"padding-top: 50px\">";
 
@@ -724,6 +923,68 @@ std::string WebContent::security(const std::string& message)
 
 	return sstr.str();
 }
+
+std::string WebContent::mounts(const std::string& message, const std::vector<std::string>& mountPaths)
+{
+	std::stringstream sstr;
+	sstr << "<!DOCTYPE html><html><head>"
+		 << CSS
+		 << std::endl
+		 << JAVASCRIPT
+		 << std::endl
+		 << "</head>"
+		 << "\
+<body>\
+<div id=\"menuContainer\">\
+  <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
+  <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
+  <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
+		 << menu2()
+		 << "\
+</div><div style=\"padding-top: 50px\">";
+
+	if (!message.empty())
+	{
+		sstr << "<h2>" << message << "</h2>";
+	}
+
+	if (mountPaths.empty())
+	{
+		sstr << "<p>No mounted paths detected.</p><ol>";
+	}
+	else
+	{
+		sstr << "<p>Mounted Paths</p><ol>";
+	}
+
+	for (size_t i = 0; i < mountPaths.size(); i++)
+	{
+		sstr << "<form action=\"/mounts\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
+			 << "<div style=\"float: left\"><li>" << mountPaths[i]
+		     << "<input type=\"hidden\" name=\"cmd\" value=\"unmount\">"
+		     << "<input type=\"hidden\" name=\"" << WebContent::MOUNT_INDEX << "\" value=\"" << i << "\">"
+		     << "</li></div><div>"
+		     << "<input class=\"submitSmall\" type=\"submit\" value=\"Unmount\">"
+		     << "</div></form>";
+	}
+	sstr << "</ol>";
+
+	sstr << "<form action=\"/mounts\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">";
+
+	sstr << setting(WebContent::MOUNT_SERVERPATH, "Server Path", "", MOUNT_SERVERPATH_DESCR);
+	sstr << setting(WebContent::MOUNT_USERNAME, "Username", "", MOUNT_USERNAME_DESCR);
+	sstr << setting(WebContent::MOUNT_PASSWORD, "Password", "", MOUNT_PASSWORD_DESCR, "", false, true);
+	sstr << setting(WebContent::MOUNT_WORKGROUP, "Workgroup", "", MOUNT_WORKGROUP_DESCR);
+
+
+	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"mount\">\
+<input class=\"submit\" type=\"submit\" value=\"Mount\">\
+</p></form></div>\
+</body></html>";
+
+	return sstr.str();
+}
+
 std::string WebContent::network(const std::string& message, bool hiddenEssidInput)
 {
 	WifiConfig * wifi = WifiConfig::get();
@@ -750,7 +1011,7 @@ std::string WebContent::network(const std::string& message, bool hiddenEssidInpu
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
-		 << WebContent::MENU2
+		 << menu2()
 		 << "\
 </div><div style=\"padding-top: 50px\">";
 
@@ -789,7 +1050,7 @@ std::string WebContent::network(const std::string& message, bool hiddenEssidInpu
 		sstr << setting(WebContent::WIFI_ESSID_HIDDEN, "Wireless Network", "", WIFI_ESSID_DESCR);
 	}
 
-	sstr << setting(WebContent::WIFI_PASSWORD, "Wireless Password", "", WIFI_PASSWORD_DESCR);
+	sstr << setting(WebContent::WIFI_PASSWORD, "Wireless Password", "", WIFI_PASSWORD_DESCR, "", false, true);
 	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"connect\">\
 <input class=\"submit\" type=\"submit\" value=\"Connect\">\
 </p></form></div>\
@@ -801,6 +1062,8 @@ std::string WebContent::network(const std::string& message, bool hiddenEssidInpu
 std::string WebContent::setup(const std::string& message)
 {
 	const Setup * setup = Setup::get();
+	BootConfigManager::Settings bootConfig = BootConfigManager::get()->readSettings();
+
 	UnitOfLength srcUnit = UL_MILLIMETERS; // Lengths are always represented in millimeters internally
 	UnitOfLength dstUnit = setup->unitOfLength;
 
@@ -828,7 +1091,7 @@ std::string WebContent::setup(const std::string& message)
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
-	     << WebContent::MENU2
+	     << menu2()
 	     << "\
 </div><div style=\"padding-top: 50px\">";
 
@@ -854,6 +1117,7 @@ std::string WebContent::setup(const std::string& message)
 	sstr << "</select></div>";
 	sstr << "<div class=\"settingsDescr\">The unit of length for future values entered on the setup page.</div>\n";
 
+	sstr << setting(WebContent::CAMERA_SENSOR, "Camera Sensor", Camera::getInstance()->getName(), "The name of the detected camera","", true);
 	sstr << setting(WebContent::CAMERA_X, "Camera X", ConvertUnitOfLength(setup->cameraLocation.x, srcUnit, dstUnit), CAMERA_X_DESCR, ToString(dstUnit) + ".", true);
 	sstr << setting(WebContent::CAMERA_Y, "Camera Y", ConvertUnitOfLength(setup->cameraLocation.y, srcUnit, dstUnit), CAMERA_Y_DESCR,  ToString(dstUnit) + ".");
 	sstr << setting(WebContent::CAMERA_Z, "Camera Z", ConvertUnitOfLength(setup->cameraLocation.z, srcUnit, dstUnit), CAMERA_Z_DESCR,  ToString(dstUnit) + ".");
@@ -863,6 +1127,8 @@ std::string WebContent::setup(const std::string& message)
 	sstr << setting(WebContent::LEFT_LASER_X, "Left Laser X", ConvertUnitOfLength(setup->leftLaserLocation.x, srcUnit, dstUnit), LEFT_LASER_X_DESCR,  ToString(dstUnit) + ".");
 	sstr << setting(WebContent::LEFT_LASER_Y, "Left Laser Y", ConvertUnitOfLength(setup->leftLaserLocation.y, srcUnit, dstUnit), LEFT_LASER_Y_DESCR,  ToString(dstUnit) + ".", true);
 	sstr << setting(WebContent::LEFT_LASER_Z, "Left Laser Z", ConvertUnitOfLength(setup->leftLaserLocation.z, srcUnit, dstUnit), LEFT_LASER_Z_DESCR,  ToString(dstUnit) + ".", true);
+
+	sstr << setting(WebContent::MAX_OBJECT_SIZE, "Max Object Size", ConvertUnitOfLength(setup->maxObjectSize, srcUnit, dstUnit), MAX_OBJECT_SIZE_DESCR,  ToString(dstUnit) + ".");
 
 	sstr << setting(WebContent::RIGHT_LASER_PIN, "Right Laser Pin", setup->rightLaserPin, RIGHT_LASER_PIN_DESCR);
 	sstr << setting(WebContent::LEFT_LASER_PIN, "Left Laser Pin", setup->leftLaserPin, LEFT_LASER_PIN_DESCR);
@@ -876,6 +1142,38 @@ std::string WebContent::setup(const std::string& message)
 	sstr << setting(WebContent::RESPONSE_DELAY, "Motor Response Delay", setup->motorResponseDelay, RESPONSE_DELAY_DESCR, "&mu;s");
 	sstr << checkbox(WebContent::ENABLE_LIGHTING, "Enable Lighting", setup->enableLighting, ENABLE_LIGHTING_DESCR);
 	sstr << setting(WebContent::LIGHTING_PIN, "Lighting Pin", setup->lightingPin, LIGHTING_PIN_DESCR);
+
+	std::set<std::string> memoryValues;
+	memoryValues.insert("128");
+	memoryValues.insert("256");
+	memoryValues.insert(ToString(bootConfig.gpuMemoryMb));
+	sstr << "<div><div class=\"settingsText\">GPU Memory</div>";
+	sstr << "<select name=\"" << WebContent::GPU_MEMORY << "\">";
+
+	std::set<std::string>::iterator it = memoryValues.begin();
+	while (it != memoryValues.end())
+	{
+		std::string memString = * it;
+		std::string selString = ToString(bootConfig.gpuMemoryMb) == memString ? "SELECTED" : "";
+
+		sstr << "<option value=\"" << memString << "\" " << selString << ">" << memString << " MB</option>\r\n";
+
+		it++;
+	}
+
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">" << GPU_MEMORY_DESCR << "</div>\n";
+
+	sstr << checkbox(WebContent::DISABLE_CAMERA_LED, "Disable Camera LED", bootConfig.ledDisabled, DISABLE_CAMERA_LED_DESCR);
+	sstr << checkbox(WebContent::ENABLE_USB_NETWORK_CONFIG, "Setup Network via USB", setup->enableUsbNetworkConfig, ENABLE_USB_NETWORK_CONFIG_DESCR);
+	sstr << checkbox(WebContent::ENABLE_WEBGL, "Enable WebGL", setup->enableWebGLWhenAvailable, ENABLE_WEBGL_DESCR);
+	sstr << checkbox(WebContent::ENABLE_POINT_CLOUD_RENDERER, "Enable Point Cloud Renderer", setup->enablePointCloudRenderer, ENABLE_POINT_CLOUD_RENDERER_DESCR);
+	sstr << checkbox(WebContent::OVERRIDE_FOCAL_LENGTH, "Override Focal Length", setup->overrideFocalLength, OVERRIDE_FOCAL_LENGTH_DESCR);
+	sstr << setting(WebContent::OVERRIDDEN_FOCAL_LENGTH, "Overridden Focal Length", setup->overriddenFocalLength, OVERRIDDEN_FOCAL_LENGTH_DESCR, "mm");
+	sstr << checkbox(WebContent::ENABLE_EXPERIMENTAL, "Enable Experimental", setup->enableExperimental, ENABLE_EXPERIMENTAL_DESCR);
+	sstr << checkbox(WebContent::FLIP_RED_BLUE, "Swap Red and Blue", setup->mmalFlipRedBlue, FLIP_RED_BLUE_DESCR);
+
+
 	sstr << setting(WebContent::VERSION_NAME, "Firmware Version", FREELSS_VERSION_NAME, "The version of FreeLSS the scanner is running", "", true);
 	sstr << setting(WebContent::FREE_DISK_SPACE, "Free Space", freeSpaceMb, "The amount of free disk space available", "MB", true);
 	sstr << setting(WebContent::KERNEL_VERSION, "Kernel", kernelVersion.str(), "The version of the kernel", "", true);
@@ -883,7 +1181,7 @@ std::string WebContent::setup(const std::string& message)
 
 	sstr << "<p><input type=\"hidden\" name=\"cmd\" value=\"save\">\
 <input class=\"submit\" type=\"submit\" value=\"Save\">\
-</p></form></div>\
+</p></form><p id=\"restoreDefaultsA\"><a href=\"/restoreDefaults\">Restore Factory Defaults</a></p></div>\
 </body></html>";
 
 	     return sstr.str();
@@ -910,7 +1208,7 @@ std::string WebContent::settings(const std::string& message)
   <div class=\"menu\"><a href=\"/\">SCAN</a></div>\
   <div class=\"menu\"><a href=\"/cal1\">CAMERA</a></div>\
   <div class=\"menu\"><a href=\"/settings\">SETTINGS</a></div>"
-	     << WebContent::MENU2
+	     << menu2()
 	     << "</div>";
 
 	if (!message.empty())
@@ -970,26 +1268,84 @@ std::string WebContent::settings(const std::string& message)
 	//
 	// Camera Mode UI
 	//
-	Camera::CameraMode cameraMode = preset.cameraMode;
-	std::string still8Sel   = cameraMode == Camera::CM_STILL_8MP  ? " SELECTED" : "";
-	std::string still5Sel   = cameraMode == Camera::CM_STILL_5MP  ? " SELECTED" : "";
-	std::string video5Sel   = cameraMode == Camera::CM_VIDEO_5MP ? " SELECTED" : "";
-	std::string videoHDSel  = cameraMode == Camera::CM_VIDEO_HD ? " SELECTED" : "";
-	std::string video1P2Sel = cameraMode == Camera::CM_VIDEO_1P2MP ? " SELECTED" : "";
-	std::string videoVGASel = cameraMode == Camera::CM_VIDEO_VGA ? " SELECTED" : "";
+	std::vector<CameraResolution> resolutions = Camera::getInstance()->getSupportedResolutions();
 
 	sstr << "<div><div class=\"settingsText\">Camera Mode</div>";
 	sstr << "<select name=\"" << WebContent::CAMERA_MODE<< "\">";
-	sstr << "<option value=\"" << (int)Camera::CM_STILL_8MP << "\"" << still8Sel << ">8 Megapixel (still mode, 3296x2512)</option>\r\n";
-	sstr << "<option value=\"" << (int)Camera::CM_STILL_5MP << "\"" << still5Sel << ">5 Megapixel (still mode, 2592x1944)</option>\r\n";
-	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_5MP << "\"" << video5Sel << ">5 Megapixel (video mode, 2592x1944)</option>\r\n";
-	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_HD << "\"" << videoHDSel << ">1.9 Megapixel (video mode, 1600x1200)</option>\r\n";
-	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_1P2MP << "\"" << video1P2Sel << ">1.2 Megapixel (video mode, 1280x960)</option>\r\n";
-	sstr << "<option value=\"" << (int)Camera::CM_VIDEO_VGA << "\"" << videoVGASel << ">0.3 Megapixel (video mode, 640x480)</option>\r\n";
+	for (size_t iRes = 0; iRes < resolutions.size(); iRes++)
+	{
+		CameraResolution& res = resolutions[iRes];
+
+		std::string sel = res.cameraMode == preset.cameraMode ? " SELECTED" : "";
+		sstr << "<option value=\"" << (int)res.cameraMode << "\"" << sel << ">" << res.name << "</option>\r\n";
+	}
+
 	sstr << "</select></div>";
 	sstr << "<div class=\"settingsDescr\">The camera mode to use. Video mode is faster but Still mode results in higher quality scans.</div>\n";
 
+	// Frames per revolution
 	sstr << setting(WebContent::FRAMES_PER_REVOLUTION, "Frames Per Revolution", preset.framesPerRevolution, FRAMES_PER_REVOLUTION_DESCR);
+
+	//
+	// Exposure Setting
+	//
+	CameraExposureTime cameraExposureTime = preset.cameraExposureTime;
+	std::string cetAutoSel      = cameraExposureTime == CET_AUTO ? " SELECTED" : "";
+	std::string cetShortSel     = cameraExposureTime == CET_SHORT ? " SELECTED" : "";
+	std::string cetVeryShortSel = cameraExposureTime == CET_VERYSHORT ? " SELECTED" : "";
+	std::string cetMediumSel    = cameraExposureTime == CET_MEDIUM ? " SELECTED" : "";
+	std::string cetLongSel      = cameraExposureTime == CET_LONG ? " SELECTED" : "";
+	std::string cetVeryLongSel  = cameraExposureTime == CET_VERYLONG ? " SELECTED" : "";
+
+	sstr << "<div><div class=\"settingsText\">Camera Exposure Time</div>";
+	sstr << "<select name=\"" << WebContent::CAMERA_EXPOSURE_TIME<< "\">";
+	sstr << "<option value=\"" << (int)CET_AUTO << "\"" << cetAutoSel << ">Auto</option>\r\n";
+	sstr << "<option value=\"" << (int)CET_VERYSHORT << "\"" << cetVeryShortSel << ">Very Short</option>\r\n";
+	sstr << "<option value=\"" << (int)CET_SHORT << "\"" << cetShortSel << ">Short</option>\r\n";
+	sstr << "<option value=\"" << (int)CET_MEDIUM << "\"" << cetMediumSel << ">Medium</option>\r\n";
+	sstr << "<option value=\"" << (int)CET_LONG << "\"" << cetLongSel << ">Long</option>\r\n";
+	sstr << "<option value=\"" << (int)CET_VERYLONG << "\"" << cetVeryLongSel << ">Very Long</option>\r\n";
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">" << CAMERA_EXPOSURE_TIME_DESCR << "</div>\n";
+
+	//
+	// Noise Removal Setting
+	//
+	NoiseRemover::Setting nrsSetting = preset.noiseRemovalSetting;
+	std::string nrsDisabledSel = nrsSetting == NoiseRemover::NRS_DISABLED  ? " SELECTED" : "";
+	std::string nrsLowSel      = nrsSetting == NoiseRemover::NRS_LOW  ? " SELECTED" : "";
+	std::string nrsMediumSel   = nrsSetting == NoiseRemover::NRS_MEDIUM  ? " SELECTED" : "";
+	std::string nrsHighSel     = nrsSetting == NoiseRemover::NRS_HIGH  ? " SELECTED" : "";
+
+	sstr << "<div><div class=\"settingsText\">Noise Removal</div>";
+	sstr << "<select name=\"" << WebContent::NOISE_REMOVAL_SETTING<< "\">";
+	sstr << "<option value=\"" << (int)NoiseRemover::NRS_DISABLED << "\"" << nrsDisabledSel << ">Disabled</option>\r\n";
+	sstr << "<option value=\"" << (int)NoiseRemover::NRS_LOW << "\"" << nrsLowSel << ">Low</option>\r\n";
+	sstr << "<option value=\"" << (int)NoiseRemover::NRS_MEDIUM << "\"" << nrsMediumSel << ">Medium</option>\r\n";
+	sstr << "<option value=\"" << (int)NoiseRemover::NRS_HIGH << "\"" << nrsHighSel << ">High</option>\r\n";
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">" << NOISE_REMOVAL_SETTING_DESCR << "</div>\n";
+
+
+	//
+	// Image Threshold Mode
+	//
+	ImageProcessor::ThresholdMode imageThresholdMode = preset.imageThresholdMode;
+	std::string itmStaticSel = imageThresholdMode == ImageProcessor::THM_STATIC  ? " SELECTED" : "";
+	std::string itmLowSel    = imageThresholdMode == ImageProcessor::THM_LOW  ? " SELECTED" : "";
+	std::string itmMediumSel = imageThresholdMode == ImageProcessor::THM_MEDIUM  ? " SELECTED" : "";
+	std::string itmHighSel   = imageThresholdMode == ImageProcessor::THM_HIGH  ? " SELECTED" : "";
+
+	sstr << "<div><div class=\"settingsText\">Image Threshold Mode</div>";
+	sstr << "<select name=\"" << WebContent::IMAGE_THRESHOLD_MODE << "\">";
+	sstr << "<option value=\"" << (int)ImageProcessor::THM_STATIC << "\"" << itmStaticSel << ">Static</option>\r\n";
+	sstr << "<option value=\"" << (int)ImageProcessor::THM_LOW << "\"" << itmLowSel << ">Low</option>\r\n";
+	sstr << "<option value=\"" << (int)ImageProcessor::THM_MEDIUM << "\"" << itmMediumSel << ">Medium</option>\r\n";
+	sstr << "<option value=\"" << (int)ImageProcessor::THM_HIGH << "\"" << itmHighSel << ">High</option>\r\n";
+	sstr << "</select></div>";
+	sstr << "<div class=\"settingsDescr\">" << IMAGE_THRESHOLD_MODE_DESCR << "</div>\n";
+
+
 	sstr << setting(WebContent::LASER_MAGNITUDE_THRESHOLD, "Laser Threshold", preset.laserThreshold, LASER_MAGNITUDE_THRESHOLD_DESCR);
 	sstr << setting(WebContent::GROUND_PLANE_HEIGHT, "Ground Plane Height", ConvertUnitOfLength(preset.groundPlaneHeight, srcUnit, dstUnit), GROUND_PLANE_HEIGHT_DESCR,  ToString(dstUnit) + ".", false);
 	sstr << setting(WebContent::STABILITY_DELAY, "Stability Delay", preset.stabilityDelay, STABILITY_DELAY_DESCR, "&mu;s");
@@ -1049,11 +1405,6 @@ std::string WebContent::setting(const std::string& name, const std::string& labe
 			 << "\" name=\""
 			 << name
 			 << "\" ";
-
-		if (readOnly)
-		{
-			sstr << "readonly=\"true\"";
-		}
 
 		if (password)
 		{
@@ -1122,4 +1473,17 @@ std::string WebContent::setting(const std::string& name, const std::string& labe
 	return setting(name, label, sstr.str(), description, units, readOnly);
 }
 
+std::string WebContent::exposureDiv(int value, const std::string& label, bool floatLeft)
+{
+	std::stringstream sstr;
+
+	sstr << "<div style=\"float: " << (floatLeft ? "left" : "none") << "\">"
+		 << "<form action=\"/cal1\" method=\"POST\" enctype=\"application/x-www-form-urlencoded\">"
+	     << "<input style=\"width: 90px\" type=\"Submit\" value=\"" << label << "\">"
+         << "<input type=\"hidden\" name=\"cmd\" value=\"setCameraExposureTime\">"
+         << "<input type=\"hidden\" name=\"" << WebContent::CAMERA_EXPOSURE_TIME << "\" value=\"" << value << "\">"
+         << "</form></div>";
+
+	return sstr.str();
+}
 }

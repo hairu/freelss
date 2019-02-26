@@ -22,6 +22,7 @@
 #include "PlyWriter.h"
 #include "Preset.h"
 #include "IWriter.h"
+#include "Logger.h"
 
 namespace freelss
 {
@@ -55,7 +56,7 @@ void PlyWriter::begin(IWriter * writer)
 {
 	m_writer = writer;
 
-	std::cout << "Writing to PLY file..." << std::endl;
+	InfoLog << "Writing to PLY file..." << Logger::ENDL;
 
 	std::stringstream sstr;
 

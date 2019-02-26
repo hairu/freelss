@@ -22,6 +22,8 @@
 #include "LocationMapper.h"
 #include "PresetManager.h"
 #include "Camera.h"
+#include "Logger.h"
+#include "Setup.h"
 
 namespace freelss
 {
@@ -42,7 +44,7 @@ LocationMapper::LocationMapper(const Vector3& laserLoc, const Vector3& cameraLoc
 	m_sensorWidth = camera->getSensorWidth();
 	m_sensorHeight = camera->getSensorHeight();
 
-	m_maxObjectSize = PresetManager::get()->getActivePreset().maxObjectSize;
+	m_maxObjectSize = Setup::get()->maxObjectSize;
 	m_groundPlaneHeight = PresetManager::get()->getActivePreset().groundPlaneHeight;
 
 	calculateLaserPlane();
@@ -119,12 +121,7 @@ void LocationMapper::mapPoints(PixelLocation * laserLocations,
 
 	if (numIntersectionFails > 0)
 	{
-		std::cout << "!! " << numIntersectionFails << " laser plane intersection failures." << std::endl;
-	}
-
-	if (numDistanceFails > 0)
-	{
-		std::cout << "!! " << numDistanceFails << " object bounds failures. " << std::endl;
+		InfoLog << "!! " << numIntersectionFails << " laser plane intersection failures." << Logger::ENDL;
 	}
 }
 
@@ -193,9 +190,9 @@ bool LocationMapper::intersectPlane(const Plane& plane, const Ray& ray, ColoredP
 	real denominator = ray.direction.dot(plane.normal);
 	if (ABS(denominator) < 0.000001)
 	{
-		std::cerr << "!!! Ray never hits laser plane, pixel=" << pixel.x << ", " << pixel.y
+		ErrorLog << "!!! Ray never hits laser plane, pixel=" << pixel.x << ", " << pixel.y
 				  << ", laserX=" << m_laserX
-				  << ", denom=" << denominator << std::endl;
+				  << ", denom=" << denominator << Logger::ENDL;
 
 		return false;
 	}
@@ -212,10 +209,10 @@ bool LocationMapper::intersectPlane(const Plane& plane, const Ray& ray, ColoredP
 	if (d < 0)
 	{
 		// The ray is going away from the plane.  This should never happen.
-		std::cerr << "!!! Back projection ray is going the wrong direction!  Ray Origin = ("
+		ErrorLog << "!!! Back projection ray is going the wrong direction!  Ray Origin = ("
 				  << ray.origin.x << "," << ray.origin.y << "," << ray.origin.z << ") Direction = ("
 				  << ray.direction.x << "," << ray.direction.y << "," << ray.direction.z << ")"
-				  << std::endl;
+				  << Logger::ENDL;
 
 		return false;
 	}

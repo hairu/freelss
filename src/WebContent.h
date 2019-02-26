@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "Scanner.h"
 
 namespace freelss
 {
@@ -39,15 +40,22 @@ public:
 	};
 
 	static std::string scan(const std::vector<ScanResult>& pastScans);
-	static std::string scanRunning(Progress& progress, real remainingTime);
+	static std::string scanRunning(Progress& progress, real remainingTime, Scanner::Task task,
+			                       const std::string& url, bool showPointCloudRenderer,
+			                       const std::string& rotation, const std::string& pixelRadius);
 	static std::string cal1(const std::string& message);
 	static std::string settings(const std::string& message);
 	static std::string setup(const std::string& message);
 	static std::string viewScan(const std::string& plyFilename);
+	static std::string viewScanRender(int scanId, const std::string& url, const std::string& rotation, const std::string& pixelRadius);
+
 	static std::string showUpdate(SoftwareUpdate * update, const std::string& message);
 	static std::string updateApplied(SoftwareUpdate * update, const std::string& message, bool success);
 	static std::string network(const std::string& message, bool hiddenEssidInput);
 	static std::string security(const std::string& message);
+	static std::string mounts(const std::string& message, const std::vector<std::string>& mountPaths);
+	static std::string writePhotos(const std::vector<std::string>& mountPaths);
+	static std::string restoreDefaults();
 
 	static const std::string PROFILE_NAME;
 	static const std::string SERIAL_NUMBER;
@@ -95,10 +103,38 @@ public:
 	static const std::string WIFI_PASSWORD;
 	static const std::string KERNEL_VERSION;
 	static const std::string MENU2;
+	static const std::string MENU2_EXPERIMENTAL;
+	static const std::string MENU3;
 	static const std::string ENABLE_AUTHENTICATION;
 	static const std::string AUTH_USERNAME;
 	static const std::string AUTH_PASSWORD1;
 	static const std::string AUTH_PASSWORD2;
+	static const std::string NOISE_REMOVAL_SETTING;
+	static const std::string IMAGE_THRESHOLD_MODE;
+	static const std::string CAMERA_EXPOSURE_TIME;
+	static const std::string ENABLE_USB_NETWORK_CONFIG;
+	static const std::string MOUNT_SERVERPATH;
+	static const std::string MOUNT_USERNAME;
+	static const std::string MOUNT_PASSWORD;
+	static const std::string MOUNT_WORKGROUP;
+	static const std::string PHOTO_MOUNT;
+	static const std::string PHOTO_WRITE_LASER_IMAGES;
+	static const std::string MOUNT_INDEX;
+	static const std::string GPU_MEMORY;
+	static const std::string DISABLE_CAMERA_LED;
+	static const std::string ENABLE_EXPERIMENTAL;
+	static const std::string RESTORE_DEFAULTS;
+	static const std::string WIDTH;
+	static const std::string PIXEL_RADIUS;
+	static const std::string ROTATION;
+	static const std::string ENABLE_WEBGL;
+	static const std::string ID;
+	static const std::string CAMERA_SENSOR;
+	static const std::string ENABLE_POINT_CLOUD_RENDERER;
+	static const std::string OVERRIDE_FOCAL_LENGTH;
+	static const std::string OVERRIDDEN_FOCAL_LENGTH;
+	static const std::string FLIP_RED_BLUE;
+	static const std::string MAX_OBJECT_SIZE;
 
 private:
 	static std::string setting(const std::string& name, const std::string& label,
@@ -112,7 +148,13 @@ private:
 
 	static std::string checkbox(const std::string& name, const std::string& label, bool checked, const std::string& description);
 
-	static std::string scanResult(size_t index, const ScanResult& result);
+	static std::string scanResult(size_t index, const ScanResult& result, bool usePointCloudRenderer);
+
+	static std::string exposureDiv(int value, const std::string& label, bool floatLeft);
+
+	static std::string menu2();
+
+	static std::string renderImageControls(const std::string& url, const std::string& rotation, const std::string& pixelRadius, int scanId = -1);
 
 	static const int LOW_DISK_SPACE_MB;
 
@@ -158,6 +200,26 @@ private:
 	static const std::string AUTH_USERNAME_DESCR;
 	static const std::string AUTH_PASSWORD1_DESCR;
 	static const std::string AUTH_PASSWORD2_DESCR;
+	static const std::string NOISE_REMOVAL_SETTING_DESCR;
+	static const std::string IMAGE_THRESHOLD_MODE_DESCR;
+	static const std::string CAMERA_EXPOSURE_TIME_DESCR;
+	static const std::string ENABLE_USB_NETWORK_CONFIG_DESCR;
+	static const std::string MOUNT_PASSWORD_DESCR;
+	static const std::string MOUNT_USERNAME_DESCR;
+	static const std::string MOUNT_SERVERPATH_DESCR;
+	static const std::string MOUNT_WORKGROUP_DESCR;
+	static const std::string PHOTO_MOUNT_DESCR;
+	static const std::string PHOTO_WRITE_LASER_IMAGES_DESCR;
+	static const std::string GPU_MEMORY_DESCR;
+	static const std::string DISABLE_CAMERA_LED_DESCR;
+	static const std::string ENABLE_EXPERIMENTAL_DESCR;
+	static const std::string RESTORE_DEFAULTS_DESCR;
+	static const std::string ENABLE_WEBGL_DESCR;
+	static const std::string ENABLE_POINT_CLOUD_RENDERER_DESCR;
+	static const std::string OVERRIDE_FOCAL_LENGTH_DESCR;
+	static const std::string OVERRIDDEN_FOCAL_LENGTH_DESCR;
+	static const std::string FLIP_RED_BLUE_DESCR;
+	static const std::string MAX_OBJECT_SIZE_DESCR;
 };
 
 }

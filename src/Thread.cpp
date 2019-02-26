@@ -20,6 +20,7 @@
 
 #include "Main.h"
 #include "Thread.h"
+#include "Logger.h"
 
 namespace freelss
 {
@@ -35,11 +36,11 @@ static void * G_Thread_ThreadFunc ( void *ptr )
 	}
 	catch (freelss::Exception& ex)
 	{
-		std::cerr << "Exception thrown: " << ex << std::endl;
+		ErrorLog << "Exception thrown: " << ex << Logger::ENDL;
 	}
 	catch (...)
 	{
-		std::cerr << "Unknown Exception Thrown" << std::endl;
+		ErrorLog << "Unknown Exception Thrown" << Logger::ENDL;
 	}
 	
 	return NULL;
@@ -80,13 +81,18 @@ void Thread::stop()
 	m_stopRequested = true;
 }
 
+void Thread::sleep(unsigned long seconds)
+{
+	usleep(seconds * 1000000);
+}
+
 void Thread::usleep(unsigned long microseconds)
 {
 	if (::usleep(microseconds) != 0)
 	{
 		std::stringstream sstr;
 		sstr << "Error sleeping thread, errno=" << errno;
-		std::cerr << sstr.str() << std::endl;
+		ErrorLog << sstr.str() << Logger::ENDL;
 	}
 }
 

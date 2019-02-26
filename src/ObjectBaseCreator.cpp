@@ -19,6 +19,7 @@
 */
 #include "Main.h"
 #include "ObjectBaseCreator.h"
+#include "Logger.h"
 
 namespace freelss
 {
@@ -135,7 +136,7 @@ void ObjectBaseCreator::createBase(FaceMap & outFaces, std::vector<DataPoint>& r
 	baseTris.push_back(center.index);
 	baseTris.push_back(0);
 
-	std::cout << "Subdividing base " << numSubdivisions << " times..." << std::endl;
+	InfoLog << "Subdividing base " << numSubdivisions << " times..." << Logger::ENDL;
 
 	// Subdivide the results
 	for (int iSub = 0; iSub < numSubdivisions; iSub++)
@@ -207,7 +208,7 @@ void ObjectBaseCreator::subdivide(std::vector<unsigned>& triangles, std::vector<
 		}
 		else
 		{
-			std::cerr << "!! Invalid triangle index from set of " << results.size() << "(" << i1 << "," << i2 << "," << i3 << ")" << std::endl;
+			ErrorLog << "!! Invalid triangle index from set of " << results.size() << "(" << i1 << "," << i2 << "," << i3 << ")" << Logger::ENDL;
 		}
 	}
 }

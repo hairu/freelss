@@ -31,25 +31,18 @@
 #include "UpdateManager.h"
 #include "Lighting.h"
 #include "WifiConfig.h"
+#include "Logger.h"
+#include "MountManager.h"
+#include "BootConfigManager.h"
+#include "MmalUtil.h"
 #include <curl/curl.h>
 #include <algorithm>
+
+static std::string FREELSS_HOME_DIR = "/var/lib/freelss";
 
 static bool SortRecordByRow(const freelss::DataPoint& a, const freelss::DataPoint& b)
 {
 	return a.pixel.y < b.pixel.y;
-}
-
-std::string GetPropertiesFile()
-{
-	// Get the users home directory
-	char * home = getenv("HOME");
-	if (home == NULL)
-	{
-		std::cerr << "Could not detect the user's home directory";
-		return "";
-	}
-
-	return home + std::string("/.freelss.properties");
 }
 
 /** Initializes and destroys libcurl */
@@ -79,6 +72,12 @@ struct InitSingletons
 		freelss::Lighting::get();
 		freelss::WifiConfig::get();
 		freelss::HttpServer::get();
+		freelss::MountManager::get();
+		freelss::BootConfigManager::get();
+
+#ifndef MOCK
+		freelss::MmalUtil::get();
+#endif
 	}
 
 	~InitSingletons()
@@ -92,6 +91,13 @@ struct InitSingletons
 		freelss::Lighting::release();
 		freelss::WifiConfig::release();
 		freelss::Setup::release();
+		freelss::MountManager::release();
+		freelss::BootConfigManager::release();
+
+#ifndef MOCK
+		freelss::MmalUtil::release();
+#endif
+
 	}
 };
 
@@ -108,21 +114,52 @@ struct InitBcmHost
 		bcm_host_deinit();
 	}
 };
+namespace freelss
+{
+	void add(std::vector<freelss::DataPoint>& pts, real x, real y, real z, unsigned char r = 0, unsigned char g = 0, unsigned char b = 0)
+	{
+		DataPoint pt;
+		pt.point.x = x;
+		pt.point.y = y;
+		pt.point.z = z;
+		pt.point.r = r;
+		pt.point.g = g;
+		pt.point.b = b;
+		pts.push_back(pt);
+	}
+}
 
 int main(int argc, char **argv)
 {
 	int retVal = 0;
-
+#ifndef MOCK
 	pid_t pid = fork();
 	if (pid < 0)
 	{
-		std::cerr << "Error forking process!!!" << std::endl;
+		freelss::ErrorLog << "Error forking process!!!" << freelss::Logger::ENDL;
 		return 1;
 	}
 	else if (pid != 0)
 	{
 		return 0;
 	}
+#endif
+
+	// Create the output directories if they don't exist
+	std::string homeDir = freelss::GetAppHomeDir();
+	mkdir(homeDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+	// Migrate to the new directory structure
+	freelss::MigrateHome();
+
+	std::string debugOutputDir = freelss::GetDebugOutputDir();
+	mkdir(debugOutputDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+	std::string updateDir = freelss::GetUpdateDir();
+	mkdir(updateDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+	std::string scanOutputDir = freelss::GetScanOutputDir();
+	mkdir(scanOutputDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
 	// Initialize the Raspberry Pi hardware
 	InitBcmHost bcmHost;
@@ -143,7 +180,7 @@ int main(int argc, char **argv)
 
 		int port = freelss::Setup::get()->httpPort;
 
-		std::cout << "Running on port " << port << "..." << std::endl;
+		freelss::InfoLog << "Running on port " << port << "..." << freelss::Logger::ENDL;
 		freelss::HttpServer::get()->start(port);
 
 		while (true)
@@ -153,17 +190,17 @@ int main(int argc, char **argv)
 	}
 	catch (freelss::Exception& ex)
 	{
-		std::cerr << "Exception: " << ex << std::endl;
+		freelss::ErrorLog << "Exception: " << ex << freelss::Logger::ENDL;
 		retVal = -1;
 	}
 	catch (std::exception& ex)
 	{
-		std::cerr << "Exception: " << ex.what() << std::endl;
+		freelss::ErrorLog << "Exception: " << ex.what() << freelss::Logger::ENDL;
 		retVal = -1;
 	}
 	catch (...)
 	{
-		std::cerr << "Unknown Exception Occurred" << std::endl;
+		freelss::ErrorLog << "Unknown Exception Occurred" << freelss::Logger::ENDL;
 		retVal = -1;
 	}
 
@@ -173,9 +210,65 @@ int main(int argc, char **argv)
 namespace freelss
 {
 
-const std::string SCAN_OUTPUT_DIR = "/scans";
-const std::string DEBUG_OUTPUT_DIR = "/debug";
-const std::string PROPERTIES_FILE = GetPropertiesFile();
+void MigrateHome()
+{
+	std::string oldPropertiesFile = "/.freelss.properties";
+	std::string oldScanDir = "/scans";
+
+	// Move the properties file
+	std::string propertiesFile = GetPropertiesFile();
+	if (access(propertiesFile.c_str(), F_OK) == -1 &&
+		access(oldPropertiesFile.c_str(), F_OK) != -1)
+	{
+		if (rename(oldPropertiesFile.c_str(), propertiesFile.c_str()) == -1)
+		{
+			ErrorLog << "!! Error moving " << oldPropertiesFile << " to " << propertiesFile << Logger::ENDL;
+		}
+		else
+		{
+			ErrorLog << "Moved " << oldPropertiesFile << " to " << propertiesFile << Logger::ENDL;
+		}
+	}
+
+	// Move the scans directory
+	std::string scanOutputDir = GetScanOutputDir();
+	if (access(scanOutputDir.c_str(), F_OK) == -1 &&
+		access(oldScanDir.c_str(), F_OK) != -1)
+	{
+		if (rename(oldScanDir.c_str(), scanOutputDir.c_str()) == -1)
+		{
+			ErrorLog << "!! Error moving " << oldScanDir << " to " << scanOutputDir << Logger::ENDL;
+		}
+		else
+		{
+			ErrorLog << "Moved " << oldScanDir << " to " << scanOutputDir << Logger::ENDL;
+		}
+	}
+}
+
+std::string GetAppHomeDir()
+{
+	return FREELSS_HOME_DIR;
+}
+
+std::string GetScanOutputDir()
+{
+	return GetAppHomeDir() + "/scans";
+}
+
+std::string GetDebugOutputDir()
+{
+	return GetAppHomeDir() + "/debug";
+}
+std::string GetPropertiesFile()
+{
+	return GetAppHomeDir() + "/freelss.properties";
+}
+
+std::string GetUpdateDir()
+{
+	return GetAppHomeDir() + "/updates";
+}
 
 time_t ScanResult::getScanDate() const
 {
@@ -325,7 +418,6 @@ void DataPoint::lowpassFilter(std::vector<DataPoint>& output, std::vector<DataPo
 	}
 }
 
-
 void LoadProperties()
 {
 	PropertyReaderWriter reader;
@@ -333,9 +425,10 @@ void LoadProperties()
 	std::vector<Property> properties;
 
 	// Read the presets from the file
-	if (access(PROPERTIES_FILE.c_str(), F_OK) != -1)
+	std::string propertiesFile = GetPropertiesFile();
+	if (access(propertiesFile.c_str(), F_OK) != -1)
 	{
-		properties = reader.readProperties(PROPERTIES_FILE);
+		properties = reader.readProperties(propertiesFile);
 	}
 
 	PresetManager * presetMgr = PresetManager::get();
@@ -364,8 +457,11 @@ void SaveProperties()
 	PresetManager::get()->encodeProperties(properties);
 	Setup::get()->encodeProperties(properties);
 
+	properties.push_back(Property("freelss.majorVersion", ToString(FREELSS_VERSION_MAJOR)));
+	properties.push_back(Property("freelss.minorVersion", ToString(FREELSS_VERSION_MINOR)));
+
 	PropertyReaderWriter writer;
-	writer.writeProperties(properties, PROPERTIES_FILE);
+	writer.writeProperties(properties, GetPropertiesFile());
 }
 
 real ConvertUnitOfLength(real value, UnitOfLength srcUnits, UnitOfLength dstUnits)
@@ -426,7 +522,7 @@ double GetTimeInSeconds()
 	struct timeval tv;
 	if (gettimeofday(&tv, NULL) != 0)
 	{
-		std::cerr << "Error calling gettimeofday()" << std::endl;
+		ErrorLog << "Error calling gettimeofday()" << Logger::ENDL;
 	}
 
 	double sec = tv.tv_sec;
@@ -443,7 +539,8 @@ int GetFreeSpaceMb()
 {
 	int freeSpaceMb = 0;
 	struct statvfs fileSystemInfo;
-	if (statvfs(SCAN_OUTPUT_DIR.c_str(), &fileSystemInfo) == 0)
+	std::string scanOutputDir = GetScanOutputDir();
+	if (statvfs(scanOutputDir.c_str(), &fileSystemInfo) == 0)
 	{
 		real freeSpaceBytes = (real)fileSystemInfo.f_bsize * (real)fileSystemInfo.f_bfree;
 		freeSpaceMb = (int)(freeSpaceBytes / 1024.0f / 1024.0f);
@@ -534,6 +631,16 @@ bool EndsWith(const std::string& str, const std::string& ending)
 	return false;
 }
 
+bool StartsWith(const std::string& str, const std::string& start)
+{
+	if (str.length() >= start.length())
+	{
+		return (0 == str.compare (0, start.length(), start));
+	}
+
+	return false;
+}
+
 void HtmlEncode(std::string& str)
 {
     std::string buffer;
@@ -555,11 +662,87 @@ void HtmlEncode(std::string& str)
     str.swap(buffer);
 }
 
-void ExitProgram()
+static int ishex(int x)
 {
-	//G_running = false;
+	return	(x >= '0' && x <= '9')	||
+		(x >= 'a' && x <= 'f')	||
+		(x >= 'A' && x <= 'F');
 }
 
+std::string UrlDecode(const std::string& in)
+{
+	std::stringstream out;
+
+	for (size_t idx = 0; idx < in.length(); idx++)
+	{
+		int a = in[idx];
+
+		if (a == '+')
+		{
+			a = ' ';
+		}
+		else if (a == '%' && (idx + 2 < in.length()))
+		{
+			int b = in[idx + 1];
+			int c = in[idx + 2];
+
+			if (ishex(b) && ishex(c))
+			{
+				sscanf(&in[idx + 1], "%2x", &a);
+			}
+			else
+			{
+				ErrorLog << "!! Invalid URL encoded string" << Logger::ENDL;
+				break;
+			}
+		}
+
+		out << (char) a;
+	}
+
+	return out.str();
+}
+
+std::string TrimString(const std::string& str)
+{
+	if (str.empty())
+	{
+		return "";
+	}
+	
+	size_t start = 0;
+	for (size_t i = 0; i < str.size(); i++)
+	{
+		char c = str[i];
+		if (c == '\r' || c == '\n' || c == ' ' || c == '\t')
+		{
+			start++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	
+	if (start == str.size())
+	{
+		return "";
+	}
+	
+	size_t end = str.size() - 1;
+	while (end > start)
+	{
+		char c = str[end];
+		if (c != '\r' && c != '\n' && c != ' ' && c != '\t')
+		{
+			break;
+		}
+		
+		end--;
+	}	
+	
+	return str.substr(start, (end - start + 1));
+}
 } // ns scanner
 
 

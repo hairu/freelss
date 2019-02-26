@@ -20,6 +20,7 @@
 #include "Main.h"
 #include "LaserResultsMerger.h"
 #include "PresetManager.h"
+#include "Logger.h"
 
 #define MASK_DIM_1 1000 // The size of the frame dimension
 #define MASK_DIM_2 1000 // The size of the Y dimension
@@ -97,7 +98,7 @@ void LaserResultsMerger::merge(std::vector<DataPoint> & out,
 		mask.resize(MASK_DIM_1 * MASK_DIM_2, 0);
 
 		// Merge the results
-		std::cout << "Detected " << numFramesBetweenLaserPlanes << " frames between the lasers." << std::endl;
+		InfoLog << "Detected " << numFramesBetweenLaserPlanes << " frames between the lasers." << Logger::ENDL;
 
 		for (size_t iRight = 0; iRight < rightLaserResults.size(); iRight++)
 		{
@@ -178,7 +179,7 @@ void LaserResultsMerger::merge(std::vector<DataPoint> & out,
 			}
 		}
 
-		std::cout << "Culled " << numCulledPoints << ", " << (100 * (real)numCulledPoints / leftLaserResults.size()) << "% of the left laser points." << std::endl;
+		InfoLog << "Culled " << numCulledPoints << ", " << (100 * (real)numCulledPoints / leftLaserResults.size()) << "% of the left laser points." << Logger::ENDL;
 	}
 
 	progress.setPercent(100);

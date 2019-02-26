@@ -19,14 +19,14 @@
 */
 #include "Main.h"
 #include "PropertyReaderWriter.h"
-
+#include "Logger.h"
 
 namespace freelss
 {
 
 std::vector<Property> PropertyReaderWriter::readProperties(const std::string& filename)
 {
-	std::cout << "Reading properties file: " << filename << std::endl;
+	InfoLog << "Reading properties file: " << filename << Logger::ENDL;
 
 	std::vector<Property> properties;
 

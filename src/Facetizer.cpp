@@ -21,6 +21,7 @@
 #include "Main.h"
 #include "Facetizer.h"
 #include "Camera.h"
+#include "Logger.h"
 
 namespace freelss
 {
@@ -110,9 +111,9 @@ void Facetizer::facetize(FaceMap & faces, std::vector<DataPoint>& results, bool 
 		addFacesForColumn(firstFrame, * lastFrame, faces, numTriangles);
 	}
 
-	std::cout << "Meshed " << (iStep + 1) << " scans with a total of " << totNumPoints << " points." << std::endl;
+	InfoLog << "Meshed " << (iStep + 1) << " scans with a total of " << totNumPoints << " points." << Logger::ENDL;
 
-	std::cout << "Computing vertex normals..." << std::endl;
+	InfoLog << "Computing vertex normals..." << Logger::ENDL;
 
 	const std::vector<unsigned>& triangles = faces.triangles;
 
@@ -134,7 +135,7 @@ void Facetizer::facetize(FaceMap & faces, std::vector<DataPoint>& results, bool 
 		pt3.normal = normal;
 	}
 
-	std::cout << "Vertex normals computed." << std::endl;
+	InfoLog << "Vertex normals computed." << Logger::ENDL;
 }
 
 bool Facetizer::isInwardFacingFace(const DataPoint& p1, const DataPoint& p2, const DataPoint& p3)

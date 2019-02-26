@@ -20,7 +20,7 @@
 
 #include "Main.h"
 #include "Preset.h"
-#include <set>
+#include "ImageProcessor.h"
 
 namespace freelss
 {
@@ -28,14 +28,13 @@ namespace freelss
 Preset::Preset() :
 	name("Preset"),
 	laserSide(Laser::RIGHT_LASER),
-	cameraMode(Camera::CM_VIDEO_1P2MP),
+	cameraMode(CM_VIDEO_1P2MP),
 	laserThreshold(10),
 	minLaserWidth(3),
 	maxLaserWidth(40),
-	maxObjectSize(215.9),  // 8.5"
 	maxTriangleEdgeLength(12), // 12mm
 	numLaserRowBins(4),
-	stabilityDelay(0),
+	stabilityDelay(100000),   // 100ms
 	id(-1),
 	framesPerRevolution(800),
 	generateXyz (false),
@@ -43,9 +42,12 @@ Preset::Preset() :
 	generatePly(true),
 	createBaseForObject(true),
 	enableBurstModeForStillImages(false),
+	noiseRemovalSetting(NoiseRemover::NRS_MEDIUM),
+	imageThresholdMode(ImageProcessor::THM_MEDIUM),
 	groundPlaneHeight(0),
 	laserMergeAction (LMA_PREFER_RIGHT_LASER),
-	plyDataFormat(PLY_BINARY)
+	plyDataFormat(PLY_BINARY),
+	cameraExposureTime(CET_AUTO)
 {
 	// Do nothing
 }
@@ -58,7 +60,6 @@ void Preset::encodeProperties(std::vector<Property>& properties, bool isActivePr
 	properties.push_back(Property("presets." + name + ".laserThreshold", ToString(laserThreshold)));
 	properties.push_back(Property("presets." + name + ".minLaserWidth", ToString(minLaserWidth)));
 	properties.push_back(Property("presets." + name + ".maxLaserWidth", ToString(maxLaserWidth)));
-	properties.push_back(Property("presets." + name + ".maxObjectSize", ToString(maxObjectSize)));
 	properties.push_back(Property("presets." + name + ".maxTriangleEdgeLength", ToString(maxTriangleEdgeLength)));
 	properties.push_back(Property("presets." + name + ".numLaserRowBins", ToString(numLaserRowBins)));
 	properties.push_back(Property("presets." + name + ".stabilityDelay", ToString(stabilityDelay)));
@@ -71,6 +72,9 @@ void Preset::encodeProperties(std::vector<Property>& properties, bool isActivePr
 	properties.push_back(Property("presets." + name + ".plyDataFormat", ToString((int)plyDataFormat)));
 	properties.push_back(Property("presets." + name + ".enableBurstModeForStillImages", ToString(enableBurstModeForStillImages)));
 	properties.push_back(Property("presets." + name + ".createBaseForObject", ToString(createBaseForObject)));
+	properties.push_back(Property("presets." + name + ".noiseRemovalSetting", ToString((int)noiseRemovalSetting)));
+	properties.push_back(Property("presets." + name + ".imageThresholdMode", ToString((int)imageThresholdMode)));
+	properties.push_back(Property("presets." + name + ".cameraExposureTime", ToString((int)cameraExposureTime)));
 
 	if (isActivePreset)
 	{
@@ -100,7 +104,7 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 		}
 		else if (prop.name == prefix + name + ".cameraMode")
 		{
-			cameraMode = (Camera::CameraMode) ToInt(prop.value);
+			cameraMode = (CameraMode) ToInt(prop.value);
 		}
 		else if (prop.name == prefix + name +  ".laserThreshold")
 		{
@@ -113,10 +117,6 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 		else if (prop.name == prefix + name +  ".maxLaserWidth")
 		{
 			maxLaserWidth = ToInt(prop.value);
-		}
-		else if (prop.name == prefix + name + ".maxObjectSize")
-		{
-			maxObjectSize = ToReal(prop.value);
 		}
 		else if (prop.name == prefix + name + ".maxTriangleEdgeLength")
 		{
@@ -169,6 +169,18 @@ void Preset::decodeProperties(const std::vector<Property>& properties, const std
 		else if (prop.name == prefix + name + ".createBaseForObject")
 		{
 			createBaseForObject = ToBool(prop.value);
+		}
+		else if (prop.name == prefix + name + ".noiseRemovalSetting")
+		{
+			noiseRemovalSetting = (NoiseRemover::Setting) ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".imageThresholdMode")
+		{
+			imageThresholdMode = (ImageProcessor::ThresholdMode) ToInt(prop.value);
+		}
+		else if (prop.name == prefix + name + ".cameraExposureTime")
+		{
+			cameraExposureTime = (CameraExposureTime) ToInt(prop.value);
 		}
 	}
 }

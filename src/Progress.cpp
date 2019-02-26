@@ -20,6 +20,7 @@
 
 #include "Main.h"
 #include "Progress.h"
+#include "Logger.h"
 
 namespace freelss
 {
@@ -66,7 +67,7 @@ void Progress::setPercent(real percent)
 void Progress::setLabel(const std::string& label)
 {
 	m_cs.enter();
-	std::cout << label << "..." << std::endl;
+	InfoLog << label << "..." << Logger::ENDL;
 	m_label = label;
 	m_cs.leave();
 }

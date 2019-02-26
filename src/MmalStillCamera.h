@@ -34,10 +34,23 @@ struct MmalStillCallbackData;
 class MmalStillCamera : public Camera
 {
 public:
-	MmalStillCamera(int imageWidth, int imageHeight, bool enableBurstMode);
+	MmalStillCamera();
 	~MmalStillCamera();
 
 	Image * acquireImage();
+
+	/**
+	 * Initializes the camera and prepares it for acquisition.
+	 * NOTE: This must be called once and only once for a object.
+	 * NOTE: This method must be called before any acquisition calls.
+	 */
+	void initialize(CameraMode cameraMode);
+
+	/** Sets whether burst mode should be enabled when the camera is initialized */
+	void setBurstModeEnabled(bool enable);
+
+	/** Sets whether the red and blue image channel should be flipped */
+	void setFlipRedBlue(bool flip);
 
 	void releaseImage(Image * image);
 
@@ -50,14 +63,10 @@ public:
 	/** Returns the number of image components */
 	int getImageComponents() const;
 
-	/** Returns the width of the sensor in mm */
-	real getSensorWidth() const;
+protected:
 
-	/** Returns the height of the sensor in mm */
-	real getSensorHeight() const;
-
-	/** Returns the focal length of the camera in mm */
-	real getFocalLength() const;
+	/** Sets the shutter speed in microseconds */
+	void setShutterSpeed(unsigned shutterSpeedUs);
 
 private:
 	void createPreview();
@@ -79,6 +88,8 @@ private:
 	MMAL_PORT_T * m_videoPort;
 	MMAL_PORT_T * m_stillPort;
 	MMAL_PORT_T * m_targetPort;
+	bool m_burstModeEnabled;
+	bool m_flipRedBlue;
 };
 
 

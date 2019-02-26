@@ -26,6 +26,7 @@
 #include "ImageProcessor.h"
 #include "Setup.h"
 #include "LocationMapper.h"
+#include "Logger.h"
 
 namespace freelss
 {
@@ -44,20 +45,20 @@ real Calibrator::computeCameraZ(real pixelY)
 	// Use trig to detect the distance to the camera
 	real pixelSpacing = (real)camera->getSensorHeight() / (real)camera->getImageHeight();
 
-	std::cout << "cameraY: " << cameraY << " mm" << std::endl;
-	std::cout << "pixelY: " << pixelY << " row" << std::endl;
-	std::cout << "Pixel Spacing: " << pixelSpacing << " mm" << std::endl;
+	InfoLog << "cameraY: " << cameraY << " mm" << Logger::ENDL;
+	InfoLog << "pixelY: " << pixelY << " row" << Logger::ENDL;
+	InfoLog << "Pixel Spacing: " << pixelSpacing << " mm" << Logger::ENDL;
 
 	real sy = (pixelY - (camera->getImageHeight() / 2.0)) * pixelSpacing;
 
-	std::cout << "sy on sensor: " << sy << " mm" << std::endl;
-	std::cout << "focal length: " << focalLength << " mm" << std::endl;
+	InfoLog << "sy on sensor: " << sy << " mm" << Logger::ENDL;
+	InfoLog << "focal length: " << focalLength << " mm" << Logger::ENDL;
 
 	real theta = atan(sy / focalLength);
-	std::cout << "angle is : " << (theta / (PI * 2)) * 360.0 << " degrees" << std::endl;
+	InfoLog << "angle is : " << (theta / (PI * 2)) * 360.0 << " degrees" << Logger::ENDL;
 	real z = cameraY  / tan(theta);
 
-	std::cout << "distance is : " << z << " mm" << std::endl;
+	InfoLog << "distance is : " << z << " mm" << Logger::ENDL;
 
 	return z;
 }
@@ -118,7 +119,7 @@ void Calibrator::calculateLaserPlane(Plane& outPlane, PixelLocation& outTop, Pix
 	}
 	catch (...)
 	{
-		std::cerr << "Error detecting laser location" << std::endl;
+		ErrorLog << "Error detecting laser location" << Logger::ENDL;
 
 		camera->releaseImage(image1);
 		camera->releaseImage(image2);
@@ -169,18 +170,18 @@ void Calibrator::calculateLaserPlane(Plane& outPlane, PixelLocation& outTop, Pix
 	outBottom = pixelLocations[idx2];
 
 	real avgDistFromCenterPx = (ABS(pixelLocations[idx1].x - centerOfImage) + ABS(pixelLocations[idx2].x - centerOfImage)) / 2.0f;
-	std::cout << pixelLocations[idx1].x << " " << centerOfImage << " " << pixelLocations[idx2].x << " " << idx1 << " " << idx2 << " " << xStart << " " << xEnd << std::endl;
-	std::cout << "Avg Dist From Center of Image: " << avgDistFromCenterPx << " px" << std::endl;
+	InfoLog << pixelLocations[idx1].x << " " << centerOfImage << " " << pixelLocations[idx2].x << " " << idx1 << " " << idx2 << " " << xStart << " " << xEnd << Logger::ENDL;
+	InfoLog << "Avg Dist From Center of Image: " << avgDistFromCenterPx << " px" << Logger::ENDL;
 
 	outPlane = calculateLaserPlane(laserLocation, pixelLocations[idx1], pixelLocations[idx2]);
-	std::cout << "Plane Normal: (" << outPlane.normal.x << "," << outPlane.normal.y << "," << outPlane.normal.z << ")" << std::endl;
+	InfoLog << "Plane Normal: (" << outPlane.normal.x << "," << outPlane.normal.y << "," << outPlane.normal.z << ")" << Logger::ENDL;
 }
 
 Plane Calibrator::calculateLaserPlane(const Vector3& laserLocation, const PixelLocation& pixel1, const PixelLocation& pixel2)
 {
 	Setup * setup = Setup::get();
 
-	std::cout << "Calculating laser plane for pt (" << pixel1.x << "," << pixel1.y << ") (" << pixel2.x << "," << pixel2.y << ")" << std::endl;
+	InfoLog << "Calculating laser plane for pt (" << pixel1.x << "," << pixel1.y << ") (" << pixel2.x << "," << pixel2.y << ")" << Logger::ENDL;
 
 	//
 	// Map the 2D image points to 3D points
@@ -211,8 +212,8 @@ Plane Calibrator::calculateLaserPlane(const Vector3& laserLocation, const PixelL
 		throw Exception("Error intersecting XY plane at point 2");
 	}
 
-	std::cout << "Intersection pt1: " << pt1.x << "," << pt1.y << "," << pt1.z << std::endl;
-	std::cout << "Intersection pt2: " << pt2.x << "," << pt2.y << "," << pt2.z << std::endl;
+	InfoLog << "Intersection pt1: " << pt1.x << "," << pt1.y << "," << pt1.z << Logger::ENDL;
+	InfoLog << "Intersection pt2: " << pt2.x << "," << pt2.y << "," << pt2.z << Logger::ENDL;
 
 	//
 	// Calculate the plane
@@ -316,12 +317,12 @@ bool Calibrator::detectLaserX(real * laserX, PixelLocation& topLocation, PixelLo
 		}
 		else
 		{
-			std::cerr << "Could not detect laser line for calibration purposes." << std::endl;
+			ErrorLog << "Could not detect laser line for calibration purposes." << Logger::ENDL;
 		}
 	}
 	catch (...)
 	{
-		std::cerr << "Error detecting laser location" << std::endl;
+		ErrorLog << "Error detecting laser location" << Logger::ENDL;
 
 		camera->releaseImage(baseImage);
 		camera->releaseImage(laserImage);
@@ -411,10 +412,10 @@ real Calibrator::computeLaserX(real cameraZ, real xPixel, real yPixel)
 		throw Exception("Camera plane was not intersected");
 	}
 
-	std::cout << "Detected laser at (" << intersection.x / 25.4 << "," << intersection.y / 25.4 << ","
+	InfoLog << "Detected laser at (" << intersection.x / 25.4 << "," << intersection.y / 25.4 << ","
 			  << intersection.z / 25.4 << ") in. from pixel ("
 			  << xPixel << "," << yPixel << ") and camera Z of " << cameraZ / 25.4 << "in. "
-			  << std::endl;
+			  << Logger::ENDL;
 
 	return intersection.x;
 }
@@ -470,8 +471,8 @@ void Calibrator::addCalibrationLines(Image * image)
 		// Calculate the originY
 		Camera * camera = Camera::getInstance();
 
-		unsigned xStart = (width / 2) - 10;
-		unsigned xEnd = xStart + 20;
+		unsigned xStart = (width / 2) - (width / 10);
+		unsigned xEnd = (width / 2) + (width / 10);
 		real sensorHeight = camera->getSensorHeight();
 		real sensorPct = (originY + (sensorHeight / 2)) / sensorHeight;
 
@@ -521,7 +522,7 @@ bool Calibrator::calculateOriginYOnSensor(real& originY)
 	Vector3 intersection;
 	if (!intersectPlane(originRay, sensorPlane, &intersection))
 	{
-		std::cerr << "!! Origin ray did not intersect sensor plane" << std::endl;
+		ErrorLog << "!! Origin ray did not intersect sensor plane" << Logger::ENDL;
 		return false;
 	}
 

@@ -30,6 +30,7 @@ class Image
 {
 public:
 	Image();
+	Image(const Image& a);
 	Image(unsigned width, unsigned height, unsigned numComponents);
 	~Image();
 	

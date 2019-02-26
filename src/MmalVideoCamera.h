@@ -34,12 +34,22 @@ struct MmalVideoCallbackData;
 class MmalVideoCamera : public Camera
 {
 public:
-	MmalVideoCamera(int imageWidth, int imageHeight, int frameRate);
+	MmalVideoCamera();
 	~MmalVideoCamera();
 
 	Image * acquireImage();
 
+	/**
+	 * Initializes the camera and prepares it for acquisition.
+	 * NOTE: This must be called once and only once for a object.
+	 * NOTE: This method must be called before any acquisition calls.
+	 */
+	void initialize(CameraMode cameraMode);
+
 	void releaseImage(Image * image);
+
+	/** Sets whether the red and blue image channel should be flipped */
+	void setFlipRedBlue(bool flip);
 
 	/** Returns the height of the image that this camera takes. */
 	int getImageHeight() const;
@@ -50,14 +60,9 @@ public:
 	/** Returns the number of image components */
 	int getImageComponents() const;
 
-	/** Returns the width of the sensor in mm */
-	real getSensorWidth() const;
-
-	/** Returns the height of the sensor in mm */
-	real getSensorHeight() const;
-
-	/** Returns the focal length of the camera in mm */
-	real getFocalLength() const;
+protected:
+	/** Sets the shutter speed in microseconds */
+	void setShutterSpeed(unsigned shutterSpeedUs);
 
 private:
 	void createCameraComponent();
@@ -78,6 +83,7 @@ private:
 	MMAL_PORT_T * m_stillPort;
 	MMAL_PORT_T * m_previewPort;
 	bool m_videoPortEnabled;
+	bool m_flipRedBlue;
 };
 
 }

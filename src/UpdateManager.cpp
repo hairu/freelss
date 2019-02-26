@@ -20,9 +20,10 @@
 #include "Main.h"
 #include "UpdateManager.h"
 #include "Setup.h"
-#include <rapidxml.hpp>
+#include "Logger.h"
 #include <curl/curl.h>
 #include <iomanip>
+#include <rapidxml.hpp>
 
 using namespace rapidxml;
 
@@ -31,7 +32,6 @@ namespace freelss
 
 UpdateManager * UpdateManager::m_instance = NULL;
 const std::string UpdateManager::UPDATE_URL = "https://www.murobo.com/atlas3d/updates.xml";
-const std::string UpdateManager::UPDATE_DIR = "/updates";
 
 static bool SortByVersion(const SoftwareUpdate& a, const SoftwareUpdate& b)
 {
@@ -46,8 +46,7 @@ static bool SortByVersion(const SoftwareUpdate& a, const SoftwareUpdate& b)
 UpdateManager::UpdateManager() :
 	m_cs()
 {
-	// Create the update directory if it doesn't exist
-	mkdir(UpdateManager::UPDATE_DIR.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	// Do nothing
 }
 
 UpdateManager * UpdateManager::get()
@@ -68,7 +67,7 @@ void UpdateManager::release()
 
 void UpdateManager::downloadFile(const std::string& url, const std::string& destination, const std::string& postData)
 {
-	std::cout << destination << " <-- " << url << " " << postData << std::endl;
+	InfoLog << destination << " <-- " << url << " " << postData << Logger::ENDL;
 
 	CURL * curl = curl_easy_init();
 	if (curl == NULL)
@@ -159,7 +158,7 @@ void UpdateManager::downloadUpdate(const std::string& url, const std::string& de
 	sstr << "serial=" << serialNumber << "&majorVersion=" << majorVersion << "&minorVersion=" << minorVersion;
 	downloadFile(url, destination, sstr.str());
 
-	std::cout << "Retrieved file" << std::endl;
+	InfoLog << "Retrieved file" << Logger::ENDL;
 }
 
 void UpdateManager::checkForUpdates()
@@ -169,7 +168,7 @@ void UpdateManager::checkForUpdates()
 	{
 		// Build a destination filename
 		std::stringstream sstr;
-		sstr << UpdateManager::UPDATE_DIR << "/" << std::setprecision(100) << GetTimeInSeconds() << ".xml";
+		sstr << GetUpdateDir() << "/" << std::setprecision(100) << GetTimeInSeconds() << ".xml";
 
 		// Download the updates file
 		downloadFile(UpdateManager::UPDATE_URL, sstr.str());
@@ -197,7 +196,7 @@ void UpdateManager::checkForUpdates()
  */
 std::vector<SoftwareUpdate> UpdateManager::readUpdates(const std::string& filename)
 {
-	std::cout << "Reading updates from " << filename << std::endl;
+	InfoLog << "Reading updates from " << filename << Logger::ENDL;
 
 	//
 	// Read the XML file into memory
@@ -222,7 +221,7 @@ std::vector<SoftwareUpdate> UpdateManager::readUpdates(const std::string& filena
 	xml_document<> doc;
 	doc.parse<0>(&contents[0]);
 
-	std::cout << "Done parsing " << filename << std::endl;
+	InfoLog << "Done parsing " << filename << Logger::ENDL;
 
 	xml_node<> * rootNode = doc.first_node();
 	if (rootNode == NULL || rootNode->name() == NULL || std::string(rootNode->name()) != "updates")
@@ -236,7 +235,7 @@ std::vector<SoftwareUpdate> UpdateManager::readUpdates(const std::string& filena
 		// Build the update
 		if (node->name() != NULL && std::string(node->name()) == "update")
 		{
-			std::cout << "Found Update" << std::endl;
+			InfoLog << "Found Update" << Logger::ENDL;
 
 			SoftwareUpdate update;
 			update.majorVersion = -1;
@@ -290,7 +289,7 @@ std::vector<SoftwareUpdate> UpdateManager::readUpdates(const std::string& filena
 		node = node->next_sibling();
 	}
 
-	std::cout << "Found " << updates.size() << " update records." << std::endl;
+	InfoLog << "Found " << updates.size() << " update records." << Logger::ENDL;
 
 	return updates;
 }
@@ -305,35 +304,38 @@ void UpdateManager::applyUpdate(SoftwareUpdate * update)
 	Setup * setup = Setup::get();
 
 	std::stringstream archivePath;
-	archivePath << UpdateManager::UPDATE_DIR << "/freelss-" << update->majorVersion << "-" << update->minorVersion << ".tar.gz";
+	archivePath << GetUpdateDir() << "/freelss-" << update->majorVersion << "-" << update->minorVersion << ".tar.gz";
 
 	// Download the update
-	std::cout << "Downloading " << update->url << " to " << archivePath.str() << std::endl;
+	InfoLog << "Downloading " << update->url << " to " << archivePath.str() << Logger::ENDL;
 	downloadUpdate(update->url, archivePath.str(), setup->serialNumber, update->majorVersion, update->minorVersion);
 
 	// Extract the update
 	std::stringstream extractCmd;
-	extractCmd << "tar xvzf " << archivePath.str() << " -C " << UpdateManager::UPDATE_DIR;
+	extractCmd << "tar xvzf " << archivePath.str() << " -C " << GetUpdateDir();
 
-	std::cout << "Extracting with " << extractCmd.str() << std::endl;
+	InfoLog << "Extracting with " << extractCmd.str() << Logger::ENDL;
 	if (system(extractCmd.str().c_str()) == -1)
 	{
-		throw Exception("Error extracting update to " + UpdateManager::UPDATE_DIR);
+		throw Exception("Error extracting update to " + GetUpdateDir());
 	}
 
 	// Run the update
 	std::stringstream updateCmd;
-	updateCmd << UpdateManager::UPDATE_DIR << "/freelss-" << update->majorVersion << "-" << update->minorVersion << "/update.sh";
+	updateCmd << GetUpdateDir() << "/freelss-" << update->majorVersion << "-" << update->minorVersion << "/update.sh";
 
-	std::cout << "Applying with " << updateCmd.str() << std::endl;
+	InfoLog << "Applying with " << updateCmd.str() << Logger::ENDL;
 	if (system(updateCmd.str().c_str()) == -1)
 	{
 		throw Exception("Error applying update with " + updateCmd.str());
 	}
 
-	std::cout << "Updated to "  << update->majorVersion << "." << update->minorVersion << "." << std::endl;
-	std::cout << "Rebooting..." << std::endl;
-	system("reboot&");
+	InfoLog << "Updated to "  << update->majorVersion << "." << update->minorVersion << "." << Logger::ENDL;
+	InfoLog << "Rebooting..." << Logger::ENDL;
+	if (system("reboot&") == -1)
+	{
+		ErrorLog << "Error rebooting the system." << Logger::ENDL;
+	}
 }
 
 SoftwareUpdate * UpdateManager::getLatestUpdate()

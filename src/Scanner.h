@@ -45,10 +45,11 @@ public:
 	 * The overridden thread method.  This method runs in a separate thread once execute() is called.
 	 */
 	void run();	
-	
+
 	/** The operation that the scanner should perform */
 	enum Task { GENERATE_SCAN /**< Perform a normal scan */,
-		        GENERATE_DEBUG /**< Generate debug images instead of scanning */
+		        GENERATE_DEBUG /**< Generate debug images instead of scanning */,
+		        GENERATE_PHOTOS /**< Generate a series of photos instead of scanning */
 	          };
 
 	/** 
@@ -67,6 +68,16 @@ public:
 
 	void setRange(real range);
 
+	/**
+	 * Sets the path that the photos should be written to.
+	 */
+	void setPhotoSequencePath(const std::string& pathPrefix);
+
+	/**
+	 * Sets whether the laser images should be saved.
+	 */
+	void setSavePhotoSequenceLaserImages(bool saveLaserImages);
+
 	/** Indicates if a scan is running or not */
 	bool isRunning();
 
@@ -75,6 +86,9 @@ public:
 
 	/** Get the remaining time for the scan in seconds */
 	real getRemainingTime();
+
+	/** Returns the scanner's current task */
+	Scanner::Task getTask();
 
 	/** Generate debugging images and information */
 	void generateDebugInfo(Laser::LaserSide laserSide);
@@ -162,6 +176,12 @@ private:
 	 * Perform the scan.
 	 */
 	void runScan();
+
+	/**
+	 *  Write the next set of photos in the sequence.
+	 */
+	void writePhotos(int frame, real frameRadians);
+
 private:
 	/** Unowned objects */
 	Laser * m_laser;
@@ -173,7 +193,7 @@ private:
 	/** Array of laser locations */
 	PixelLocation * m_laserLocations;
 
-	ImageProcessor m_imageProcessor;
+	ImageProcessor * m_imageProcessor;
 
 	/** Indicates if a scan is running or not */
 	bool m_running;
@@ -258,6 +278,12 @@ private:
 
 	/** The laser delay from the preset */
 	double m_laserDelaySec;
+
+	/** Where the photo sequence photos get saved */
+	std::string m_photoPathPrefix;
+
+	/** Indicates if the laser-on images should be saved as well */
+	bool m_saveLaserImages;
 };
 
 }

@@ -34,6 +34,9 @@
 #include "Facetizer.h"
 #include "PropertyReaderWriter.h"
 #include "ObjectBaseCreator.h"
+#include "NoiseRemover.h"
+#include "Logger.h"
+#include "MountManager.h"
 
 namespace freelss
 {
@@ -62,6 +65,7 @@ Scanner::Scanner() :
 	m_camera(NULL),
 	m_turnTable(NULL),
 	m_laserLocations(NULL),
+	m_imageProcessor(new ImageProcessor()),
 	m_running(false),
 	m_range(360),
 	m_filename(""),
@@ -96,11 +100,23 @@ Scanner::~Scanner()
 {
 	delete [] m_laserLocations;
 	delete [] m_columnPoints;
+	delete m_imageProcessor;
 }
 
 void Scanner::setTask(Scanner::Task task)
 {
 	m_task = task;
+}
+
+Scanner::Task Scanner::getTask()
+{
+	Scanner::Task task;
+
+	m_status.enter();
+	task = m_task;
+	m_status.leave();
+
+	return task;
 }
 
 bool Scanner::isRunning()
@@ -162,10 +178,18 @@ void Scanner::prepareScan()
 	{
 		m_progress.setLabel("Generating debug info");
 	}
+	else if (m_task == Scanner::GENERATE_PHOTOS)
+	{
+		m_progress.setLabel("Generating photo sequence");
+	}
 	else
 	{
 		m_progress.setLabel("Unknown");
 	}
+
+	// Reinitialize the image processor
+	delete m_imageProcessor;
+	m_imageProcessor = new ImageProcessor();
 
 	// Get handles to our hardware devices
 	m_camera = Camera::getInstance();
@@ -183,7 +207,7 @@ void Scanner::prepareScan()
 
 	// Set the base output file
 	std::stringstream sstr;
-	sstr << SCAN_OUTPUT_DIR << std::string("/") << time(NULL);
+	sstr << GetScanOutputDir() << std::string("/") << time(NULL);
 
 	m_filename = sstr.str();
 
@@ -196,30 +220,40 @@ void Scanner::prepareScan()
 	// Set the laser delay
 	switch (preset.cameraMode)
 	{
-	case Camera::CM_STILL_5MP:
+	case CM_STILL_8MP:
 		m_laserDelaySec = 0.36;
 		break;
 
-	case Camera::CM_VIDEO_5MP:
+	case CM_STILL_5MP:
 		m_laserDelaySec = 0.36;
 		break;
 
-	case Camera::CM_VIDEO_HD:
+	case CM_VIDEO_5MP:
+		m_laserDelaySec = 0.36;
+		break;
+
+	case CM_VIDEO_HD:
 		m_laserDelaySec = 0.18;
 		break;
 
-	case Camera::CM_VIDEO_1P2MP:
-		//m_laserDelaySec = 0.09;
+	case CM_VIDEO_1P2MP:
 		m_laserDelaySec = 0.18;
 		break;
 
-	case Camera::CM_VIDEO_VGA:
+	case CM_VIDEO_VGA:
 		m_laserDelaySec = 0.09;
+		break;
+
+	case CM_STILL_VGA:
+		m_laserDelaySec = 0.36;
+		break;
+
+	case CM_STILL_HD:
+		m_laserDelaySec = 0.36;
 		break;
 
 	default:
-		m_laserDelaySec = 0.09;
-		break;
+		throw Exception("Unsupported Camera Mode");
 	}
 
 	// Read the laser selection
@@ -257,16 +291,32 @@ void Scanner::run()
 	}
 	catch (Exception& ex)
 	{
-		std::cerr << "!! Exception: " << ex << std::endl;
+		ErrorLog << "!! Exception: " << ex << Logger::ENDL;
 	}
 	catch (std::exception& ex)
 	{
-		std::cerr << "!! Exception: " << ex.what() << std::endl;
+		ErrorLog << "!! Exception: " << ex.what() << Logger::ENDL;
 	}
 	catch (...)
 	{
-		std::cerr << "Unknown Exception Occurred" << std::endl;
+		ErrorLog << "Unknown Exception Occurred" << Logger::ENDL;
 	}
+}
+
+void Scanner::setPhotoSequencePath(const std::string& pathPrefix)
+{
+	if (!MountManager::get()->isMounted(pathPrefix))
+	{
+		throw Exception("Path not mounted: " + pathPrefix);
+	}
+
+	m_photoPathPrefix = pathPrefix + "/photos_" + ToString((int)GetTimeInSeconds());
+	mkdir(m_photoPathPrefix.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+}
+
+void Scanner::setSavePhotoSequenceLaserImages(bool saveLaserImages)
+{
+	m_saveLaserImages = saveLaserImages;
 }
 
 void Scanner::runScan()
@@ -277,17 +327,12 @@ void Scanner::runScan()
 	Setup * setup = Setup::get();
 	Preset preset = PresetManager::get()->getActivePreset();
 
-	Scanner::TimingStats timingStats;
-	memset(&timingStats, 0, sizeof(Scanner::TimingStats));
-	timingStats.startTime = GetTimeInSeconds();
-	double time1 = 0;
-
 	LocationMapper leftLocMapper(m_leftLaserLoc, m_cameraLoc);
 	LocationMapper rightLocMapper(m_rightLaserLoc, m_cameraLoc);
 
 	if (setup->haveLaserPlaneNormals)
 	{
-		std::cout << "Using auto-corrected laser plane normals" << std::endl;
+		InfoLog << "Using auto-corrected laser plane normals" << Logger::ENDL;
 
 		leftLocMapper.setLaserPlaneNormal(setup->leftLaserPlaneNormal);
 		rightLocMapper.setLaserPlaneNormal(setup->rightLaserPlaneNormal);
@@ -348,6 +393,9 @@ void Scanner::runScan()
 		m_maxFramesPerRevolution = stepsPerRevolution;
 	}
 
+	Scanner::TimingStats timingStats;
+	memset(&timingStats, 0, sizeof(Scanner::TimingStats));
+
 	try
 	{
 		// Make sure the lasers are off
@@ -358,9 +406,9 @@ void Scanner::runScan()
 		m_turnTable->setMotorEnabled(true);
 
 		// Wait a second in case the object shakes
-		Thread::usleep(1000000);
+		Thread::usleep(2000000);
 
-		std::cout << "Enabled motor" << std::endl;
+		InfoLog << "Enabled motor" << Logger::ENDL;
 
 		if (m_laser == NULL)
 		{
@@ -396,10 +444,13 @@ void Scanner::runScan()
 
 		m_numFramesBetweenLaserPlanes = m_radiansBetweenLaserPlanes / frameRadians;
 
-		std::cout << "Angle between laser planes: " << RADIANS_TO_DEGREES(m_radiansBetweenLaserPlanes)
+		InfoLog << "Angle between laser planes: " << RADIANS_TO_DEGREES(m_radiansBetweenLaserPlanes)
 				  << " degrees, radiansPerFrame=" << m_radiansPerFrame
 				  << ", numFramesBetweenLaserPlanes=" << m_numFramesBetweenLaserPlanes
-				  << ", numFrames=" << numFrames << std::endl;
+				  << ", numFrames=" << numFrames << Logger::ENDL;
+
+
+		timingStats.startTime = GetTimeInSeconds();
 
 		for (int iFrame = 0; iFrame < numFrames; iFrame++)
 		{
@@ -411,7 +462,14 @@ void Scanner::runScan()
 				break;
 			}
 
-			singleScan(iFrame, rotation, frameRadians, leftLocMapper, rightLocMapper, &timingStats);
+			if (m_task == Scanner::GENERATE_SCAN)
+			{
+				singleScan(iFrame, rotation, frameRadians, leftLocMapper, rightLocMapper, &timingStats);
+			}
+			else if (m_task == Scanner::GENERATE_PHOTOS)
+			{
+				writePhotos(iFrame, frameRadians);
+			}
 
 			rotation += frameRadians;
 
@@ -428,8 +486,10 @@ void Scanner::runScan()
 			m_remainingTime = remainingSec;
 			m_status.leave();
 
-			logTimingStats(std::cout, timingStats);
-			std::cout << percentComplete << "% Complete, " << (remainingSec / 60) << " minutes remaining." << std::endl;
+			std::stringstream sstr;
+			logTimingStats(sstr, timingStats);
+
+			InfoLog << sstr.str() << percentComplete << "% Complete, " << (remainingSec / 60) << " minutes remaining." << Logger::ENDL;
 		}
 	}
 	catch (...)
@@ -451,157 +511,152 @@ void Scanner::runScan()
 	m_rangeFout.close();
 
 	m_turnTable->setMotorEnabled(false);
-
-	std::cout << "Merging laser results..." << std::endl;
-
-	time1 = GetTimeInSeconds();
-
-	// Merge the left and right lasers and sort the results
-	std::vector<DataPoint> results;
-	LaserResultsMerger merger;
-
-	m_results.enter();
-	merger.merge(results, m_leftLaserResults, m_rightLaserResults, m_maxFramesPerRevolution,
-			     m_numFramesBetweenLaserPlanes, Camera::getInstance()->getImageHeight(), preset.laserMergeAction, m_progress);
-	m_results.leave();
-
-	// Sort by pseudo-step and row
-	std::cout << "Sort 2... " << std::endl;
-	std::sort(results.begin(), results.end(), ComparePseudoSteps);
-	std::cout << "End Sort 2... " << std::endl;
-
-	m_results.enter();
-
-	std::cout << "Merged " << m_leftLaserResults.size() << " left laser and " << m_rightLaserResults.size() << " right laser results into " << results.size() << " results." << std::endl;
-
-	m_leftLaserResults.clear();
-	m_rightLaserResults.clear();
-
-	m_results.leave();
-
-	timingStats.laserMergeTime += GetTimeInSeconds() - time1;
-
-#if 0
-	time1 = GetTimeInSeconds();
-	m_progress.setLabel("Balancing brightness");
-	BrightnessBalancer balancer;
-	balancer.balanceBrightness(results, m_progress);
-
-	timingStats.pointProcessingTime += GetTimeInSeconds() - time1;
-#endif
-
-	std::cout << "Constructing mesh..." << std::endl;
-
-	// Mesh the point cloud
-	FaceMap faces;
-	if (preset.generatePly || preset.generateStl)
+	if (m_task == Scanner::GENERATE_SCAN)
 	{
-		Facetizer facetizer;
+		InfoLog << "Merging laser results..." << Logger::ENDL;
 
-		time1 = GetTimeInSeconds();
-		m_progress.setLabel("Facetizing Point Cloud");
-		facetizer.facetize(faces, results, m_range > 359, m_progress, true);
+		double time1 = GetTimeInSeconds();
 
-		// Add the object base
-		if (preset.createBaseForObject)
+		// Merge the left and right lasers and sort the results
+		std::vector<DataPoint> results;
+		LaserResultsMerger merger;
+
+		m_results.enter();
+		merger.merge(results, m_leftLaserResults, m_rightLaserResults, m_maxFramesPerRevolution,
+					 m_numFramesBetweenLaserPlanes, Camera::getInstance()->getImageHeight(), preset.laserMergeAction, m_progress);
+		m_results.leave();
+
+		// Sort by pseudo-step and row
+		InfoLog << "Sort 2... " << Logger::ENDL;
+		std::sort(results.begin(), results.end(), ComparePseudoSteps);
+		InfoLog << "End Sort 2... " << Logger::ENDL;
+
+		m_results.enter();
+
+		InfoLog << "Merged " << m_leftLaserResults.size() << " left laser and " << m_rightLaserResults.size() << " right laser results into " << results.size() << " results." << Logger::ENDL;
+
+		m_leftLaserResults.clear();
+		m_rightLaserResults.clear();
+
+		m_results.leave();
+
+		timingStats.laserMergeTime += GetTimeInSeconds() - time1;
+
+		InfoLog << "Constructing mesh..." << Logger::ENDL;
+
+		// Mesh the point cloud
+		FaceMap faces;
+		if (preset.generatePly || preset.generateStl)
 		{
-			ObjectBaseCreator objectBaseCreator;
-			objectBaseCreator.createBase(faces, results, preset.groundPlaneHeight, m_numObjectBaseSubdivisions, m_progress);
-		}
-		timingStats.facetizationTime += GetTimeInSeconds() - time1;
-	}
+			Facetizer facetizer;
 
-	// Write the PLY file
-	if (preset.generatePly)
-	{
-		m_progress.setLabel("Generating PLY file");
-		m_progress.setPercent(0);
+			time1 = GetTimeInSeconds();
+			m_progress.setLabel("Facetizing Point Cloud");
+			facetizer.facetize(faces, results, m_range > 359, m_progress, true);
 
-		std::string plyFilename = m_filename + ".ply";
-
-		std::cout << "Writing PLY file... " << plyFilename <<  std::endl;
-		time1 = GetTimeInSeconds();
-
-		FileWriter plyOut(plyFilename.c_str());
-		if (!plyOut.is_open())
-		{
-			throw Exception("Error opening file for writing: " + plyFilename);
-		}
-
-		/** Writes the results to a PLY file */
-		PlyWriter plyWriter;
-		plyWriter.setDataFormat(preset.plyDataFormat);
-		plyWriter.setTotalNumPoints((int)results.size());
-		plyWriter.setTotalNumFacesFromFaceMap(faces);
-		plyWriter.begin(&plyOut);
-
-		real percent = 0;
-		for (size_t iRec = 0; iRec < results.size(); iRec++)
-		{
-			real newPct = 100.0f * iRec / results.size();
-			if (newPct - percent > 0.1)
+			// Add the object base
+			if (preset.createBaseForObject)
 			{
-				m_progress.setPercent(newPct);
-				percent = newPct;
+				ObjectBaseCreator objectBaseCreator;
+				objectBaseCreator.createBase(faces, results, preset.groundPlaneHeight, m_numObjectBaseSubdivisions, m_progress);
+			}
+			timingStats.facetizationTime += GetTimeInSeconds() - time1;
+		}
+
+		// Write the PLY file
+		if (preset.generatePly)
+		{
+			m_progress.setLabel("Generating PLY file");
+			m_progress.setPercent(0);
+
+			std::string plyFilename = m_filename + ".ply";
+
+			InfoLog << "Writing PLY file... " << plyFilename <<  Logger::ENDL;
+			time1 = GetTimeInSeconds();
+
+			FileWriter plyOut(plyFilename.c_str());
+			if (!plyOut.is_open())
+			{
+				throw Exception("Error opening file for writing: " + plyFilename);
 			}
 
-			plyWriter.writePoints(&results[iRec].point, 1);
+			/** Writes the results to a PLY file */
+			PlyWriter plyWriter;
+			plyWriter.setDataFormat(preset.plyDataFormat);
+			plyWriter.setTotalNumPoints((int)results.size());
+			plyWriter.setTotalNumFacesFromFaceMap(faces);
+			plyWriter.begin(&plyOut);
+
+			real percent = 0;
+			for (size_t iRec = 0; iRec < results.size(); iRec++)
+			{
+				real newPct = 100.0f * iRec / results.size();
+				if (newPct - percent > 0.1)
+				{
+					m_progress.setPercent(newPct);
+					percent = newPct;
+				}
+
+				plyWriter.writePoints(&results[iRec].point, 1);
+			}
+
+			plyWriter.writeFaces(faces);
+			plyWriter.end();
+			plyOut.close();
+			timingStats.plyWritingTime += GetTimeInSeconds() - time1;
 		}
 
-		plyWriter.writeFaces(faces);
-		plyWriter.end();
-		plyOut.close();
-		timingStats.plyWritingTime += GetTimeInSeconds() - time1;
-	}
+		// Generate the XYZ file
+		if (preset.generateXyz)
+		{
+			time1 = GetTimeInSeconds();
+			XyzWriter xyzWriter;
+			xyzWriter.write(m_filename, results, m_progress);
+			timingStats.xyzWritingTime += GetTimeInSeconds() - time1;
+		}
 
-	// Generate the XYZ file
-	if (preset.generateXyz)
-	{
-		time1 = GetTimeInSeconds();
-		XyzWriter xyzWriter;
-		xyzWriter.write(m_filename, results, m_progress);
-		timingStats.xyzWritingTime += GetTimeInSeconds() - time1;
-	}
+		// Generate the STL file
+		if (preset.generateStl)
+		{
+			time1 = GetTimeInSeconds();
+			StlWriter stlWriter;
+			stlWriter.write(m_filename, results, faces, m_progress);
+			timingStats.stlWritingTime = GetTimeInSeconds() - time1;
+		}
 
-	// Generate the STL file
-	if (preset.generateStl)
-	{
-		time1 = GetTimeInSeconds();
-		StlWriter stlWriter;
-		stlWriter.write(m_filename, results, faces, m_progress);
-		timingStats.stlWritingTime = GetTimeInSeconds() - time1;
-	}
+		std::stringstream sstr;
+		logTimingStats(sstr, timingStats);
+		InfoLog << sstr.str();
 
-	logTimingStats(std::cout, timingStats);
+		// Generate the log file
+		std::string txtFilename = m_filename + ".log";
+		std::ofstream fout (txtFilename.c_str());
+		if (fout.is_open())
+		{
+			// Log the software version
+			fout << "FreeLSS Version: " << FREELSS_VERSION_MAJOR << "." << FREELSS_VERSION_MINOR << std::endl;
+			fout << "Preset: " << preset.name << std::endl;
+			fout << "Range: " << m_range << " degrees" << std::endl;
 
-	// Generate the log file
-	std::string txtFilename = m_filename + ".log";
-	std::ofstream fout (txtFilename.c_str());
-	if (fout.is_open())
-	{
-		// Log the software version
-		fout << "FreeLSS Version: " << FREELSS_VERSION_MAJOR << "." << FREELSS_VERSION_MINOR << std::endl;
-		fout << "Preset: " << preset.name << std::endl;
-		fout << "Range: " << m_range << " degrees" << std::endl;
+			// Log the timing stats
+			logTimingStats(fout, timingStats);
 
-		// Log the timing stats
-		logTimingStats(fout, timingStats);
+			// Get the settings that were used to generate this scan
+			std::vector<Property> properties;
+			PresetManager::get()->encodeProperties(properties);
+			Setup::get()->encodeProperties(properties);
 
-		// Get the settings that were used to generate this scan
-		std::vector<Property> properties;
-		PresetManager::get()->encodeProperties(properties);
-		Setup::get()->encodeProperties(properties);
+			// Write the settings and preset properties
+			PropertyReaderWriter propWriter;
+			propWriter.writeProperties(fout, properties);
 
-		// Write the settings and preset properties
-		PropertyReaderWriter propWriter;
-		propWriter.writeProperties(fout, properties);
-
-		fout << std::endl;
-		fout.close();
-	}
-	else
-	{
-		std::cerr << "Error opening file for writing: " << txtFilename << std::endl;
+			fout << std::endl;
+			fout.close();
+		}
+		else
+		{
+			ErrorLog << "Error opening file for writing: " << txtFilename << Logger::ENDL;
+		}
 	}
 
 
@@ -611,7 +666,7 @@ void Scanner::runScan()
 	m_running = false;
 	m_status.leave();
 
-	std::cout << "Done." << std::endl;
+	InfoLog << "Done." << Logger::ENDL;
 }
 
 void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
@@ -621,7 +676,7 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 	// Prepare for scanning
 	prepareScan();
 
-	std::string debuggingCsv = std::string(DEBUG_OUTPUT_DIR) + "/0.csv";
+	std::string debuggingCsv = GetDebugOutputDir() + "/0.csv";
 
 	// Make sure the lasers are off
 	if (m_laser->isOn(Laser::LEFT_LASER) || m_laser->isOn(Laser::RIGHT_LASER))
@@ -660,7 +715,7 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 			int numRowsBadFromColor = 0;
 			int numRowsBadFromNumRanges = 0;
 
-			numRightLocations = m_imageProcessor.process(* image1,
+			numRightLocations = m_imageProcessor->process(* image1,
 														 * image2,
 														 &rightDebuggingImage,
 														 &rightLocations.front(),
@@ -673,8 +728,8 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 			releaseImage(image2);
 
 			// If we had major problems with this frame, try it again
-			std::cout << "numRowsBadFromColor: " << numRowsBadFromColor << std::endl;
-			std::cout << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << std::endl;
+			InfoLog << "numRowsBadFromColor: " << numRowsBadFromColor << Logger::ENDL;
+			InfoLog << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << Logger::ENDL;
 
 			// Map the points so that points below the ground plane and outside the max object size are omitted
 			int numLocationsMapped = 0;
@@ -686,6 +741,9 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 			}
 
 			locMapper.mapPoints(&rightLocations.front(), image1, m_columnPoints, numRightLocations, numLocationsMapped);
+
+			// Remove the noisy points
+			NoiseRemover().removeNoise(&rightLocations.front(), m_columnPoints, numLocationsMapped, numLocationsMapped);
 			numRightLocations = numLocationsMapped;
 		}
 
@@ -708,7 +766,7 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 			int numRowsBadFromColor = 0;
 			int numRowsBadFromNumRanges = 0;
 
-			numLeftLocations = m_imageProcessor.process(* image1,
+			numLeftLocations = m_imageProcessor->process(* image1,
 														* image2,
 														&leftDebuggingImage,
 														&leftLocations.front(),
@@ -721,8 +779,8 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 			releaseImage(image2);
 
 			// If we had major problems with this frame, try it again
-			std::cout << "numRowsBadFromColor: " << numRowsBadFromColor << std::endl;
-			std::cout << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << std::endl;
+			InfoLog << "numRowsBadFromColor: " << numRowsBadFromColor << Logger::ENDL;
+			InfoLog << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << Logger::ENDL;
 
 			// Map the points so that points below the ground plane and outside the max object size are omitted
 			int numLocationsMapped = 0;
@@ -733,6 +791,9 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 			}
 
 			locMapper.mapPoints(&leftLocations.front(), image1, m_columnPoints, numLeftLocations, numLocationsMapped);
+
+			// Remove the noisy points
+			NoiseRemover().removeNoise(&rightLocations.front(), m_columnPoints, numLocationsMapped, numLocationsMapped);
 			numLeftLocations = numLocationsMapped;
 		}
 
@@ -744,7 +805,7 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 		Image debuggingImage;
 		mergeDebuggingImages(debuggingImage, leftDebuggingImage, rightDebuggingImage, laserSide);
 
-		std::string baseFilename = std::string(DEBUG_OUTPUT_DIR) + "/";
+		std::string baseFilename = GetDebugOutputDir() + "/";
 
 		// Show the image center line
 		std::vector<PixelLocation> centerLocs (debuggingImage.getHeight());
@@ -796,11 +857,11 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 
 			Image::overlayPixels(debuggingImage, &right.front(), (int) right.size(), 0, 255, 0);
 
-			std::cout << "Laser plane data is available" << std::endl;
+			InfoLog << "Laser plane data is available" << Logger::ENDL;
 		}
 		else
 		{
-			std::cout << "No laser plane normal data is available" << std::endl;
+			InfoLog << "No laser plane normal data is available" << Logger::ENDL;
 		}
 
 		locWriter.writeImage(debuggingImage, debuggingImage.getWidth(), debuggingImage.getHeight(), baseFilename + "5.png");
@@ -817,7 +878,7 @@ void Scanner::generateDebugInfo(Laser::LaserSide laserSide)
 	m_status.enter();
 	m_running = false;
 	m_status.leave();
-	std::cout << "Done." << std::endl;
+	InfoLog << "Done." << Logger::ENDL;
 }
 
 void Scanner::highlightPixel(const PixelLocation& inPixel, std::vector<PixelLocation>& outPixels)
@@ -895,6 +956,64 @@ void Scanner::mergeDebuggingImages(Image& outImage, Image& leftDebuggingImage, I
 		throw Exception("Unsupported LaserSide");
 	}
 }
+
+void Scanner::writePhotos(int frame, real frameRotation)
+{
+	m_turnTable->rotate(frameRotation);
+
+	bool useLeftLaser = m_saveLaserImages && (m_laserSelection == Laser::LEFT_LASER || m_laserSelection == Laser::ALL_LASERS);
+	bool useRightLaser = m_saveLaserImages && (m_laserSelection == Laser::RIGHT_LASER || m_laserSelection == Laser::ALL_LASERS);
+
+	Image * image = NULL;
+
+	std::string fullPathPrefix = m_photoPathPrefix + "/" + ToString(frame + 1);
+
+	try
+	{
+		image = acquireImage();
+		std::string filename = fullPathPrefix + ".jpg";
+		m_progress.setLabel("Writing " + filename + "...");
+		Image::writeJpeg(* image, filename);
+		releaseImage(image);
+		image = NULL;
+
+		if (useRightLaser)
+		{
+			m_laser->turnOn(Laser::RIGHT_LASER);
+			delayAcquisitionForLaser();
+
+			image = acquireImage();
+			filename = fullPathPrefix + "_R.jpg";
+			m_progress.setLabel("Writing " + filename + "...");
+			Image::writeJpeg(* image, filename);
+			releaseImage(image);
+			image = NULL;
+
+			m_laser->turnOff(Laser::RIGHT_LASER);
+		}
+
+		if (useLeftLaser)
+		{
+			m_laser->turnOn(Laser::LEFT_LASER);
+			delayAcquisitionForLaser();
+
+			image = acquireImage();
+			filename = fullPathPrefix + "_L.jpg";
+			Image::writeJpeg(* image, filename);
+			releaseImage(image);
+			image = NULL;
+
+			m_laser->turnOff(Laser::LEFT_LASER);
+			delayAcquisitionForLaser();
+		}
+	}
+	catch (...)
+	{
+		releaseImage(image);
+		throw;
+	}
+}
+
 void Scanner::singleScan(int frame, float rotation, float frameRotation,
 		                 LocationMapper& leftLocMapper, LocationMapper& rightLocMapper, TimingStats * timingStats)
 {
@@ -1006,7 +1125,7 @@ bool Scanner::processScan(Image * image1, Image * image2, std::vector<DataPoint>
 
 	// Send the pictures off for processing
 	double time1 = GetTimeInSeconds();
-	int numLocations = m_imageProcessor.process(* image1,
+	int numLocations = m_imageProcessor->process(* image1,
 												* image2,
 												NULL,
 												m_laserLocations,
@@ -1019,18 +1138,18 @@ bool Scanner::processScan(Image * image1, Image * image2, std::vector<DataPoint>
 	timingStats->imageProcessingTime += GetTimeInSeconds() - time1;
 
 	// If we had major problems with this frame, try it again
-	std::cout << "numRowsBadFromColor: " << numRowsBadFromColor << std::endl;
-	std::cout << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << std::endl;
+	InfoLog << "numRowsBadFromColor: " << numRowsBadFromColor << Logger::ENDL;
+	InfoLog << "numRowsBadFromNumRanges: " << numRowsBadFromNumRanges << Logger::ENDL;
 
 	if (numRowsBadFromNumRanges > m_maxNumFailedRows)
 	{
-		std::cout << "!! Too many bad laser locations suspected"
+		InfoLog << "!! Too many bad laser locations suspected"
 				  << ", numRowsBadFromColor=" << numRowsBadFromColor
 				  << ", numRowsBadFromNumRanges=" << numRowsBadFromNumRanges
-				  << std::endl;
+				  << Logger::ENDL;
 	}
 
-	std::cout << "Detected " << numLocations << " laser pixels." << std::endl;
+	InfoLog << "Detected " << numLocations << " laser pixels." << Logger::ENDL;
 
 	// Lookup the 3D locations for the laser points
 	numLocationsMapped = 0;
@@ -1039,17 +1158,21 @@ bool Scanner::processScan(Image * image1, Image * image2, std::vector<DataPoint>
 	{
 		time1 = GetTimeInSeconds();
 		locMapper.mapPoints(m_laserLocations, image1, m_columnPoints, numLocations, numLocationsMapped);
+
+		// Remove the noisy points
+		NoiseRemover().removeNoise(m_laserLocations, m_columnPoints, numLocationsMapped, numLocationsMapped);
+
 		timingStats->pointMappingTime += GetTimeInSeconds() - time1;
 
 		if (numLocations != numLocationsMapped)
 		{
-			std::cout << "Discarded " << numLocations - numLocationsMapped << " points." << std::endl;
+			InfoLog << "Discarded " << numLocations - numLocationsMapped << " points." << Logger::ENDL;
 		}
 	}
 	else
 	{
 		// Stop here if we didn't detect the laser at all
-		std::cerr << "!!! Could not detect laser at all" << std::endl;
+		ErrorLog << "!!! Could not detect laser at all" << Logger::ENDL;
 		timingStats->numEmptyFrames++;
 	}
 
@@ -1208,10 +1331,11 @@ void Scanner::logTimingStats(std::ostream& out, const Scanner::TimingStats& stat
 
 std::vector<ScanResult> Scanner::getPastScanResults()
 {
-	DIR * dirp = opendir(SCAN_OUTPUT_DIR.c_str());
+	std::string scanOutputDir = GetScanOutputDir();
+	DIR * dirp = opendir(scanOutputDir.c_str());
 	if (dirp == NULL)
 	{
-		throw Exception("Error opening scan directory");
+		throw Exception("Error opening scan directory: " + scanOutputDir);
 	}
 
 	struct dirent *dp = readdir(dirp);
@@ -1228,7 +1352,7 @@ std::vector<ScanResult> Scanner::getPastScanResults()
 			std::string extension = name.substr(dotPos + 1);
 			std::string base = name.substr(0, dotPos);
 
-			std::string fullPath = std::string(SCAN_OUTPUT_DIR) + "/" + name;
+			std::string fullPath = scanOutputDir + "/" + name;
 			ScanResultFile file;
 
 			struct stat st;
@@ -1239,7 +1363,7 @@ std::vector<ScanResult> Scanner::getPastScanResults()
 			else
 			{
 				file.fileSize = 0;
-				std::cerr << "Error obtaining stats on file: " << fullPath << ", error=" << strerror(errno) << std::endl;
+				ErrorLog << "Error obtaining stats on file: " << fullPath << ", error=" << strerror(errno) << Logger::ENDL;
 			}
 
 			file.extension = extension;

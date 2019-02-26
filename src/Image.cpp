@@ -53,6 +53,21 @@ Image::Image(unsigned width, unsigned height, unsigned numComponents):
 	// Do nothing
 }
 
+Image::Image(const Image& a) :
+	m_pixels(NULL),
+	m_numComponents(a.m_numComponents),
+	m_width(a.m_width),
+	m_height(a.m_height),
+	m_owner(true)
+{
+	if (a.m_pixels != NULL)
+	{
+		int imageSize = a.getPixelBufferSize();
+		m_pixels = new unsigned char[imageSize];
+		memcpy(m_pixels, a.m_pixels, imageSize);
+	}
+}
+
 Image::~Image()
 {
 	if (m_owner)
@@ -155,8 +170,6 @@ void Image::convertToJpeg(Image& image, byte* buffer, unsigned * size)
 
 void Image::writeJpeg(Image& image, const std::string& filename)
 {
-	std::cout << "Writing " << filename << "..." << std::endl;
-
 	// Get the image from the camera
 	unsigned imageSize = image.getPixelBufferSize();
 	byte * imageData = (byte *) malloc(imageSize);

@@ -22,84 +22,19 @@
 #include "ImageProcessor.h"
 #include "PresetManager.h"
 #include "Camera.h"
+#include "Logger.h"
+#include <omp.h>
 
-// Only one of these filters should be defined
-#define CENTERMASS_FILTER 1
-#define GAUSS_FILTER      0
-#define PEAK_FILTER       0
 #define INV_SQRT_2PI      0.3989422804014327
 
 #define MAX_NUM_LASER_RANGES 0 // TODO: Place this in the settings
 
-#if GUASS_FILTER
-#include <mpfit.h>
-#endif
 
 namespace freelss
 {
 
-const real ImageProcessor::RED_HUE_LOWER_THRESHOLD = 30;
-const real ImageProcessor::RED_HUE_UPPER_THRESHOLD = 329;
 const unsigned ImageProcessor::RANGE_DISTANCE_THRESHOLD = 5;
 
-struct GaussPrivate
-{
-	/** The data that is being fitted to gauss */
-	double actual[4098]; // TODO: Make this the proper size
-};
-
-struct vars_struct
-{
-	double *x;
-	double *y;
-	double *ey;
-};
-
-int gaussfunc(int m, int n, double *p, double *dy, double **dvec, void *vars)
-{
-	int i;
-	struct vars_struct *v = (struct vars_struct *) vars;
-	double *x, *y, *ey;
-	double xc, sig2;
-	x = v->x;
-	y = v->y;
-	ey = v->ey;
-	sig2 = p[3]*p[3];
-	for (i=0; i<m; i++) {
-		xc = x[i]-p[2];
-		dy[i] = (y[i] - p[1]*exp(-0.5*xc*xc/sig2) - p[0])/ey[i];
-	}
-	return 0;
-}
-
-double gauss_compute(double x, double m, double s)
-{
-	double a = (x - m) / s;
-	return INV_SQRT_2PI / s * exp(-0.5 * a * a);
-}
-
-int mpfit_gauss(int m, int n, double *p, double *deviates, double **derivs, void * priv)
-{
-	double p_mean   = p[0];
-	double p_stddev = p[1];
-	double p_scale  = p[2];
-	GaussPrivate * gpriv = (GaussPrivate *) priv;
-	double * input = gpriv->actual;
-
-	double errorSum = 0;
-
-	// Compute function deviates
-	for (int i = 0; i < m; i++)
-	{
-		double error = (gauss_compute(i, p_mean, p_stddev) * p_scale) - input[i];
-		deviates[i] = error;
-
-		errorSum += error;
-	}
-
-	std::cout << "mpfit_gauss mean=" << p_mean << ", stddev=" << p_stddev << ", scale=" << p_scale << ", errorSum=" << errorSum << std::endl;
-	return 0;
-}
 
 ImageProcessor::ImageProcessor()
 {
@@ -109,6 +44,30 @@ ImageProcessor::ImageProcessor()
 	m_laserMagnitudeThreshold = preset.laserThreshold;
 	m_maxLaserWidth = preset.maxLaserWidth;
 	m_minLaserWidth = preset.minLaserWidth;
+
+	m_thresholdMode = preset.imageThresholdMode;
+	switch (m_thresholdMode)
+	{
+	case THM_STATIC:
+		m_laserThresholdFactor = 0;
+		break;
+
+	case THM_LOW:
+		m_laserThresholdFactor = -0.5;
+		break;
+
+	case THM_MEDIUM:
+		m_laserThresholdFactor = 0;
+		break;
+
+	case THM_HIGH:
+		m_laserThresholdFactor = 0.5;
+		break;
+
+	default:
+		throw Exception("Invalid threshold mode");
+		break;
+	}
 }
 
 ImageProcessor::~ImageProcessor()
@@ -153,15 +112,22 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 	unsigned char * ar = a;
 	unsigned char * br = b;
 	unsigned char * dr = d;
-	for (unsigned iRow = 0; iRow < height && numLocations < maxNumLocations; iRow++)
-	{
-		// The column that the laser started and ended on
-		int numLaserRanges = 0;
-		m_laserRanges[numLaserRanges].startCol = -1;
-		m_laserRanges[numLaserRanges].endCol = -1;
+	m_magnitudes.resize(width);
 
-		int numRowOut = 0;
+	real * magnitudes = &m_magnitudes.front();
+
+	real laserThreshold = m_laserMagnitudeThreshold;
+	real scaledMaxMagnitudeSq = 255.0f * INV_MAX_MAGNITUDE_SQ;
+
+	for (unsigned iRow = 0; iRow < height; iRow++)
+	{
+		// Compute the magnitudes
 		int imageColumn = 0;
+		real rowMagCumSum = 0;
+		int magCols = 0;
+		real maxMag = 0;
+		real minMag = 255;
+		bool inRange = false;
 		for (unsigned iCol = 0; iCol < rowStep; iCol += components)
 		{
 			// Perform image subtraction
@@ -170,12 +136,72 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 			const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
 			const int g = (int)br[iCol + 1] - (int)ar[iCol + 1];
 			const int b = (int)br[iCol + 2] - (int)ar[iCol + 2];
-			const int magSq = r * r + g * g + b * b;
-			real mag = 255.0f * (magSq * INV_MAX_MAGNITUDE_SQ);
+
+			unsigned magSq = r * r + g * g + b * b;
+
+			real mag = magSq * scaledMaxMagnitudeSq;
+			if (mag > 2)
+			{
+				magCols++;
+				rowMagCumSum += mag;
+
+				if (mag > maxMag)
+				{
+					maxMag = mag;
+				}
+
+				if (mag < minMag)
+				{
+					minMag = mag;
+				}
+			}
+
+			magnitudes[imageColumn++] = mag;
+		}
+
+		// Perform the adaptive thresholding
+		if (m_thresholdMode != THM_STATIC)
+		{
+			real avgMag = 255;
+
+			if (magCols > 0)
+			{
+				avgMag = rowMagCumSum / magCols;
+
+				if (m_laserThresholdFactor > 0)
+				{
+					laserThreshold = avgMag + (maxMag - avgMag) * m_laserThresholdFactor;
+				}
+				else
+				{
+					laserThreshold = avgMag + (avgMag - minMag) * m_laserThresholdFactor;
+				}
+			}
+			else
+			{
+				laserThreshold = 255;
+			}
+
+			laserThreshold = MAX(2, laserThreshold);
+		}
+
+
+		imageColumn = 0;
+
+		// The column that the laser started and ended on
+		int numLaserRanges = 0;
+		m_laserRanges[numLaserRanges].startCol = -1;
+		m_laserRanges[numLaserRanges].endCol = -1;
+		m_laserRanges[numLaserRanges].energy = 0;
+		int numRowOut = 0;
+
+		for (unsigned iCol = 0; iCol < rowStep && magCols > 0; iCol += components)
+		{
+			real mag = magnitudes[imageColumn];
 
 			if (writeDebugImage)
 			{
-				if (mag > m_laserMagnitudeThreshold)
+				if (mag > laserThreshold)
 				{
 					dr[iCol + 0] = mag;
 					dr[iCol + 1] = mag;
@@ -190,13 +216,16 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 			}
 
 			// Compare it against the threshold
-			if (mag > m_laserMagnitudeThreshold)
+			if (mag > laserThreshold)
 			{
 				// The start of pixels with laser in them
 				if (m_laserRanges[numLaserRanges].startCol == -1)
 				{
 					m_laserRanges[numLaserRanges].startCol = imageColumn;
+					inRange = true;
 				}
+
+				m_laserRanges[numLaserRanges].energy += mag;
 
 				if (debuggingCsvFile != NULL)
 				{
@@ -205,7 +234,8 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 				}
 			}
 			// The end of pixels with laser in them
-			else if (m_laserRanges[numLaserRanges].startCol != -1)
+			//else if (m_laserRanges[numLaserRanges].startCol != -1)
+			else if (inRange)
 			{
 				int laserWidth = imageColumn - m_laserRanges[numLaserRanges].startCol;
 				if (laserWidth <= m_maxLaserWidth && laserWidth >= m_minLaserWidth)
@@ -219,6 +249,7 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 						{
 							 m_laserRanges[numLaserRanges - 1].endCol =  imageColumn;
 							 m_laserRanges[numLaserRanges - 1].centerCol = round((m_laserRanges[numLaserRanges - 1].startCol + m_laserRanges[numLaserRanges - 1].endCol) / 2);
+							 m_laserRanges[numLaserRanges - 1].energy += m_laserRanges[numLaserRanges].energy;
 							 wasMerged = true;
 							 numMerged++;
 						}
@@ -237,11 +268,15 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 					// Reinitialize the range
 					m_laserRanges[numLaserRanges].startCol = -1;
 					m_laserRanges[numLaserRanges].endCol = -1;
+					m_laserRanges[numLaserRanges].energy = 0;
+					inRange = false;
 				}
 				// There was a false positive
 				else
 				{
 					m_laserRanges[numLaserRanges].startCol = -1;
+					m_laserRanges[numLaserRanges].energy = 0;
+					inRange = false;
 				}
 			}
 
@@ -302,19 +337,20 @@ int ImageProcessor::process(Image& before, Image& after, Image * debuggingImage,
 		}
 	} // foreach row
 
+
 	if (numMerged > 0)
 	{
-		std::cout << "Merged " << numMerged << " laser ranges." << std::endl;
+		InfoLog << "Merged " << numMerged << " laser ranges." << Logger::ENDL;
 	}
 
 	if (numRowsBadFromColor > 0)
 	{
-		std::cout << numRowsBadFromColor << " laser rows color wasn't red enough. " << std::endl;
+		InfoLog << numRowsBadFromColor << " laser rows color wasn't red enough. " << Logger::ENDL;
 	}
 
 	if (numRowsBadFromNumRanges > 0)
 	{
-		std::cout << numRowsBadFromNumRanges << " laser rows contained too many ranges. " << std::endl;
+		InfoLog << numRowsBadFromNumRanges << " laser rows contained too many ranges. " << Logger::ENDL;
 	}
 
 	if (debuggingCsvFile != NULL)
@@ -364,7 +400,7 @@ int ImageProcessor::removeInvalidLaserRanges(ImageProcessor::LaserRange * ranges
 		real rangeAvg = computeMeanAverage(br + components * startCol, rangeWidth, components);
 
 
-		//std::cout << (int)preAvg << "  " << (int)rangeAvg << "  " << (int)postAvg << std::endl;
+		//InfoLog << (int)preAvg << "  " << (int)rangeAvg << "  " << (int)postAvg << std::endl;
 
 		// If there is a ramp up and ramp down then include this range
 		if (rangeAvg > MIN_RED_VALUE)
@@ -404,7 +440,7 @@ real ImageProcessor::computeMeanAverage(unsigned char * br, int numSteps, int st
 		 // Red wraps HSV colorspace so check both sides
 		real red = hsv.h <= 180 ? hsv.h : 360 - hsv.h;
 
-		//std::cout << r << "," << g << "," << b << " " << h << " " << red << std::endl;
+		//InfoLog << r << "," << g << "," << b << " " << h << " " << red << std::endl;
 
 		// The smaller the value "red" then the closer to the color red it is
 
@@ -422,7 +458,6 @@ real ImageProcessor::detectLaserRangeCenter(const ImageProcessor::LaserRange& ra
 	int endCol = range.endCol;
 	int components = 3;
 
-#if CENTERMASS_FILTER
 	float totalSum = 0.0;
 	float weightedSum = 0.0;
 	int cCol = 0;
@@ -442,107 +477,14 @@ real ImageProcessor::detectLaserRangeCenter(const ImageProcessor::LaserRange& ra
 
 	// Compute the center of mass
 	centerCol = startCol + ROUND(weightedSum / totalSum);
-#endif
 
-#if GAUSS_FILTER
-	GaussPrivate gaussPriv;
-	double * actual = gaussPriv.actual;
-	int m = endCol - startCol;
-	double p[4];
-	p[0] = 3000;
-	p[1] = 45000;
-	p[2] = m_laserRanges[rangeChoice].centerCol - startCol;
-	p[3] = 5;
-
-	mp_par pars[3];
-	memset(pars,0,sizeof(pars));
-
-	pars[0].limited[0] = 1;
-	pars[0].limits[0] = 0;
-
-	pars[1].limited[0] = 1;
-	pars[1].limits[0] = 1;
-
-	pars[2].limited[0] = 1;
-	pars[2].limited[1] = 1;
-	pars[2].limits[0] = 0;
-	pars[2].limits[1] = m;
-
-	// Populate the input data
-	int iAct = 0;
-	double * x = new double[m];
-	double * ey = new double[m];
-	for (int i = 0; i < m; i++)
-	{
-		x[i] = i + 1;
-		ey[i] = 0.5;
-	}
-
-	for (int bCol = startCol; bCol < endCol; bCol++)
-	{
-		int iCol = bCol * components;
-		const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
-		const int g = (int)br[iCol + 1] - (int)ar[iCol + 1];
-		const int b = (int)br[iCol + 2] - (int)ar[iCol + 2];
-		actual[iAct++] = r * r + g * g + b * b;
-	}
-
-	vars_struct v;
-	v.y = actual;
-	v.x = x;
-	v.ey = ey;
-
-	mp_result result;
-	memset(&result, 0, sizeof(result));
-	int status = mpfit(gaussfunc, m, 4, p, pars, 0, (void *)&v, &result);
-	//std::cout << "mpfit retCode=" << status << ", p[0]=" << p[0] << ", p[1]=" << p[1] << ", p[2]=" << p[2] << ", p[3]=" << p[3] <<", m=" << m << std::endl;
-
-	delete [] x;
-	delete [] ey;
-
-	if (status == 1)
-	{
-		centerCol = startCol + p[2];
-	}
-	else
-	{
-		centerCol = m_laserRanges[rangeChoice].centerCol;
-		std::cerr << "mpfit abnormal staus=" << status << std::endl;
-	}
-#endif
-
-
-#if PEAK_FILTER  // Half-width for Center of full laser range
-	int maxMagSq = 0;
-	int numSameMax = 0;
-	for (int bCol = startCol; bCol <= endCol; bCol++)
-	{
-		int iCol = bCol * components;
-		const int r = (int)br[iCol + 0] - (int)ar[iCol + 0];
-		const int g = (int)br[iCol + 1] - (int)ar[iCol + 1];
-		const int b = (int)br[iCol + 2] - (int)ar[iCol + 2];
-		const int magSq = r * r + g * g + b * b;
-
-		if (magSq > maxMagSq || bCol == 0)
-		{
-			maxMagSq = magSq;
-			centerCol = bCol;
-			numSameMax = 0;
-		}
-		else if (magSq == maxMagSq)
-		{
-			numSameMax++;
-		}
-	}
-
-	centerCol += numSameMax / 2.0f;
-#endif
 
 	return centerCol;
 }
 
 int ImageProcessor::detectBestLaserRange(ImageProcessor::LaserRange * ranges, int numRanges, int prevLaserCol)
 {
+#if 0
 	int bestRange = 0;
 	int distanceOfBest = ABS(ranges[0].centerCol - prevLaserCol);
 
@@ -557,7 +499,18 @@ int ImageProcessor::detectBestLaserRange(ImageProcessor::LaserRange * ranges, in
 			distanceOfBest = dist;
 		}
 	}
-
+#else
+	int bestRange = 0;
+	int best = ranges[0].energy;
+	for (int i = 1; i < numRanges; i++)
+	{
+		if (ranges[i].energy > best)
+		{
+			bestRange = i;
+			best = ranges[i].energy;
+		}
+	}
+#endif
 	return bestRange;
 }
 

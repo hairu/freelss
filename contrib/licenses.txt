@@ -1,0 +1,302 @@
+=== FreeLSS ===
+                     FreeLSS Commercial License - Terms and conditions
+1. Preamble: This Agreement, signed on Mar 28, 2016 (hereinafter: Effective Date) 
+	governs the relationship between the USER, a (hereinafter: Licensee) and Murobo LLC, 
+	a duly registered company in whose principal place of business is in Independence, Kentucky (hereinafter: Licensor). 
+	This Agreement sets the terms, rights, restrictions and obligations on using 
+	FreeLSS Commercial (hereinafter: The Software) created and owned by Licensor, as detailed herein
+
+2. License Grant: Licensor hereby grants Licensee a Personal, Non-assignable & non-transferable, 
+	Perpetual, Commercial, Royalty free, Without the rights to create derivative works, Non-exclusive 
+	license, all with accordance with the terms set forth and other legal restrictions set forth in 
+	3rd party software used while running Software.
+	2.1 Limited: Licensee may use Software for the purpose of:
+        Running Software on one machine of the Licensee;
+        Allowing 3rd Parties to run Software on one machine of the Licensee;
+        Publishing Software’s output to Licensee and 3rd Parties;
+        Distribute verbatim copies of Software’s output (including compiled binaries);
+    2.2 This license is granted perpetually, as long as you do not materially breach it.
+	2.3 Non Assignable & Non-Transferable: Licensee may not assign or transfer his rights and duties under this license.
+    2.4 Commercial, Royalty Free: Licensee may use Software for any purpose, including paid-services, without any royalties 
+    
+3. Term & Termination: The Term of this license shall be until terminated. Licensor may terminate 
+	this Agreement, including Licensee’s license in the case where Licensee :
+    3.1 became insolvent or otherwise entered into any liquidation process; or
+    3.2 exported The Software to any jurisdiction where licensor may not enforce his rights under this agreements in; or
+    3.3 Licensee was in breach of any of this license's terms and conditions and such breach was not cured, immediately upon notification; or
+    3.4 Licensee in breach of any of the terms of clause 2 to this license; or
+    3.5 Licensee otherwise entered into any arrangement which caused Licensor to be unable to enforce his rights under this License.
+
+4. Payment: In consideration of the License granted under clause 2, Licensee shall pay Licensor a
+   fee, via Credit-Card, PayPal or any other mean which Licensor may deem adequate. Failure to 
+   perform payment shall construe as material breach of this Agreement.
+ 
+5. Support: Software is provided under an AS-IS basis and without any support, updates or maintenance. Nothing in this 
+   Agreement shall require Licensor to provide Licensee with support or fixes to any bug, failure, mis-performance or other defect in The Software.
+    5.1 Bug Notification: Licensee may provide Licensor of details regarding any bug, defect or failure in 
+        The Software promptly and with no delay from such event; Licensee shall comply with Licensor's request for 
+        information regarding bugs, defects or failures and furnish him with information, screenshots and try to 
+        reproduce such bugs, defects or failures.
+
+6. Liability:  To the extent permitted under Law, The Software is provided under an AS-IS basis. Licensor shall never, 
+   and without any limit, be liable for any damage, cost, expense or any other payment incurred by Licensee as a result 
+   of Software’s actions, failure, bugs and/or any other interaction between The Software  and Licensee’s end-equipment, 
+   computers, other software or any 3rd party, end-equipment, computer or services.  Moreover, Licensor shall never be 
+   liable for any defect in source code written by Licensee when relying on The Software or using The Software’s source code.
+
+7. Warranty:  
+    7.1 Intellectual Property: Licensor hereby warrants that The Software does not knowingly violate or infringe any 3rd party claims 
+        in regards to intellectual property, patents and/or trademarks and that to the best of its knowledge no legal action 
+        has been taken against it for any infringement or violation of any 3rd party intellectual property rights.
+    7.2 No-Warranty: The Software is provided without any warranty; Licensor hereby disclaims any warranty that The Software 
+        shall be error free, without defects or code which may cause damage to Licensee’s computers or to Licensee, and that Software 
+        shall be functional. Licensee shall be solely liable to any damage, defect or loss incurred as a result of operating software 
+        and undertake the risks contained in running The Software on License’s Server[s] and Website[s].
+    7.3 Prior Inspection: Licensee hereby states that he inspected The Software thoroughly and found it satisfactory and adequate 
+        to his needs, that it does not interfere with his regular operation and that it does meet the standards and scope of his computer 
+        systems and architecture. Licensee found that The Software interacts with his development, website and server environment and 
+        that it does not infringe any of End User License Agreement of any software Licensee may use in performing his services. 
+        Licensee hereby waives any claims regarding The Software's incompatibility, performance, results and features, and 
+        warrants that he inspected the The Software.
+
+8. No Refunds: Licensee warrants that he inspected The Software according to clause 7(c) and that it is adequate to his needs. 
+   Accordingly, as The Software is intangible goods, Licensee shall not be, ever, entitled to any refund, rebate, compensation 
+   or restitution for any reason whatsoever, even if The Software contains material flaws.
+   
+9. Indemnification: Licensee hereby warrants to hold Licensor harmless and indemnify Licensor for any lawsuit brought against 
+    it in regards to Licensee’s use of The Software in means that violate, breach or otherwise circumvent this license, Licensor's 
+    intellectual property rights or Licensor's title in The Software. Licensor shall promptly notify Licensee in case of such 
+    legal action and request Licensee’s consent prior to any settlement in relation to such lawsuit or claim.
+    
+10. Governing Law, Jurisdiction: Licensee hereby agrees not to initiate class-action lawsuits against Licensor in relation to 
+    this license and to compensate Licensor for any legal fees, cost or attorney fees should any claim brought by Licensee against 
+    Licensor be denied, in part or in full. 
+
+=== wiringPi (http://wiringpi.com/download-and-install/), microhttpd(http://ftp.gnu.org/gnu/libmicrohttpd/) ===                    
+                   GNU LESSER GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+
+  This version of the GNU Lesser General Public License incorporates
+the terms and conditions of version 3 of the GNU General Public
+License, supplemented by the additional permissions listed below.
+
+  0. Additional Definitions.
+
+  As used herein, "this License" refers to version 3 of the GNU Lesser
+General Public License, and the "GNU GPL" refers to version 3 of the GNU
+General Public License.
+
+  "The Library" refers to a covered work governed by this License,
+other than an Application or a Combined Work as defined below.
+
+  An "Application" is any work that makes use of an interface provided
+by the Library, but which is not otherwise based on the Library.
+Defining a subclass of a class defined by the Library is deemed a mode
+of using an interface provided by the Library.
+
+  A "Combined Work" is a work produced by combining or linking an
+Application with the Library.  The particular version of the Library
+with which the Combined Work was made is also called the "Linked
+Version".
+
+  The "Minimal Corresponding Source" for a Combined Work means the
+Corresponding Source for the Combined Work, excluding any source code
+for portions of the Combined Work that, considered in isolation, are
+based on the Application, and not on the Linked Version.
+
+  The "Corresponding Application Code" for a Combined Work means the
+object code and/or source code for the Application, including any data
+and utility programs needed for reproducing the Combined Work from the
+Application, but excluding the System Libraries of the Combined Work.
+
+  1. Exception to Section 3 of the GNU GPL.
+
+  You may convey a covered work under sections 3 and 4 of this License
+without being bound by section 3 of the GNU GPL.
+
+  2. Conveying Modified Versions.
+
+  If you modify a copy of the Library, and, in your modifications, a
+facility refers to a function or data to be supplied by an Application
+that uses the facility (other than as an argument passed when the
+facility is invoked), then you may convey a copy of the modified
+version:
+
+   a) under this License, provided that you make a good faith effort to
+   ensure that, in the event an Application does not supply the
+   function or data, the facility still operates, and performs
+   whatever part of its purpose remains meaningful, or
+
+   b) under the GNU GPL, with none of the additional permissions of
+   this License applicable to that copy.
+
+  3. Object Code Incorporating Material from Library Header Files.
+
+  The object code form of an Application may incorporate material from
+a header file that is part of the Library.  You may convey such object
+code under terms of your choice, provided that, if the incorporated
+material is not limited to numerical parameters, data structure
+layouts and accessors, or small macros, inline functions and templates
+(ten or fewer lines in length), you do both of the following:
+
+   a) Give prominent notice with each copy of the object code that the
+   Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the object code with a copy of the GNU GPL and this license
+   document.
+
+  4. Combined Works.
+
+  You may convey a Combined Work under terms of your choice that,
+taken together, effectively do not restrict modification of the
+portions of the Library contained in the Combined Work and reverse
+engineering for debugging such modifications, if you also do each of
+the following:
+
+   a) Give prominent notice with each copy of the Combined Work that
+   the Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the Combined Work with a copy of the GNU GPL and this license
+   document.
+
+   c) For a Combined Work that displays copyright notices during
+   execution, include the copyright notice for the Library among
+   these notices, as well as a reference directing the user to the
+   copies of the GNU GPL and this license document.
+
+   d) Do one of the following:
+
+       0) Convey the Minimal Corresponding Source under the terms of this
+       License, and the Corresponding Application Code in a form
+       suitable for, and under terms that permit, the user to
+       recombine or relink the Application with a modified version of
+       the Linked Version to produce a modified Combined Work, in the
+       manner specified by section 6 of the GNU GPL for conveying
+       Corresponding Source.
+
+       1) Use a suitable shared library mechanism for linking with the
+       Library.  A suitable mechanism is one that (a) uses at run time
+       a copy of the Library already present on the user's computer
+       system, and (b) will operate properly with a modified version
+       of the Library that is interface-compatible with the Linked
+       Version.
+
+   e) Provide Installation Information, but only if you would otherwise
+   be required to provide such information under section 6 of the
+   GNU GPL, and only to the extent that such information is
+   necessary to install and execute a modified version of the
+   Combined Work produced by recombining or relinking the
+   Application with a modified version of the Linked Version. (If
+   you use option 4d0, the Installation Information must accompany
+   the Minimal Corresponding Source and Corresponding Application
+   Code. If you use option 4d1, you must provide the Installation
+   Information in the manner specified by section 6 of the GNU GPL
+   for conveying Corresponding Source.)
+
+  5. Combined Libraries.
+
+  You may place library facilities that are a work based on the
+Library side by side in a single library together with other library
+facilities that are not Applications and are not covered by this
+License, and convey such a combined library under terms of your
+choice, if you do both of the following:
+
+   a) Accompany the combined library with a copy of the same work based
+   on the Library, uncombined with any other library facilities,
+   conveyed under the terms of this License.
+
+   b) Give prominent notice with the combined library that part of it
+   is a work based on the Library, and explaining where to find the
+   accompanying uncombined form of the same work.
+
+  6. Revised Versions of the GNU Lesser General Public License.
+
+  The Free Software Foundation may publish revised and/or new versions
+of the GNU Lesser General Public License from time to time. Such new
+versions will be similar in spirit to the present version, but may
+differ in detail to address new problems or concerns.
+
+  Each version is given a distinguishing version number. If the
+Library as you received it specifies that a certain numbered version
+of the GNU Lesser General Public License "or any later version"
+applies to it, you have the option of following the terms and
+conditions either of that published version or of any later version
+published by the Free Software Foundation. If the Library as you
+received it does not specify a version number of the GNU Lesser
+General Public License, you may choose any version of the GNU Lesser
+General Public License ever published by the Free Software Foundation.
+
+  If the Library as you received it specifies that a proxy can decide
+whether future versions of the GNU Lesser General Public License shall
+apply, that proxy's public statement of acceptance of any version is
+permanent authorization for you to choose that version for the
+Library.
+ 
+
+=== Rapid XML ===
+Copyright (c) 2006, 2007 Marcin Kalicinski
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+
+=== jQuery ===
+jQuery JavaScript Library v1.6.2
+http://jquery.com/
+
+Copyright 2011, John Resig
+Dual licensed under the MIT or GPL Version 2 licenses.
+http://jquery.org/license
+
+Includes Sizzle.js
+http://sizzlejs.com/
+Copyright 2011, The Dojo Foundation
+Released under the MIT, BSD, and GPL Licenses.
+
+=== Three.js ===
+The MIT License
+
+Copyright © 2010-2015 three.js authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+ 
+

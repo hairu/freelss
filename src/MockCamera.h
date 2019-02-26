@@ -31,7 +31,9 @@ namespace freelss
 class MockCamera : public Camera
 {
 public:
-	MockCamera(int imageWidth, int imageHeight);
+	MockCamera();
+
+	void initialize(CameraMode cameraMode);
 
 	Image * acquireImage();
 
@@ -46,14 +48,12 @@ public:
 	/** Returns the number of image components */
 	int getImageComponents() const;
 
-	/** Returns the width of the sensor in mm */
-	real getSensorWidth() const;
+	/** Set burst mode */
+	void setBurstModeEnabled(bool enable);
 
-	/** Returns the height of the sensor in mm */
-	real getSensorHeight() const;
-
-	/** Returns the focal length of the camera in mm */
-	real getFocalLength() const;
+	void setFlipRedBlue(bool flip);
+protected:
+	void setShutterSpeed(unsigned shutterSpeedUs);
 
 private:
 

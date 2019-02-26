@@ -79,6 +79,9 @@ public:
 
 private:
 
+	/** Called by iwlib for each detected device */
+	static int enumerateDevices(int skfd, char *ifname, char *args[], int count);
+
 	/** The scanned access points */
 	std::vector<AccessPoint> m_accessPoints;
 
@@ -96,3 +99,4 @@ private:
 };
 
 }
+

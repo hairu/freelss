@@ -75,9 +75,6 @@ private:
 	/** The url to check for updates */
 	static const std::string UPDATE_URL;
 
-	/** The directory where updates are temporarily stored */
-	static const std::string UPDATE_DIR;
-
 	/** The critical section for this instance */
 	CriticalSection m_cs;
 

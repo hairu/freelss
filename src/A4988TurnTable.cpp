@@ -102,7 +102,7 @@ void A4988TurnTable::setMotorEnabled(bool enabled)
 	int value = enabled ? LOW : HIGH;
 
 	digitalWrite (m_enablePin, value);
-	Thread::usleep(m_responseDelay);
+	Thread::usleep(MAX(m_responseDelay, m_stabilityDelay));
 }
 
 }

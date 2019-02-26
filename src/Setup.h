@@ -40,6 +40,12 @@ public:
 	/** Decodes property information from the given vector  */
 	void decodeProperties(const std::vector<Property>& properties);
 
+	/**
+	 * Reinitializes the Setup object to its default settings.  Some settings
+	 *  such as serial number and HTTP port are not changed.
+	 */
+	void reinit();
+
 	Vector3 cameraLocation;
 	Vector3 leftLaserLocation;
 	Vector3 rightLaserLocation;
@@ -67,6 +73,14 @@ public:
 	int lightingPin;
 	bool enableAuthentication;
 	std::string passwordHash;
+	bool enableUsbNetworkConfig;
+	bool enableExperimental;
+	bool enableWebGLWhenAvailable;
+	bool enablePointCloudRenderer;
+	bool overrideFocalLength;
+	std::string overriddenFocalLength;
+	bool mmalFlipRedBlue;
+	real maxObjectSize;
 private:
 
 	/** Default Constructor */

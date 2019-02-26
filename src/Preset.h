@@ -23,6 +23,8 @@
 #include "Laser.h"
 #include "Camera.h"
 #include "PlyWriter.h"
+#include "NoiseRemover.h"
+#include "ImageProcessor.h"
 
 namespace freelss
 {
@@ -53,11 +55,10 @@ public:
 
 	std::string name;
 	Laser::LaserSide laserSide;
-	Camera::CameraMode cameraMode;
+	CameraMode cameraMode;
 	real laserThreshold;
 	int minLaserWidth;
 	int maxLaserWidth;
-	real maxObjectSize;
 	real maxTriangleEdgeLength;
 	int numLaserRowBins;
 	int stabilityDelay;
@@ -68,9 +69,12 @@ public:
 	bool generatePly;
 	bool createBaseForObject;
 	bool enableBurstModeForStillImages;
+	NoiseRemover::Setting noiseRemovalSetting;
+	ImageProcessor::ThresholdMode imageThresholdMode;
 	real groundPlaneHeight;
 	LaserMergeAction laserMergeAction;
 	PlyDataFormat plyDataFormat;
+	CameraExposureTime cameraExposureTime;
 };
 
 }

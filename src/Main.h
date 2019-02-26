@@ -30,7 +30,6 @@ The origin is the center of the turn table.
 #include <png.h>
 
 // MMAL/BCM
-// This mmal is from the RaspiCam package and was copied to /usr/local/include
 #include <bcm_host.h>
 #include <interface/vcos/vcos.h>
 #include <mmal/mmal.h>
@@ -46,14 +45,14 @@ The origin is the center of the turn table.
 // LIBJPEG
 #include <jpeglib.h>
 
-// SQLITE
-#include <sqlite3.h>
-
 // LIBIW
 #include <iwlib.h>
 
 // OpenSSL
 #include <openssl/sha.h>
+
+// Eigen
+#include <Eigen/Geometry>
 
 #include <string>
 #include <vector>
@@ -66,8 +65,10 @@ The origin is the center of the turn table.
 #include <pthread.h>
 #include <list>
 #include <map>
+#include <set>
 #include <sstream>
 #include <algorithm>
+#include <float.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -87,11 +88,13 @@ The origin is the center of the turn table.
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/utsname.h>
+#include <sys/mount.h>
+#include <pwd.h>
 
 // Non-configurable settings
 #define FREELSS_VERSION_MAJOR 1
-#define FREELSS_VERSION_MINOR 11
-#define FREELSS_VERSION_NAME "FreeLSS 1.11"
+#define FREELSS_VERSION_MINOR 22
+#define FREELSS_VERSION_NAME "FreeLSS 1.22"
 
 #define PI 3.14159265359
 
@@ -128,15 +131,6 @@ typedef unsigned char uint8;
 typedef float real32;
 typedef double real64;
 typedef float real;
-
-/** The directory where scans are written to */
-extern const std::string SCAN_OUTPUT_DIR;
-
-/** The directory where debug images are written to */
-extern const std::string DEBUG_OUTPUT_DIR;
-
-/** The filename where the properties are stored */
-extern const std::string PROPERTIES_FILE;
 
 /**
  * Defines a name/value pair.
@@ -289,6 +283,9 @@ struct SoftwareUpdate
 /** Units of length */
 enum UnitOfLength { UL_UNKNOWN, UL_MILLIMETERS, UL_INCHES, UL_CENTIMETERS };
 
+/** PLY format types */
+enum PlyDataFormat { PLY_ASCII, PLY_BINARY };
+
 /** Returns the current point in time in ms */
 double GetTimeInSeconds();
 
@@ -305,15 +302,19 @@ real ToReal(const std::string& str);
 int ToInt(const std::string& str);
 bool ToBool(const std::string& str);
 bool EndsWith(const std::string& str, const std::string& ending);
+bool StartsWith(const std::string& str, const std::string& start);
 void HtmlEncode(std::string& data);
 void LoadProperties();
 void SaveProperties();
-void ExitProgram();
+void MigrateHome();
+std::string UrlDecode(const std::string& in);
+std::string GetAppHomeDir();
+std::string GetScanOutputDir();
+std::string GetDebugOutputDir();
+std::string GetPropertiesFile();
+std::string GetUpdateDir();
+std::string TrimString(const std::string& str);
 }
-
-// Forward declaration
-struct sqlite3;
-struct sqlite3_stmt;
 
 
 // Include wiringPi

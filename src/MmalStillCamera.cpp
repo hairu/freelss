@@ -22,6 +22,8 @@
 #include "MmalStillCamera.h"
 #include "MmalImageStore.h"
 #include "Thread.h"
+#include "Logger.h"
+#include "MmalUtil.h"
 
 #define MMAL_CAMERA_PREVIEW_PORT 0
 #define MMAL_CAMERA_VIDEO_PORT 1
@@ -89,7 +91,7 @@ static void CameraControlCallback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
 {
 	if (buffer->cmd != MMAL_EVENT_PARAMETER_CHANGED)
 	{
-		std::cerr << "Received unexpected camera control callback event" << std::endl;
+		ErrorLog << "Received unexpected camera control callback event" << Logger::ENDL;
 	}
 
 	mmal_buffer_header_release(buffer);
@@ -125,18 +127,18 @@ static void EncoderBufferCallback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
          }
          catch (Exception& e)
          {
-        	 std::cerr << "!! Exception thrown in EncoderBufferCallback: " << e << std::endl;
+        	 ErrorLog << "!! Exception thrown in EncoderBufferCallback: " << e << Logger::ENDL;
          }
          catch (...)
          {
-        	 std::cerr << "!! Exception thrown in EncoderBufferCallback" << std::endl;
+        	 ErrorLog << "!! Exception thrown in EncoderBufferCallback" << Logger::ENDL;
          }
          pData->cs.leave();
 	   }
    }
    else
    {
-	   std::cerr << "!! Received a encoder buffer callback with no state" << std::endl;
+	   ErrorLog << "!! Received a encoder buffer callback with no state" << Logger::ENDL;
    }
 
    // release buffer back to the pool
@@ -161,9 +163,9 @@ static void EncoderBufferCallback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
    }
 }
 
-MmalStillCamera::MmalStillCamera(int imageWidth, int imageHeight, bool enableBurstMode) :
-	m_imageWidth(imageWidth),
-	m_imageHeight(imageHeight),
+MmalStillCamera::MmalStillCamera() :
+	m_imageWidth(-1),
+	m_imageHeight(-1),
 	m_callbackData(NULL),
 	m_cs(),
 	m_camera(NULL),
@@ -173,76 +175,12 @@ MmalStillCamera::MmalStillCamera(int imageWidth, int imageHeight, bool enableBur
 	m_previewPort(NULL),
 	m_videoPort(NULL),
 	m_stillPort(NULL),
-	m_targetPort(NULL)
+	m_targetPort(NULL),
+	m_burstModeEnabled(false),
+	m_flipRedBlue(false)
 {
-	m_callbackData = new MmalStillCallbackData(m_imageWidth, m_imageHeight, 3);
-
-	createCameraComponent();
-	std::cout << "Created camera" << std::endl;
-
-	createPreview();
-	std::cout << "Created preview" << std::endl;
-
-	std::cout << "Target Image Width: " << VCOS_ALIGN_UP(m_imageWidth, 32) << std::endl;
-	std::cout << "Target Image Height: " << VCOS_ALIGN_UP(m_imageHeight, 16) << std::endl;
-
-	MMAL_STATUS_T status;
-
-	m_targetPort = m_stillPort;
-
-	// Create pool of buffer headers for the output port to consume
-	m_pool = mmal_port_pool_create(m_targetPort, m_targetPort->buffer_num, m_targetPort->buffer_size);
-	if (m_pool == NULL)
-	{
-		throw Exception("Failed to create buffer header pool for encoder output port");
-	}
-
-	MMAL_CONNECTION_T *preview_connection = NULL;
-	status = connect_ports(m_previewPort, m_preview->input[0], &preview_connection);
-	if (status != MMAL_SUCCESS)
-	{
-		throw Exception("Error connecting preview port");
-	}
-
-	m_targetPort->userdata = (struct MMAL_PORT_USERDATA_T *) m_callbackData;
-	m_callbackData->image = NULL;
-	m_callbackData->pool = m_pool;
-
-	// Enable the encoder output port and tell it its callback function
-	if (mmal_port_enable(m_targetPort, EncoderBufferCallback) != MMAL_SUCCESS)
-	{
-		std::cerr << "Error enabling the encoder buffer callback" << std::endl;
-	}
-
-	// Send all the buffers to the encoder output port
-	int num = mmal_queue_length(m_pool->queue);
-	for (int q = 0; q < num; q++)
-	{
-		MMAL_BUFFER_HEADER_T *buffer = mmal_queue_get(m_pool->queue);
-
-		if (buffer == NULL)
-		{
-			std::cerr << "Unable to get buffer " << q << " from the pool" << std::endl;
-		}
-
-		if (mmal_port_send_buffer(m_targetPort, buffer)!= MMAL_SUCCESS)
-		{
-			std::cerr << "Unable to send a buffer " << q << " to encoder output port " << std::endl;
-		}
-	}
-
-	// Enable burst mode
-	if (enableBurstMode)
-	{
-		if (mmal_port_parameter_set_boolean(m_camera->control,  MMAL_PARAMETER_CAMERA_BURST_CAPTURE, 1) != MMAL_SUCCESS)
-		{
-			std::cerr << "Error enabling burst mode" << std::endl;
-		}
-
-		std::cout << "Enabled burst mode for still images" << std::endl;
-	}
-
-	std::cout << "Initialized camera" << std::endl;
+	m_name = MmalUtil::get()->getCameraName();
+	m_supportedResolutions = MmalUtil::get()->getSupportedResolutions(m_name);
 }
 
 MmalStillCamera::~MmalStillCamera()
@@ -252,7 +190,7 @@ MmalStillCamera::~MmalStillCamera()
 	{
 		if (mmal_port_disable(m_targetPort) != MMAL_SUCCESS)
 		{
-			std::cerr << "Error disabling the encoder port" << std::endl;
+			ErrorLog << "Error disabling the encoder port" << Logger::ENDL;
 		}
 	}
 
@@ -282,6 +220,111 @@ MmalStillCamera::~MmalStillCamera()
 	}
 
 	delete m_callbackData;
+}
+
+void MmalStillCamera::setBurstModeEnabled(bool enable)
+{
+	m_burstModeEnabled = enable;
+}
+
+void MmalStillCamera::initialize(CameraMode cameraMode)
+{
+	m_resolution = MmalUtil::get()->getClosestResolution(m_name, cameraMode);
+
+	if (m_imageWidth != -1)
+	{
+		throw Exception("Camera is already initialized");
+	}
+
+	m_imageWidth = m_resolution.width;
+	m_imageHeight = m_resolution.height;
+
+	m_callbackData = new MmalStillCallbackData(m_imageWidth, m_imageHeight, 3);
+
+	// Handle the sensor properties
+	real sensorWidth, sensorHeight, focalLength;
+	MmalUtil::get()->getSensorProperties(m_name, sensorWidth, sensorHeight, focalLength);
+	setSensorProperties(sensorWidth, sensorHeight, focalLength);
+
+	createCameraComponent();
+	InfoLog << "Created camera" << Logger::ENDL;
+
+	createPreview();
+	InfoLog << "Created preview" << Logger::ENDL;
+
+	InfoLog << "Target Image Width: " << VCOS_ALIGN_UP(m_imageWidth, 32) << Logger::ENDL;
+	InfoLog << "Target Image Height: " << VCOS_ALIGN_UP(m_imageHeight, 16) << Logger::ENDL;
+
+	MMAL_STATUS_T status;
+
+	m_targetPort = m_stillPort;
+
+	// Create pool of buffer headers for the output port to consume
+	m_pool = mmal_port_pool_create(m_targetPort, m_targetPort->buffer_num, m_targetPort->buffer_size);
+	if (m_pool == NULL)
+	{
+		throw Exception("Failed to create buffer header pool for encoder output port");
+	}
+
+	MMAL_CONNECTION_T *preview_connection = NULL;
+	status = connect_ports(m_previewPort, m_preview->input[0], &preview_connection);
+	if (status != MMAL_SUCCESS)
+	{
+		throw Exception("Error connecting preview port");
+	}
+
+	m_targetPort->userdata = (struct MMAL_PORT_USERDATA_T *) m_callbackData;
+	m_callbackData->image = NULL;
+	m_callbackData->pool = m_pool;
+
+	// Enable the encoder output port and tell it its callback function
+	if (mmal_port_enable(m_targetPort, EncoderBufferCallback) != MMAL_SUCCESS)
+	{
+		ErrorLog << "Error enabling the encoder buffer callback" << Logger::ENDL;
+	}
+
+	// Send all the buffers to the encoder output port
+	int num = mmal_queue_length(m_pool->queue);
+	for (int q = 0; q < num; q++)
+	{
+		MMAL_BUFFER_HEADER_T *buffer = mmal_queue_get(m_pool->queue);
+
+		if (buffer == NULL)
+		{
+			ErrorLog << "Unable to get buffer " << q << " from the pool" << Logger::ENDL;
+		}
+
+		if (mmal_port_send_buffer(m_targetPort, buffer) != MMAL_SUCCESS)
+		{
+			ErrorLog << "Unable to send a buffer " << q << " to encoder output port " << Logger::ENDL;
+		}
+	}
+
+	// Enable burst mode
+	if (m_burstModeEnabled)
+	{
+		if (mmal_port_parameter_set_boolean(m_camera->control,  MMAL_PARAMETER_CAMERA_BURST_CAPTURE, 1) != MMAL_SUCCESS)
+		{
+			ErrorLog << "Error enabling burst mode" << Logger::ENDL;
+		}
+
+		InfoLog << "Enabled burst mode for still images" << Logger::ENDL;
+	}
+
+	InfoLog << "Initialized camera" << Logger::ENDL;
+}
+
+void MmalStillCamera::setShutterSpeed(unsigned shutterSpeedUs)
+{
+	if (m_camera != NULL)
+	{
+		mmal_port_parameter_set_uint32(m_camera->control, MMAL_PARAMETER_SHUTTER_SPEED, shutterSpeedUs);
+	}
+}
+
+void MmalStillCamera::setFlipRedBlue(bool flip)
+{
+	m_flipRedBlue = flip;
 }
 
 void MmalStillCamera::createPreview()
@@ -407,8 +450,8 @@ void MmalStillCamera::createCameraComponent()
 		format = still_port->format;
 
 		// Set our stills format on the stills (for encoder) port
-		format->encoding = MMAL_ENCODING_RGB24;
-		format->encoding_variant = MMAL_ENCODING_RGB24;
+		format->encoding = m_flipRedBlue ? MMAL_ENCODING_BGR24 : MMAL_ENCODING_RGB24;
+		format->encoding_variant = m_flipRedBlue ? MMAL_ENCODING_BGR24 : MMAL_ENCODING_RGB24;
 
 		format->es->video.width = VCOS_ALIGN_UP(m_imageWidth, 32);
 		format->es->video.height = VCOS_ALIGN_UP(m_imageHeight, 16);
@@ -477,7 +520,7 @@ Image * MmalStillCamera::acquireImage()
 
 	if (mmal_port_parameter_set_boolean(m_stillPort, MMAL_PARAMETER_CAPTURE, 1) != MMAL_SUCCESS)
 	{
-		std::cerr << "Error enabling capture on still port" << std::endl;
+		ErrorLog << "Error enabling capture on still port" << Logger::ENDL;
 	}
 
 	// Wait for the capture to end
@@ -512,21 +555,6 @@ int MmalStillCamera::getImageWidth() const
 int MmalStillCamera::getImageComponents() const
 {
 	return 3;
-}
-
-real MmalStillCamera::getSensorWidth() const
-{
-	return 3.629;
-}
-
-real MmalStillCamera::getSensorHeight() const
-{
-	return 2.722;
-}
-
-real MmalStillCamera::getFocalLength() const
-{
-	return 3.6;
 }
 
 } // end ns scanner

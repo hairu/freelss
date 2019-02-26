@@ -21,6 +21,7 @@
 #include "Main.h"
 #include "PixelLocationWriter.h"
 #include "Image.h"
+#include "Logger.h"
 
 namespace freelss
 {
@@ -31,7 +32,7 @@ void PixelLocationWriter::writePixels(const PixelLocation * pixels,
 		                              int imageHeight,
 		                              const std::string& pngFilename)
 {
-	std::cout << "Writing " << pngFilename << "..." << std::endl;
+	InfoLog << "Writing " << pngFilename << "..." << Logger::ENDL;
 
 	FILE *fp = fopen(pngFilename.c_str(), "wb");
 	if (!fp)
@@ -83,7 +84,7 @@ void PixelLocationWriter::writePixels(const PixelLocation * pixels,
 
 void PixelLocationWriter::writeImage(Image& image, int dstWidth, int dstHeight, const std::string& pngFilename)
 {
-	std::cout << "Writing " << pngFilename << "..." << std::endl;
+	InfoLog << "Writing " << pngFilename << "..." << Logger::ENDL;
 	FILE *fp = fopen(pngFilename.c_str(), "wb");
 	if (!fp)
 	{

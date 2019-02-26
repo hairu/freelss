@@ -22,6 +22,8 @@
 #include "MmalVideoCamera.h"
 #include "Thread.h"
 #include "MmalImageStore.h"
+#include "Logger.h"
+#include "MmalUtil.h"
 
 #define MMAL_CAMERA_PREVIEW_PORT 0
 #define MMAL_CAMERA_VIDEO_PORT   1
@@ -78,7 +80,7 @@ struct MmalVideoCallbackData
 
 static void EncoderBufferCallback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 {
-   //std::cout << "EncoderBufferCallback: " << pthread_self() << std::endl;
+   //InfoLog << "EncoderBufferCallback: " << pthread_self() << Logger::ENDL;
 
    MmalVideoCallbackData *pData = (MmalVideoCallbackData *)port->userdata;
 
@@ -108,18 +110,18 @@ static void EncoderBufferCallback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
          }
          catch (Exception& e)
          {
-        	 std::cerr << "!! Exception thrown in EncoderBufferCallback: " << e << std::endl;
+        	 ErrorLog << "!! Exception thrown in EncoderBufferCallback: " << e << Logger::ENDL;
          }
          catch (...)
          {
-        	 std::cerr << "!! Exception thrown in EncoderBufferCallback" << std::endl;
+        	 ErrorLog << "!! Exception thrown in EncoderBufferCallback" << Logger::ENDL;
          }
          pData->cs.leave();
 	   }
    }
    else
    {
-	   std::cerr << "!! Received a encoder buffer callback with no state" << std::endl;
+	   ErrorLog << "!! Received a encoder buffer callback with no state" << Logger::ENDL;
    }
 
    // release buffer back to the pool
@@ -144,12 +146,12 @@ static void EncoderBufferCallback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffe
    }
 }
 
-MmalVideoCamera::MmalVideoCamera(int imageWidth, int imageHeight, int frameRate) :
-	m_imageWidth(imageWidth),
-	m_imageHeight(imageHeight),
-	m_frameRate(frameRate),
-	m_imagePreviewWidth(VCOS_ALIGN_UP(imageWidth, 32)),
-	m_imagePreviewHeight(VCOS_ALIGN_UP(imageHeight, 16)),
+MmalVideoCamera::MmalVideoCamera() :
+	m_imageWidth(-1),
+	m_imageHeight(-1),
+	m_frameRate(-1),
+	m_imagePreviewWidth(-1),
+	m_imagePreviewHeight(-1),
 	m_callbackData(NULL),
 	m_cs(),
 	m_camera(NULL),
@@ -157,24 +159,11 @@ MmalVideoCamera::MmalVideoCamera(int imageWidth, int imageHeight, int frameRate)
 	m_videoPort(NULL),
 	m_stillPort(NULL),
 	m_previewPort(NULL),
-	m_videoPortEnabled(false)
+	m_videoPortEnabled(false),
+	m_flipRedBlue(false)
 {
-	std::cout << "Creating callback data..." << std::endl;
-
-	m_callbackData = new MmalVideoCallbackData(m_imageWidth, m_imageHeight, 3);
-
-	std::cout << "Creating camera..." << std::endl;
-
-	createCameraComponent();
-
-	std::cout << "Created camera" << std::endl;
-
-	std::cout << "Target Image Width: " << m_imageWidth << std::endl;
-	std::cout << "Target Image Height: " << m_imageHeight << std::endl;
-
-	createBufferPool();
-
-	std::cout << "Initialized camera" << std::endl;
+	m_name = MmalUtil::get()->getCameraName();
+	m_supportedResolutions = MmalUtil::get()->getSupportedResolutions(m_name);
 }
 
 MmalVideoCamera::~MmalVideoCamera()
@@ -184,11 +173,11 @@ MmalVideoCamera::~MmalVideoCamera()
 	{
 		if (mmal_port_disable(m_videoPort) != MMAL_SUCCESS)
 		{
-			std::cerr << "Error disabling the video port" << std::endl;
+			ErrorLog << "Error disabling the video port" << Logger::ENDL;
 		}
 		else
 		{
-			std::cout << "Disabled the video port" << std::endl;
+			InfoLog << "Disabled the video port" << Logger::ENDL;
 		}
 	}
 
@@ -211,6 +200,56 @@ MmalVideoCamera::~MmalVideoCamera()
 	m_callbackData = NULL;
 }
 
+void MmalVideoCamera::initialize(CameraMode cameraMode)
+{
+	m_resolution = MmalUtil::get()->getClosestResolution(m_name, cameraMode);
+
+	if (m_imageWidth != -1)
+	{
+		throw Exception("Camera is already initialized");
+	}
+
+	m_imageWidth = m_resolution.width;
+	m_imageHeight = m_resolution.height;
+	m_frameRate = m_resolution.frameRate;
+	m_imagePreviewWidth = VCOS_ALIGN_UP(m_resolution.width, 32);
+	m_imagePreviewHeight = VCOS_ALIGN_UP(m_resolution.height, 16);
+
+	// Handle the sensor properties
+	real sensorWidth, sensorHeight, focalLength;
+	MmalUtil::get()->getSensorProperties(m_name, sensorWidth, sensorHeight, focalLength);
+	setSensorProperties(sensorWidth, sensorHeight, focalLength);
+
+	InfoLog << "Creating callback data..." << Logger::ENDL;
+
+	m_callbackData = new MmalVideoCallbackData(m_imageWidth, m_imageHeight, 3);
+
+	InfoLog << "Creating camera..." << Logger::ENDL;
+
+	createCameraComponent();
+
+	InfoLog << "Created camera" << Logger::ENDL;
+
+	InfoLog << "Target Image Width: " << m_imageWidth << Logger::ENDL;
+	InfoLog << "Target Image Height: " << m_imageHeight << Logger::ENDL;
+
+	createBufferPool();
+
+	InfoLog << "Initialized camera" << Logger::ENDL;
+}
+
+void MmalVideoCamera::setShutterSpeed(unsigned shutterSpeedUs)
+{
+	if (m_camera != NULL)
+	{
+		mmal_port_parameter_set_uint32(m_camera->control, MMAL_PARAMETER_SHUTTER_SPEED, shutterSpeedUs);
+	}
+}
+
+void MmalVideoCamera::setFlipRedBlue(bool flip)
+{
+	m_flipRedBlue = flip;
+}
 
 void MmalVideoCamera::createBufferPool()
 {
@@ -305,8 +344,8 @@ void MmalVideoCamera::createCameraComponent()
 		// Setup the video port
 		//
 		format = video_port->format;
-		format->encoding = MMAL_ENCODING_RGB24;
-		format->encoding_variant = MMAL_ENCODING_RGB24;
+		format->encoding = m_flipRedBlue ? MMAL_ENCODING_BGR24 : MMAL_ENCODING_RGB24;
+		format->encoding_variant = m_flipRedBlue ? MMAL_ENCODING_BGR24 : MMAL_ENCODING_RGB24;
 
 		format->es->video.width = VCOS_ALIGN_UP(m_imageWidth, 32);
 		format->es->video.height = VCOS_ALIGN_UP(m_imageHeight, 16);
@@ -353,7 +392,7 @@ void MmalVideoCamera::createCameraComponent()
 		/*
 		// AWB MODE
 		{
-			std::cout << "Disabling auto white balancing" << std::endl;
+			InfoLog << "Disabling auto white balancing" << Logger::ENDL;
 			MMAL_PARAMETER_AWBMODE_T param = {{MMAL_PARAMETER_AWB_MODE,sizeof(param)}, MMAL_PARAM_AWBMODE_OFF};
 			mmal_port_parameter_set(camera->control, &param.hdr);
 		}
@@ -363,7 +402,7 @@ void MmalVideoCamera::createCameraComponent()
 			real redGain = 0.2;
 			real blueGain = 1.0;
 
-			std::cout << "Setting color gain, r=" << redGain << ", b=" << blueGain << std::endl;
+			InfoLog << "Setting color gain, r=" << redGain << ", b=" << blueGain << Logger::ENDL;
 			MMAL_PARAMETER_AWB_GAINS_T param = {{MMAL_PARAMETER_CUSTOM_AWB_GAINS,sizeof(param)}, {0,0}, {0,0}};
 			param.r_gain.num = (unsigned int)(redGain * 65536);
 			param.b_gain.num = (unsigned int)(blueGain * 65536);
@@ -372,7 +411,7 @@ void MmalVideoCamera::createCameraComponent()
 		}
 		*/
 
-		std::cout << "Camera Enabled..." << std::endl;
+		InfoLog << "Camera Enabled..." << Logger::ENDL;
 	}
 	catch (...)
 	{
@@ -401,12 +440,12 @@ void MmalVideoCamera::sendBuffers()
 
 		if (new_buffer == NULL)
 		{
-			std::cerr << "Unable to get buffer " << q << " from the pool" << std::endl;
+			ErrorLog << "Unable to get buffer " << q << " from the pool" << Logger::ENDL;
 		}
 
 		if (mmal_port_send_buffer(m_videoPort, new_buffer)!= MMAL_SUCCESS)
 		{
-			std::cerr << "Unable to send buffer " << (q + 1) << " to encoder output port " << std::endl;
+			ErrorLog << "Unable to send buffer " << (q + 1) << " to encoder output port " << Logger::ENDL;
 		}
 	}
 }
@@ -466,18 +505,4 @@ int MmalVideoCamera::getImageComponents() const
 	return 3;
 }
 
-real MmalVideoCamera::getSensorWidth() const
-{
-	return 3.629;
-}
-
-real MmalVideoCamera::getSensorHeight() const
-{
-	return 2.722;
-}
-
-real MmalVideoCamera::getFocalLength() const
-{
-	return 3.6;
-}
 } // end ns scanner

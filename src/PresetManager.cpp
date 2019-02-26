@@ -122,6 +122,23 @@ void PresetManager::decodeProperties(const std::vector<Property>& properties)
 
 	bool isActivePreset = false;
 
+	// Detect version number
+	int majorVersion = 0;
+	int minorVersion = 0;
+	for (size_t iProp = 0; iProp < properties.size(); iProp++)
+	{
+		Property prop = properties[iProp];
+
+		if (prop.name == "freelss.majorVersion")
+		{
+			majorVersion = ToInt(prop.value);
+		}
+		else if (prop.name == "freelss.minorVersion")
+		{
+			minorVersion = ToInt(prop.value);
+		}
+	}
+
 	std::vector<std::string> presetNames = Preset::detectPresetNames(properties);
 	for (size_t iName = 0; iName < presetNames.size(); iName++)
 	{
@@ -134,6 +151,23 @@ void PresetManager::decodeProperties(const std::vector<Property>& properties)
 		if (isActivePreset || m_activePresetIndex == -1)
 		{
 			m_activePresetIndex = (int) m_presets.size() - 1;
+		}
+	}
+
+	// Migrate the presets
+	migratePresets(m_presets, majorVersion, minorVersion);
+}
+
+void PresetManager::migratePresets(std::vector<Preset>& presets, int majorVersion, int minorVersion)
+{
+	for (size_t iPre = 0; iPre < presets.size(); iPre++)
+	{
+		Preset& preset = presets[iPre];
+
+		// Set minimum stability delay of 100ms
+		if (majorVersion <= 1 && minorVersion < 12)
+		{
+			preset.stabilityDelay = MAX(preset.stabilityDelay, 100000);
 		}
 	}
 }

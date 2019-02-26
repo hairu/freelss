@@ -23,8 +23,6 @@
 namespace freelss
 {
 
-enum PlyDataFormat { PLY_ASCII, PLY_BINARY };
-
 class IWriter;
 
 class PlyWriter

@@ -19,6 +19,7 @@
 */
 #include "Main.h"
 #include "WifiConfig.h"
+#include "Logger.h"
 
 namespace freelss
 {
@@ -110,9 +111,61 @@ std::string WifiConfig::parseInterface(const std::string& line)
 	return interface;
 }
 
+int WifiConfig::enumerateDevices(int sk, char *ifname, char *args[], int count)
+{
+	std::set<std::string> * interfaces = reinterpret_cast<std::set<std::string>*>(args);
+	if (ifname != NULL && interfaces != NULL)
+	{
+		wireless_info info;
+		if(iw_get_basic_config(sk, ifname, &(info.b)) >= 0)
+		{
+			InfoLog << "Detected WiFi device: " << ifname << Logger::ENDL;
+			interfaces->insert(ifname);
+		}
+		else
+		{
+			InfoLog << ifname << " is not a wireless interface" << Logger::ENDL;
+		}
+	}
+
+	return 1;
+}
+
 void WifiConfig::scan()
 {
 	m_accessPoints.clear();
+
+	std::set<std::string> interfaces;
+#if 0
+	//
+	// Read from /proc/net/wireless
+	//
+	std::ifstream fin(PROC_NET_WIRELESS.c_str());
+	if (!fin.is_open())
+	{
+		throw Exception("Error opening file: " + PROC_NET_WIRELESS);
+	}
+
+	std::string line;
+	for (size_t iLn = 0; std::getline(fin, line); iLn++)
+	{
+		// Skip the first 2 header lines
+		if (iLn >= 2)
+		{
+			std::string interface = parseInterface(line);
+			if (!interface.empty())
+			{
+				interfaces.insert(interface);
+			}
+		}
+	}
+
+	fin.close();
+#endif
+
+	//
+	// Read from /sys/class/net
+	//
 
 	int sk = iw_sockets_open();
 	if (sk < 0)
@@ -122,54 +175,48 @@ void WifiConfig::scan()
 
 	try
 	{
-		std::ifstream fin(PROC_NET_WIRELESS.c_str());
-		if (!fin.is_open())
-		{
-			throw Exception("Error opening file: " + PROC_NET_WIRELESS);
-		}
+		// Detect the wireless devices
+		iw_enum_devices(sk, &WifiConfig::enumerateDevices, (char**)&interfaces, 0);
 
-		std::string line;
-		for (size_t iLn = 0; std::getline(fin, line); iLn++)
+		std::set<std::string>::iterator it = interfaces.begin();
+		while (it != interfaces.end())
 		{
-			// Skip the first 2 header lines
-			if (iLn >= 2)
+			std::string interface = * it;
+			std::vector<char> chars(interface.c_str(), interface.c_str() + interface.size() + 1u);
+
+			InfoLog << "Scanning wireless device: " << interface << Logger::ENDL;
+
+			struct wireless_scan_head context;
+			int ret = iw_scan(sk, &chars.front(), iw_get_kernel_we_version(), &context);
+			if (ret >= 0)
 			{
-				std::string interface = parseInterface(line);
-				if (!interface.empty())
+				while(context.result)
 				{
-					std::cout << "Scanning wireless device: " << interface << std::endl;
+					WifiConfig::AccessPoint accessPoint;
 
-					std::vector<char> chars(interface.c_str(), interface.c_str() + interface.size() + 1u);
-					struct wireless_scan_head context;
-					int ret = iw_scan(sk, &chars.front(), iw_get_kernel_we_version(), &context);
-					if (ret < 0)
+					if(context.result->b.has_essid && context.result->b.essid_on)
 					{
-						throw Exception("Wireless scanning failed");
-					}
-
-					while(context.result)
-					{
-						WifiConfig::AccessPoint accessPoint;
-
-						if(context.result->b.has_essid && context.result->b.essid_on)
+						accessPoint.essid = context.result->b.essid;
+						if (!accessPoint.essid.empty())
 						{
-							accessPoint.essid = context.result->b.essid;
-							if (!accessPoint.essid.empty())
-							{
-								accessPoint.encrypted = context.result->b.has_key;
-								accessPoint.interface = interface;
-								std::cout << "ESSID: " << accessPoint.essid << ", encrypted=" << accessPoint.encrypted << ", interface=" << accessPoint.interface << std::endl;
+							accessPoint.encrypted = context.result->b.has_key;
+							accessPoint.interface = interface;
+							InfoLog << "ESSID: " << accessPoint.essid << ", encrypted=" << accessPoint.encrypted << ", interface=" << accessPoint.interface << Logger::ENDL;
 
-								m_accessPoints.push_back(accessPoint);
-							}
+							m_accessPoints.push_back(accessPoint);
 						}
-
-						context.result = context.result->next;
 					}
+
+					context.result = context.result->next;
 				}
 			}
-		}
-		fin.close();
+			else
+			{
+				InfoLog << "Wireless scanning failed for " << interface << Logger::ENDL;
+			}
+
+			it++;
+		} // while
 	}
 	catch (...)
 	{
@@ -306,23 +353,24 @@ void WifiConfig::connect(const std::string& essid, const std::string& password)
 	{
 		// Restart the wifi connection
 		std::string cmd = "ifdown " + interface;
-		std::cout << "Executing " << cmd << std::endl;
+		InfoLog << "Executing " << cmd << Logger::ENDL;
 		if (system(cmd.c_str()) == -1)
 		{
-			std::cerr << "Error calling: " << cmd << std::endl;
+			ErrorLog << "Error calling: " << cmd << Logger::ENDL;
 		}
 
 		cmd = "ifup " + interface;
-		std::cout << "Executing " << cmd << std::endl;
+		InfoLog << "Executing " << cmd << Logger::ENDL;
 		if (system(cmd.c_str()) == -1)
 		{
-			std::cerr << "Error calling: " << cmd << std::endl;
+			ErrorLog << "Error calling: " << cmd << Logger::ENDL;
 		}
 	}
 	else
 	{
-		std::cerr << "Error finding information for wireless interface" << std::endl;
+		ErrorLog << "Error finding information for wireless interface" << Logger::ENDL;
 	}
 }
 
 }
+
