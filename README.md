@@ -22,7 +22,7 @@ $ sudo apt-get install libpng-dev libjpeg-dev git-core gcc build-essential unzip
 Download and build FreeLSS
 ```
 $ git clone https://github.com/hairu/freelss
-$ cd freelss/src
+$ cd freelss
 $ make
 ```
 ### Running FreeLSS
@@ -30,6 +30,7 @@ FreeLSS must be ran as root (or another user with access to the hardware pins). 
 
 The following command starts FreeLSS.
 ```
+$ cd src
 $ sudo ./freelss
 ```
 
